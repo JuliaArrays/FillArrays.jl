@@ -17,6 +17,14 @@ for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
             @test Array{T}(Z) == $funcs(T,5)
             @test Array{T,1}(Z) == $funcs(T,5)
 
+            @test AbstractArray(Z) === Z
+            @test AbstractArray{T}(Z) === Z
+            @test AbstractArray{T,1}(Z) === Z
+
+            @test $Typ{T,1}(2ones(T,5)) == Z
+            @test $Typ{T}(2ones(T,5)) == Z
+            @test $Typ(2ones(T,5)) == Z
+
             Z = $Typ{T}(5, 5)
             @test eltype(Z) == T
             @test Array(Z) == $funcs(T,5,5)
@@ -27,6 +35,9 @@ for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
             @test AbstractArray{T}(Z) === Z
             @test AbstractArray{T,2}(Z) === Z
 
+            @test $Typ{T,2}(2ones(T,5,5)) == Z
+            @test $Typ{T}(2ones(T,5,5)) == Z
+            @test $Typ(2ones(T,5,5)) == Z
 
             @test AbstractArray{Float32}(Z) == $Typ{Float32}(5,5)
             @test AbstractArray{Float32,2}(Z) == $Typ{Float32}(5,5)
@@ -88,4 +99,7 @@ for T in (Int, Float64)
 
     @test AbstractArray{Float32}(E) == Eye{Float32}(5,5)
     @test AbstractArray{Float32,2}(E) == Eye{Float32}(5,5)
+
+    @test Eye{T}(ones(T, 5, 5)) == E
+    @test Eye(ones(T, 5, 5)) == E
 end

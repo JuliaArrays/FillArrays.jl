@@ -70,6 +70,10 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         @inline $Typ(sz::Vararg{Int,N}) where N = $Typ{Float64,N}(sz)
         @inline $Typ(sz::NTuple{N,Int}) where N = $Typ{Float64,N}(sz)
 
+        @inline $Typ{T,N}(A::AbstractArray{V,N}) where{T,V,N} = $Typ{T,N}(size(A))
+        @inline $Typ{T}(A::AbstractArray) where{T} = $Typ{T}(size(A))
+        @inline $Typ(A::AbstractArray) = $Typ(size(A))
+
         @inline size(Z::$Typ) = Z.size
         @inline getindex_value(Z::$Typ{T}) where T = $func(T)
 
@@ -102,6 +106,9 @@ Eye{T}(n::Int) where T = Eye{T}(n, n)
 Eye(n::Int, m::Int) = Eye{Float64}(n, m)
 Eye(sz::NTuple{2, Int}) = Eye{Float64}(sz)
 Eye(n::Int) = Eye(n, n)
+
+@inline Eye{T}(A::AbstractMatrix) where T = Eye{T}(size(A))
+@inline Eye(A::AbstractMatrix) = Eye{eltype(A)}(size(A))
 
 size(E::Eye) = E.size
 
