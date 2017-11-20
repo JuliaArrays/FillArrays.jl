@@ -64,3 +64,28 @@ for T in (Int, Float64)
     @test AbstractArray{Float32}(F) == Fill{Float32}(one(Float32),5,5)
     @test AbstractArray{Float32,2}(F) == Fill{Float32}(one(Float32),5,5)
 end
+
+
+
+
+@test_throws BoundsError Eye((-1,5))
+@test Eye(5,5) isa AbstractMatrix{Float64}
+@test Eye(5,5) == Eye(5) == Eye((5,5)) == Eye{Float64}(5) == Eye{Float64}(5, 5)
+@test eltype(Eye(5,5)) == Float64
+
+
+for T in (Int, Float64)
+    E = Eye{T}(5, 5)
+    @test eltype(E) == T
+    @test Array(E) == eye(T, 5, 5)
+    @test Array{T}(E) == eye(T, 5, 5)
+    @test Array{T,2}(E) == eye(T, 5, 5)
+
+    @test AbstractArray(E) === E
+    @test AbstractArray{T}(E) === E
+    @test AbstractArray{T,2}(E) === E
+
+
+    @test AbstractArray{Float32}(E) == Eye{Float32}(5,5)
+    @test AbstractArray{Float32,2}(E) == Eye{Float32}(5,5)
+end

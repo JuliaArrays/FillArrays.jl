@@ -88,4 +88,37 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
 end
 
 
+struct Eye{T} <: AbstractMatrix{T}
+    size::NTuple{2, Int}
+    @inline function Eye{T}(sz::NTuple{2, Int}) where {T}
+        @boundscheck any(k -> k < 0, sz) && throw(BoundsError())
+        new{T}(sz)
+    end
+
+    Eye{T}(sz::Vararg{Int, 2}) where {T} = Eye{T}(sz)
+end
+
+Eye{T}(n::Int) where T = Eye{T}(n, n)
+Eye(n::Int, m::Int) = Eye{Float64}(n, m)
+Eye(sz::NTuple{2, Int}) = Eye{Float64}(sz)
+Eye(n::Int) = Eye(n, n)
+
+size(E::Eye) = E.size
+
+@inline function getindex(E::Eye{T}, k::Int, j::Int) where T
+    @boundscheck checkbounds(E, k, j)
+    ifelse(k == j, one(T), zero(T))
+end
+
+IndexStyle(E::Eye) = IndexCartesian()
+
+convert(::Type{Array}, E::Eye{T}) where T = eye(T, E.size[1], E.size[2])
+convert(::Type{Array{T}}, E::Eye) where T = eye(T, E.size[1], E.size[2])
+convert(::Type{Matrix{T}}, E::Eye) where T = eye(T, E.size[1], E.size[2])
+
+convert(::Type{AbstractArray{T}}, E::Eye{T}) where T = E
+convert(::Type{AbstractMatrix{T}}, E::Eye{T}) where T = E
+
+convert(::Type{AbstractArray{T}}, E::Eye) where T = Eye{T}(E.size)
+convert(::Type{AbstractMatrix{T}}, E::Eye) where T = Eye{T}(E.size)
 end # module
