@@ -137,10 +137,15 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     end
 end
 
-convert(::Type{Array}, E::Eye{T}) where T = eye(T, E.size[1], E.size[2])
-convert(::Type{Array{T}}, E::Eye) where T = eye(T, E.size[1], E.size[2])
-convert(::Type{Matrix{T}}, E::Eye) where T = eye(T, E.size[1], E.size[2])
-
+if VERSION < v"0.7.0-DEV.2565"
+    convert(::Type{Array},     E::Eye{T}) where T = eye(T, E.size[1], E.size[2])
+    convert(::Type{Array{T}},  E::Eye)    where T = eye(T, E.size[1], E.size[2])
+    convert(::Type{Matrix{T}}, E::Eye)    where T = eye(T, E.size[1], E.size[2])
+else
+    convert(::Type{Array},     E::Eye{T}) where T = Matrix{T}(I, E.size[1], E.size[2])
+    convert(::Type{Array{T}},  E::Eye)    where T = Matrix{T}(I, E.size[1], E.size[2])
+    convert(::Type{Matrix{T}}, E::Eye)    where T = Matrix{T}(I, E.size[1], E.size[2])
+end
 
 function convert(::Type{Diagonal}, Z::Zeros{T,2}) where T
     n,m = size(Z)
@@ -189,23 +194,35 @@ convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Zeros{T}) where {T,Tv,Ti} = spzer
 convert(::Type{AbstractSparseArray{Tv,Ti,N}}, Z::Zeros{T,N}) where {T,Tv,Ti,N} = spzeros(Tv, Ti, size(Z)...)
 
 
-convert(::Type{SparseMatrixCSC}, Z::Eye{T}) where T = speye(T, size(Z)...)
-convert(::Type{SparseMatrixCSC{Tv}}, Z::Eye{T}) where {T,Tv} = speye(Tv, size(Z)...)
-# works around missing `speye`:
-convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
-    convert(SparseMatrixCSC{Tv,Ti}, speye(Tv, size(Z)...))
+if VERSION < v"0.7.0-DEV.2565"
+    convert(::Type{SparseMatrixCSC}, Z::Eye{T}) where T = speye(T, size(Z)...)
+    convert(::Type{SparseMatrixCSC{Tv}}, Z::Eye{T}) where {T,Tv} = speye(Tv, size(Z)...)
+    # works around missing `speye`:
+    convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
+        convert(SparseMatrixCSC{Tv,Ti}, speye(Tv, size(Z)...))
 
-convert(::Type{AbstractSparseMatrix}, Z::Eye{T}) where {T} = speye(T, size(Z)...)
-convert(::Type{AbstractSparseMatrix{Tv}}, Z::Eye{T}) where {T,Tv} = speye(Tv, size(Z)...)
+    convert(::Type{AbstractSparseMatrix}, Z::Eye{T}) where {T} = speye(T, size(Z)...)
+    convert(::Type{AbstractSparseMatrix{Tv}}, Z::Eye{T}) where {T,Tv} = speye(Tv, size(Z)...)
 
-convert(::Type{AbstractSparseArray}, Z::Eye{T}) where T = speye(T, size(Z)...)
-convert(::Type{AbstractSparseArray{Tv}}, Z::Eye{T}) where {T,Tv} = speye(Tv, size(Z)...)
-convert(::Type{AbstractSparseMatrix{Tv}}, Z::Eye{T}) where {T,Tv} = speye(Tv, size(Z)...)
+    convert(::Type{AbstractSparseArray}, Z::Eye{T}) where T = speye(T, size(Z)...)
+    convert(::Type{AbstractSparseArray{Tv}}, Z::Eye{T}) where {T,Tv} = speye(Tv, size(Z)...)
+else
+    convert(::Type{SparseMatrixCSC}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
+    convert(::Type{SparseMatrixCSC{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
+    # works around missing `speye`:
+    convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
+        convert(SparseMatrixCSC{Tv,Ti}, SparseMatrixCSC{Tv}(I, size(Z)...))
+
+    convert(::Type{AbstractSparseMatrix}, Z::Eye{T}) where {T} = SparseMatrixCSC{T}(I, size(Z)...)
+    convert(::Type{AbstractSparseMatrix{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
+
+    convert(::Type{AbstractSparseArray}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
+    convert(::Type{AbstractSparseArray{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
+end
+
 convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
     convert(SparseMatrixCSC{Tv,Ti}, Z)
 convert(::Type{AbstractSparseArray{Tv,Ti,2}}, Z::Eye{T}) where {T,Tv,Ti} =
     convert(SparseMatrixCSC{Tv,Ti}, Z)
-
-
 
 end # module

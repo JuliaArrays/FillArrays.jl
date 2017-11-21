@@ -1,4 +1,5 @@
-using FillArrays, Base.Test
+using Compat
+using FillArrays, Compat.Test
 
 
 for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
@@ -90,10 +91,12 @@ end
 
 for T in (Int, Float64)
     E = Eye{T}(5, 5)
+    M = VERSION < v"0.7.0-DEV.2565" ? eye(T, 5, 5) : Matrix{T}(I, 5, 5)
+
     @test eltype(E) == T
-    @test Array(E) == eye(T, 5, 5)
-    @test Array{T}(E) == eye(T, 5, 5)
-    @test Array{T,2}(E) == eye(T, 5, 5)
+    @test Array(E) == M
+    @test Array{T}(E) == M
+    @test Array{T,2}(E) == M
 
     @test AbstractArray(E) === E
     @test AbstractArray{T}(E) === E
@@ -140,8 +143,8 @@ end
         AbstractSparseVector{Float64,Int}(Zeros(5)) ==
         spzeros(5)
 
-for (Mat, func) in ((Zeros(5,5), spzeros), (Zeros(6,5), spzeros),
-                    (Eye(5), speye), (Eye(6,5), speye))
+for (Mat, SMat) in ((Zeros(5,5), spzeros(5,5)), (Zeros(6,5), spzeros(6,5)),
+                    (Eye(5), sparse(I,5,5)), (Eye(6,5), sparse(I,6,5)))
     @test SparseMatrixCSC(Mat) ==
             SparseMatrixCSC{Float64}(Mat) ==
             SparseMatrixCSC{Float64,Int}(Mat) ==
@@ -151,5 +154,5 @@ for (Mat, func) in ((Zeros(5,5), spzeros), (Zeros(6,5), spzeros),
             AbstractSparseArray{Float64,Int}(Mat) ==
             AbstractSparseMatrix{Float64}(Mat) ==
             AbstractSparseMatrix{Float64,Int}(Mat) ==
-            func(size(Mat)...)
+            SMat
 end

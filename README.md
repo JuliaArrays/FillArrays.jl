@@ -20,18 +20,10 @@ julia> BandedMatrix(Zeros(5,5), (1, 2))
 
 ## Usage
 
-Here are some example usages:
+Here are the matrix type4s:
 ```julia
 julia> Zeros(5, 5)
 5×5 FillArrays.Zeros{Float64,2}:
- 0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0
-
-julia> Matrix(Zeros(5, 5))
-5×5 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0
@@ -68,3 +60,21 @@ julia> Fill(5.0f0, 3)
  5.0
  5.0
 ```
+
+They support conversion to other matrix types like `Array`, `SparseVector`, `SparseMatrix`, and `Diagonal`:
+```julia
+julia> Matrix(Zeros(5, 5))
+5×5 Array{Float64,2}:
+ 0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0
+julia> Matrix(Zeros(5, 5))
+5×5 Array{Float64,2}:
+ 0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0
+``` 
