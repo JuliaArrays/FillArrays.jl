@@ -13,7 +13,7 @@ matrices. For example, to construct a 5-by-5 `CLArray` of all zeros, one would u
 julia> CLArray(Zeros(5,5))
 ```
 Because `Zeros` is lazy, this can be accomplished on the GPU with no memory transfer.
-Similarly, to construct a 5-by-5 `BandedMatrix` of all zeros with bandwidths `(1,2)`, one would use
+Similarly, to construct a 5-by-5 `BandedMatrix` of all zeros with bandwidths `(1,2)`, one would use  
 ```julia
 julia> BandedMatrix(Zeros(5,5), (1, 2))
 ```
