@@ -1,6 +1,6 @@
 # FillArrays.jl
 
-[![Build Status](https://travis-ci.org/JuliaMatrices/BandedMatrices.jl.svg?branch=master)](https://travis-ci.org/JuliaMatrices/BandedMatrices.jl)
+[![Build Status](https://travis-ci.org/JuliaArrays/FillArrays.jl.svg?branch=master)](https://travis-ci.org/JuliaArrays/FillArrays.jl)
 
 Julia package to lazily representing matrices filled with a single entry,
 as well as identity matrices.  This package exports the following types: `Eye`,
@@ -77,4 +77,4 @@ julia> Matrix(Zeros(5, 5))
  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0
-``` 
+```
