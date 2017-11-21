@@ -70,11 +70,15 @@ julia> Matrix(Zeros(5, 5))
  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0
-julia> Matrix(Zeros(5, 5))
-5×5 Array{Float64,2}:
- 0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0
+
+julia> SparseMatrixCSC(Zeros(5, 5))
+5×5 SparseMatrixCSC{Float64,Int64} with 0 stored entries
+
+julia> Diagonal(Eye(5))
+5×5 Diagonal{Float64}:
+ 1.0   ⋅    ⋅    ⋅    ⋅
+  ⋅   1.0   ⋅    ⋅    ⋅
+  ⋅    ⋅   1.0   ⋅    ⋅
+  ⋅    ⋅    ⋅   1.0   ⋅
+  ⋅    ⋅    ⋅    ⋅   1.0
 ```
