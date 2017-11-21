@@ -127,3 +127,29 @@ end
 
 @test convert(Diagonal{Int}, Eye(5)) == Diagonal(ones(Int,5))
 @test_throws BoundsError convert(Diagonal{Int}, Eye(8,5))
+
+
+
+@test SparseVector(Zeros(5)) ==
+        SparseVector{Float64}(Zeros(5)) ==
+        SparseVector{Float64,Int}(Zeros(5)) ==
+        AbstractSparseArray(Zeros(5)) ==
+        AbstractSparseVector(Zeros(5)) ==
+        AbstractSparseArray{Float64}(Zeros(5)) ==
+        AbstractSparseVector{Float64}(Zeros(5)) ==
+        AbstractSparseVector{Float64,Int}(Zeros(5)) ==
+        spzeros(5)
+
+for (Mat, func) in ((Zeros(5,5), spzeros), (Zeros(6,5), spzeros),
+                    (Eye(5), speye), (Eye(6,5), speye))
+    @test SparseMatrixCSC(Mat) ==
+            SparseMatrixCSC{Float64}(Mat) ==
+            SparseMatrixCSC{Float64,Int}(Mat) ==
+            AbstractSparseArray(Mat) ==
+            AbstractSparseMatrix(Mat) ==
+            AbstractSparseArray{Float64}(Mat) ==
+            AbstractSparseArray{Float64,Int}(Mat) ==
+            AbstractSparseMatrix{Float64}(Mat) ==
+            AbstractSparseMatrix{Float64,Int}(Mat) ==
+            func(size(Mat)...)
+end
