@@ -52,6 +52,9 @@ end
 @test Fill(1,5,5) == Fill(1,(5,5))
 @test eltype(Fill(1.0,5,5)) == Float64
 
+@test Matrix{Float64}(Zeros{Complex128}(10,10)) == zeros(10,10)
+@test_throws InexactError Matrix{Float64}(Fill(1.0+1.0im,10,10))
+
 
 for T in (Int, Float64)
     F = Fill{T}(one(T), 5)
@@ -103,3 +106,24 @@ for T in (Int, Float64)
     @test Eye{T}(ones(T, 5, 5)) == E
     @test Eye(ones(T, 5, 5)) == E
 end
+
+
+
+## Other matrix types
+@test Diagonal(Zeros(5)) == Diagonal(zeros(5))
+@test_throws MethodError convert(Diagonal, Zeros(5))
+
+@test Diagonal(Zeros(8,5)) == Diagonal(zeros(5))
+@test convert(Diagonal, Zeros(5,5)) == Diagonal(zeros(5))
+@test_throws BoundsError convert(Diagonal, Zeros(8,5))
+
+@test convert(Diagonal{Int}, Zeros(5,5)) == Diagonal(zeros(Int,5))
+@test_throws BoundsError convert(Diagonal{Int}, Zeros(8,5))
+
+
+@test Diagonal(Eye(8,5)) == Diagonal(ones(5))
+@test convert(Diagonal, Eye(5)) == Diagonal(ones(5))
+@test_throws BoundsError convert(Diagonal, Eye(8,5))
+
+@test convert(Diagonal{Int}, Eye(5)) == Diagonal(ones(Int,5))
+@test_throws BoundsError convert(Diagonal{Int}, Eye(8,5))

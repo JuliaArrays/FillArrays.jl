@@ -18,11 +18,6 @@ end
 
 IndexStyle(F::AbstractFill) = IndexLinear()
 
-convert(::Type{Array}, F::AbstractFill) = fill(getindex_value(F), size(F))
-convert(::Type{Array{T}}, F::AbstractFill) where T = fill(convert(T, getindex_value(F)), size(F))
-convert(::Type{Array{T,N}}, F::AbstractFill{V,N}) where {T,V,N} = fill(convert(T, getindex_value(F)), size(F))
-
-
 
 struct Fill{T, N} <: AbstractFill{T, N}
     value::T
@@ -52,8 +47,6 @@ convert(::Type{AbstractArray{T,N}}, F::Fill{T,N}) where {T,N} = F
 convert(::Type{AbstractArray{T}}, F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.size)
 convert(::Type{AbstractArray{T,N}}, F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.size)
 
-
-
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     @eval begin
         struct $Typ{T, N} <: AbstractFill{T, N}
@@ -76,12 +69,6 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
 
         @inline size(Z::$Typ) = Z.size
         @inline getindex_value(Z::$Typ{T}) where T = $func(T)
-
-
-        convert(::Type{Array}, F::$Typ{T}) where T = $funcs(T, size(F))
-        convert(::Type{Array{T}}, F::$Typ) where T = $funcs(T, size(F))
-        convert(::Type{Array{T,N}}, F::$Typ{V,N}) where {T,V,N} = $funcs(T,size(F))
-
 
         convert(::Type{AbstractArray{T}}, F::$Typ{T}) where T = F
         convert(::Type{AbstractArray{T,N}}, F::$Typ{T,N}) where {T,N} = F
@@ -119,13 +106,96 @@ end
 
 IndexStyle(E::Eye) = IndexCartesian()
 
-convert(::Type{Array}, E::Eye{T}) where T = eye(T, E.size[1], E.size[2])
-convert(::Type{Array{T}}, E::Eye) where T = eye(T, E.size[1], E.size[2])
-convert(::Type{Matrix{T}}, E::Eye) where T = eye(T, E.size[1], E.size[2])
-
 convert(::Type{AbstractArray{T}}, E::Eye{T}) where T = E
 convert(::Type{AbstractMatrix{T}}, E::Eye{T}) where T = E
 
 convert(::Type{AbstractArray{T}}, E::Eye) where T = Eye{T}(E.size)
 convert(::Type{AbstractMatrix{T}}, E::Eye) where T = Eye{T}(E.size)
+
+
+
+
+
+#########
+#  Special matrix types
+#########
+
+
+
+## Array
+convert(::Type{Array}, F::AbstractFill) = fill(getindex_value(F), size(F))
+convert(::Type{Array{T}}, F::AbstractFill) where T = fill(convert(T, getindex_value(F)), size(F))
+convert(::Type{Array{T,N}}, F::AbstractFill{V,N}) where {T,V,N} = fill(convert(T, getindex_value(F)), size(F))
+
+
+# These are in case `zeros` or `ones` are ever faster than `fill`
+for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
+    @eval begin
+        convert(::Type{Array}, F::$Typ{T}) where T = $funcs(T, size(F))
+        convert(::Type{Array{T}}, F::$Typ{T}) where T = $funcs(T, size(F))
+        convert(::Type{Array{T,N}}, F::$Typ{V,N}) where {T,V,N} = $funcs(T,size(F))
+    end
+end
+
+convert(::Type{Array}, E::Eye{T}) where T = eye(T, E.size[1], E.size[2])
+convert(::Type{Array{T}}, E::Eye) where T = eye(T, E.size[1], E.size[2])
+convert(::Type{Matrix{T}}, E::Eye) where T = eye(T, E.size[1], E.size[2])
+
+
+function convert(::Type{Diagonal}, Z::Zeros{T,2}) where T
+    n,m = size(Z)
+    n ≠ m && throw(BoundsError(Z))
+    Diagonal(zeros(T, n))
+end
+
+function convert(::Type{Diagonal{T}}, Z::Zeros{V,2}) where {T,V}
+    n,m = size(Z)
+    n ≠ m && throw(BoundsError(Z))
+    Diagonal(zeros(T, n))
+end
+
+
+function convert(::Type{Diagonal}, E::Eye{T}) where T
+    n,m = size(E)
+    n ≠ m && throw(BoundsError(E))
+    Diagonal(ones(T, n))
+end
+
+function convert(::Type{Diagonal{T}}, E::Eye{V}) where {T,V}
+    n,m = size(E)
+    n ≠ m && throw(BoundsError(E))
+    Diagonal(ones(T, n))
+end
+
+## Sparse arrays
+
+convert(::Type{SparseVector}, Z::Zeros{T,1}) where T = spzeros(T, length(Z))
+convert(::Type{SparseVector{Tv}}, Z::Zeros{T,1}) where {T,Tv} = spzeros(Tv, length(Z))
+convert(::Type{SparseVector{Tv,Ti}}, Z::Zeros{T,1}) where {T,Tv,Ti} = spzeros(Tv, Ti, length(Z))
+
+convert(::Type{SparseMatrixCSC}, Z::Zeros{T,2}) where T = spzeros(T, size(Z)...)
+convert(::Type{SparseMatrixCSC{Tv}}, Z::Zeros{T,2}) where {T,Tv} = spzeros(Tv, size(Z)...)
+convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Zeros{T,2}) where {T,Tv,Ti} = spzeros(Tv, Ti, size(Z)...)
+
+convert(::Type{AbstractSparseArray}, Z::Zeros{T}) where T = spzeros(T, size(Z)...)
+convert(::Type{AbstractSparseArray{Tv}}, Z::Zeros{T}) where {T,Tv} = spzeros(Tv, size(Z)...)
+convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Zeros{T}) where {T,Tv,Ti} = spzeros(Tv, Ti, size(Z)...)
+convert(::Type{AbstractSparseArray{Tv,Ti,N}}, Z::Zeros{T,N}) where {T,Tv,Ti,N} = spzeros(Tv, Ti, size(Z)...)
+
+
+convert(::Type{SparseMatrixCSC}, Z::Eye{T}) where T = speye(T, size(Z)...)
+convert(::Type{SparseMatrixCSC{Tv}}, Z::Eye{T}) where {T,Tv} = speye(Tv, size(Z)...)
+# works around missing `speye`:
+convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
+    convert(SparseMatrixCSC{Tv,Ti}, speye(Tv, size(Z)...))
+
+convert(::Type{AbstractSparseArray}, Z::Eye{T}) where T = speye(T, size(Z)...)
+convert(::Type{AbstractSparseArray{Tv}}, Z::Eye{T}) where {T,Tv} = speye(Tv, size(Z)...)
+convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
+    convert(SparseMatrixCSC{Tv,Ti}, Z)
+convert(::Type{AbstractSparseArray{Tv,Ti,2}}, Z::Eye{T}) where {T,Tv,Ti} =
+    convert(SparseMatrixCSC{Tv,Ti}, Z)
+
+
+
 end # module
