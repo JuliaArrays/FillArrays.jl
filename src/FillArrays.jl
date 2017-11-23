@@ -6,12 +6,12 @@ export Zeros, Ones, Fill, Eye
 
 abstract type AbstractFill{T, N} <: AbstractArray{T, N} end
 
-@inline function getindex(F::AbstractFill, k::Int)
+@inline function getindex(F::AbstractFill, k::Integer)
     @boundscheck checkbounds(F, k)
     getindex_value(F)
 end
 
-@inline function getindex(F::AbstractFill{T, N}, kj::Vararg{Int, N}) where {T, N}
+@inline function getindex(F::AbstractFill{T, N}, kj::Vararg{<:Integer, N}) where {T, N}
     @boundscheck checkbounds(F, kj...)
     getindex_value(F)
 end
@@ -99,7 +99,7 @@ Eye(n::Int) = Eye(n, n)
 
 size(E::Eye) = E.size
 
-@inline function getindex(E::Eye{T}, k::Int, j::Int) where T
+@inline function getindex(E::Eye{T}, k::Integer, j::Integer) where T
     @boundscheck checkbounds(E, k, j)
     ifelse(k == j, one(T), zero(T))
 end
