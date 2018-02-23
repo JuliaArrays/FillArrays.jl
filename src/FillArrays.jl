@@ -1,5 +1,8 @@
 __precompile__()
 module FillArrays
+if VERSION ≥ v"0.7-"
+    using LinearAlgebra, SparseArrays
+end
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert
 
 export Zeros, Ones, Fill, Eye
