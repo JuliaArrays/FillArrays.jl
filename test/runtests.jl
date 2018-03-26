@@ -161,3 +161,11 @@ end
                 SMat
     end
 end
+
+@testset "Rank" begin
+    @test rank(Zeros(5,4)) == 0
+    @test rank(Ones(5,4)) == 1
+    @test rank(Fill(2,5,4)) == 1
+    @test rank(Fill(0,5,4)) == 0
+    @test rank(Eye(2,5)) == rank(Eye(5,2)) == rank(Eye(2)) == 2
+end

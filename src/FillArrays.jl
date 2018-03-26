@@ -3,11 +3,13 @@ module FillArrays
 if VERSION ≥ v"0.7-"
     using LinearAlgebra, SparseArrays
 end
-import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert
+import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert, rank
 
 export Zeros, Ones, Fill, Eye
 
 abstract type AbstractFill{T, N} <: AbstractArray{T, N} end
+
+
 
 @inline function getindex(F::AbstractFill, k::Integer)
     @boundscheck checkbounds(F, k)
@@ -18,6 +20,8 @@ end
     @boundscheck checkbounds(F, kj...)
     getindex_value(F)
 end
+
+rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
 
 IndexStyle(F::AbstractFill) = IndexLinear()
 
@@ -81,6 +85,9 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     end
 end
 
+rank(F::Zeros) = 0
+rank(F::Ones) = 1
+
 
 struct Eye{T} <: AbstractMatrix{T}
     size::NTuple{2, Int}
@@ -101,6 +108,7 @@ Eye(n::Int) = Eye(n, n)
 @inline Eye(A::AbstractMatrix) = Eye{eltype(A)}(size(A))
 
 size(E::Eye) = E.size
+rank(E::Eye) = minimum(size(E))
 
 @inline function getindex(E::Eye{T}, k::Integer, j::Integer) where T
     @boundscheck checkbounds(E, k, j)
