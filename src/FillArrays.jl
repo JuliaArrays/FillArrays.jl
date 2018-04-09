@@ -1,9 +1,9 @@
 __precompile__()
 module FillArrays
-if VERSION ≥ v"0.7-"
-    using LinearAlgebra, SparseArrays
-end
-import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert, rank
+using Compat
+using Compat.LinearAlgebra, Compat.SparseArrays
+import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert
+import Compat.LinearAlgebra: rank
 
 export Zeros, Ones, Fill, Eye
 
@@ -26,17 +26,18 @@ rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
 IndexStyle(F::AbstractFill) = IndexLinear()
 
 
-struct Fill{T, N} <: AbstractFill{T, N}
+struct Fill{T, N, SZ} <: AbstractFill{T, N}
     value::T
-    size::NTuple{N, Int}
+    size::SZ
 
-    @inline function Fill{T, N}(x::T, sz::NTuple{N, Int}) where {T, N}
+    @inline function Fill{T,N,SZ}(x::T, sz::SZ) where SZ<:Tuple{Vararg{Any,N}} where {T, N}
         @boundscheck any(k -> k < 0, sz) && throw(BoundsError())
-        new{T,N}(x,sz)
+        new{T,N,SZ}(x,sz)
     end
+    @inline Fill{T, N}(x::T, sz::SZ) where SZ<:NTuple{N, Int} where {T, N} = Fill{T,N,SZ}(x, sz)
     @inline Fill{T, N}(x::T, sz::Vararg{Int, N}) where {T, N} = Fill{T,N}(x, sz)
-    @inline Fill{T, N}(x, sz::NTuple{N, Int}) where {T, N} = new{T, N}(convert(T, x)::T, sz)
-    @inline Fill{T, N}(x, sz::Vararg{Int, N}) where {T, N} = new{T, N}(convert(T, x)::T, sz)
+    @inline Fill{T, N}(x, sz::NTuple{N, Int}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
+    @inline Fill{T, N}(x, sz::Vararg{Int, N}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
 end
 
 
