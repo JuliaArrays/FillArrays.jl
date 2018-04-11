@@ -34,17 +34,16 @@ struct Fill{T, N, SZ} <: AbstractFill{T, N}
         @boundscheck any(k -> k < 0, sz) && throw(BoundsError())
         new{T,N,SZ}(x,sz)
     end
-    @inline Fill{T, N}(x::T, sz::SZ) where SZ<:NTuple{N, Int} where {T, N} = Fill{T,N,SZ}(x, sz)
-    @inline Fill{T, N}(x::T, sz::Vararg{Int, N}) where {T, N} = Fill{T,N}(x, sz)
-    @inline Fill{T, N}(x, sz::NTuple{N, Int}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
-    @inline Fill{T, N}(x, sz::Vararg{Int, N}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
+    @inline Fill{T, N}(x::T, sz::SZ) where SZ<:NTuple{N, Any} where {T, N} = Fill{T,N,SZ}(x, sz)
+    @inline Fill{T, N}(x, sz::NTuple{N, Any}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
+    @inline Fill{T, N}(x, sz::Vararg{Any, N}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
 end
 
 
-@inline Fill{T}(x, sz::Vararg{Int, N}) where {T, N} = Fill{T, N}(x, sz)
-@inline Fill{T}(x, sz::NTuple{N, Int}) where {T, N} = Fill{T, N}(x, sz)
-@inline Fill(x::T, sz::Vararg{Int,N}) where {T, N}  = Fill{T, N}(x, sz)
-@inline Fill(x::T, sz::NTuple{N,Int}) where {T, N}  = Fill{T, N}(x, sz)
+@inline Fill{T}(x, sz::Vararg{Any,N}) where {T, N} = Fill{T, N}(x, sz)
+@inline Fill{T}(x, sz::NTuple{N,Any}) where {T, N} = Fill{T, N}(x, sz)
+@inline Fill(x::T, sz::Vararg{Any,N}) where {T, N}  = Fill{T, N}(x, sz)
+@inline Fill(x::T, sz::NTuple{N,Any}) where {T, N}  = Fill{T, N}(x, sz)
 
 @inline size(F::Fill) = F.size
 @inline getindex_value(F::Fill) = F.value
