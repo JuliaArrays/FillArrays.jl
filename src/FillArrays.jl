@@ -30,20 +30,20 @@ struct Fill{T, N, SZ} <: AbstractFill{T, N}
     value::T
     size::SZ
 
-    @inline function Fill{T,N,SZ}(x::T, sz::SZ) where SZ<:Tuple{Vararg{Any,N}} where {T, N}
+    @inline function Fill{T,N,SZ}(x::T, sz::SZ) where SZ<:Tuple{Vararg{<:Integer,N}} where {T, N}
         @boundscheck any(k -> k < 0, sz) && throw(BoundsError())
         new{T,N,SZ}(x,sz)
     end
-    @inline Fill{T, N}(x::T, sz::SZ) where SZ<:NTuple{N, Any} where {T, N} = Fill{T,N,SZ}(x, sz)
-    @inline Fill{T, N}(x, sz::NTuple{N, Any}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
-    @inline Fill{T, N}(x, sz::Vararg{Any, N}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
+    @inline Fill{T, N}(x::T, sz::SZ) where SZ<:NTuple{N, <:Integer} where {T, N} = Fill{T,N,SZ}(x, sz)
+    @inline Fill{T, N}(x, sz::NTuple{N, <:Integer}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
+    @inline Fill{T, N}(x, sz::Vararg{<:Integer, N}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
 end
 
 
-@inline Fill{T}(x, sz::Vararg{Any,N}) where {T, N} = Fill{T, N}(x, sz)
-@inline Fill{T}(x, sz::NTuple{N,Any}) where {T, N} = Fill{T, N}(x, sz)
-@inline Fill(x::T, sz::Vararg{Any,N}) where {T, N}  = Fill{T, N}(x, sz)
-@inline Fill(x::T, sz::NTuple{N,Any}) where {T, N}  = Fill{T, N}(x, sz)
+@inline Fill{T}(x, sz::Vararg{<:Integer,N}) where {T, N} = Fill{T, N}(x, sz)
+@inline Fill{T}(x, sz::NTuple{N,<:Integer}) where {T, N} = Fill{T, N}(x, sz)
+@inline Fill(x::T, sz::Vararg{<:Integer,N}) where {T, N}  = Fill{T, N}(x, sz)
+@inline Fill(x::T, sz::NTuple{N,<:Integer}) where {T, N}  = Fill{T, N}(x, sz)
 
 @inline size(F::Fill) = F.size
 @inline getindex_value(F::Fill) = F.value
@@ -56,19 +56,19 @@ convert(::Type{AbstractArray{T,N}}, F::Fill{V,N}) where {T,V,N} = Fill{T}(conver
 
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     @eval begin
-        struct $Typ{T, N} <: AbstractFill{T, N}
-            size::NTuple{N, Int}
-            @inline function $Typ{T, N}(sz::NTuple{N, Int}) where {T, N}
+        struct $Typ{T, N, SZ} <: AbstractFill{T, N}
+            size::SZ
+            @inline function $Typ{T, N}(sz::SZ) where SZ<:NTuple{N,<:Integer} where {T, N}
                 @boundscheck any(k -> k < 0, sz) && throw(BoundsError())
-                new{T,N}(sz)
+                new{T,N,SZ}(sz)
             end
-            @inline $Typ{T, N}(sz::Vararg{Int, N}) where {T, N} = $Typ(sz)
+            @inline $Typ{T, N}(sz::Vararg{<:Integer, N}) where {T, N} = $Typ(sz)
         end
 
-        @inline $Typ{T}(sz::Vararg{Int, N}) where {T, N} = $Typ{T, N}(sz)
-        @inline $Typ{T}(sz::NTuple{N, Int}) where {T, N} = $Typ{T, N}(sz)
-        @inline $Typ(sz::Vararg{Int,N}) where N = $Typ{Float64,N}(sz)
-        @inline $Typ(sz::NTuple{N,Int}) where N = $Typ{Float64,N}(sz)
+        @inline $Typ{T}(sz::Vararg{<:Integer,N}) where {T, N} = $Typ{T, N}(sz)
+        @inline $Typ{T}(sz::NTuple{N,<:Integer}) where {T, N} = $Typ{T, N}(sz)
+        @inline $Typ(sz::Vararg{<:Integer,N}) where N = $Typ{Float64,N}(sz)
+        @inline $Typ(sz::NTuple{N,<:Integer}) where N = $Typ{Float64,N}(sz)
 
         @inline $Typ{T,N}(A::AbstractArray{V,N}) where{T,V,N} = $Typ{T,N}(size(A))
         @inline $Typ{T}(A::AbstractArray) where{T} = $Typ{T}(size(A))
@@ -89,20 +89,20 @@ rank(F::Zeros) = 0
 rank(F::Ones) = 1
 
 
-struct Eye{T} <: AbstractMatrix{T}
-    size::NTuple{2, Int}
-    @inline function Eye{T}(sz::NTuple{2, Int}) where {T}
+struct Eye{T, SZ} <: AbstractMatrix{T}
+    size::SZ
+    @inline function Eye{T}(sz::SZ) where {T,SZ<:NTuple{2, <:Integer}}
         @boundscheck any(k -> k < 0, sz) && throw(BoundsError())
-        new{T}(sz)
+        new{T,SZ}(sz)
     end
 
-    Eye{T}(sz::Vararg{Int, 2}) where {T} = Eye{T}(sz)
+    Eye{T}(sz::Vararg{<:Integer, 2}) where {T} = Eye{T}(sz)
 end
 
-Eye{T}(n::Int) where T = Eye{T}(n, n)
-Eye(n::Int, m::Int) = Eye{Float64}(n, m)
-Eye(sz::NTuple{2, Int}) = Eye{Float64}(sz)
-Eye(n::Int) = Eye(n, n)
+Eye{T}(n::Integer) where T = Eye{T}(n, n)
+Eye(n::Integer, m::Integer) = Eye{Float64}(n, m)
+Eye(sz::NTuple{2, <:Integer}) = Eye{Float64}(sz)
+Eye(n::Integer) = Eye(n, n)
 
 @inline Eye{T}(A::AbstractMatrix) where T = Eye{T}(size(A))
 @inline Eye(A::AbstractMatrix) = Eye{eltype(A)}(size(A))
