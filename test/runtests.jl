@@ -182,4 +182,8 @@ end
         @test axes(A) == tuple(Base.OneTo{BigInt}(BigInt(100)),Base.OneTo{BigInt}(BigInt(100)))
         @test size(A) isa Tuple{BigInt,BigInt}
     end
+    for A in (Zeros(BigInt(10), 10), Ones(BigInt(10), 10), Fill(2.0, (BigInt(10), 10)), Eye(BigInt(10), 10))
+        @test size(A) isa Tuple{BigInt,Int}
+    end
+
 end
