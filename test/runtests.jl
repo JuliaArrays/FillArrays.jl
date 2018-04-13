@@ -1,4 +1,5 @@
 using Compat
+import Compat: axes
 using FillArrays, Compat.Test
 if VERSION ≥ v"0.7-"
     using LinearAlgebra, SparseArrays
@@ -168,4 +169,17 @@ end
     @test rank(Fill(2,5,4)) == 1
     @test rank(Fill(0,5,4)) == 0
     @test rank(Eye(2,5)) == rank(Eye(5,2)) == rank(Eye(2)) == 2
+end
+
+@testset "BigInt indices" begin
+    for A in (Zeros(BigInt(100)), Ones(BigInt(100)), Fill(2, BigInt(100)))
+        @test length(A) isa BigInt
+        @test axes(A) == tuple(Base.OneTo{BigInt}(BigInt(100)))
+        @test size(A) isa Tuple{BigInt}
+    end
+    let A = Eye(BigInt(100))
+        @test length(A) isa BigInt
+        @test axes(A) == tuple(Base.OneTo{BigInt}(BigInt(100)),Base.OneTo{BigInt}(BigInt(100)))
+        @test size(A) isa Tuple{BigInt,BigInt}
+    end
 end
