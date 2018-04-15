@@ -48,11 +48,16 @@ end
 @inline size(F::Fill) = F.size
 @inline getindex_value(F::Fill) = F.value
 
+AbstractArray{T}(F::Fill{T}) where T = F
+AbstractArray{T,N}(F::Fill{T,N}) where {T,N} = F
+AbstractArray{T}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.size)
+AbstractArray{T,N}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.size)
+
 convert(::Type{AbstractArray{T}}, F::Fill{T}) where T = F
 convert(::Type{AbstractArray{T,N}}, F::Fill{T,N}) where {T,N} = F
+convert(::Type{AbstractArray{T}}, F::Fill) where {T} = AbstractArray{T}(F)
+convert(::Type{AbstractArray{T,N}}, F::Fill) where {T,N} = AbstractArray{T,N}(F)
 
-convert(::Type{AbstractArray{T}}, F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.size)
-convert(::Type{AbstractArray{T,N}}, F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.size)
 
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     @eval begin
@@ -77,11 +82,14 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         @inline size(Z::$Typ) = Z.size
         @inline getindex_value(Z::$Typ{T}) where T = $func(T)
 
-        convert(::Type{AbstractArray{T}}, F::$Typ{T}) where T = F
-        convert(::Type{AbstractArray{T,N}}, F::$Typ{T,N}) where {T,N} = F
-
-        convert(::Type{AbstractArray{T}}, F::$Typ) where T = $Typ{T}(F.size)
-        convert(::Type{AbstractArray{T,N}}, F::$Typ{V,N}) where {T,V,N} = $Typ{T}(F.size)
+        AbstractArray{T}(F::$Typ{T}) where T = F
+        AbstractArray{T,N}(F::$Typ{T,N}) where {T,N} = F
+        AbstractArray{T}(F::$Typ) where T = $Typ{T}(F.size)
+        AbstractArray{T,N}(F::$Typ{V,N}) where {T,V,N} = $Typ{T}(F.size)
+        convert(::Type{AbstractArray{T}}, F::$Typ{T}) where T = AbstractArray{T}(F)
+        convert(::Type{AbstractArray{T,N}}, F::$Typ{T,N}) where {T,N} = AbstractArray{T,N}(F)
+        convert(::Type{AbstractArray{T}}, F::$Typ) where T = AbstractArray{T}(F)
+        convert(::Type{AbstractArray{T,N}}, F::$Typ) where {T,N} = AbstractArray{T,N}(F)
     end
 end
 
@@ -117,13 +125,14 @@ end
 
 IndexStyle(E::Eye) = IndexCartesian()
 
+AbstractArray{T}(E::Eye{T}) where T = E
+AbstractMatrix{T}(E::Eye{T}) where T = E
+AbstractArray{T}(E::Eye) where T = Eye{T}(E.size)
+AbstractMatrix{T}(E::Eye) where T = Eye{T}(E.size)
 convert(::Type{AbstractArray{T}}, E::Eye{T}) where T = E
 convert(::Type{AbstractMatrix{T}}, E::Eye{T}) where T = E
-
 convert(::Type{AbstractArray{T}}, E::Eye) where T = Eye{T}(E.size)
 convert(::Type{AbstractMatrix{T}}, E::Eye) where T = Eye{T}(E.size)
-
-
 
 
 

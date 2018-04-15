@@ -22,9 +22,9 @@ end
                 @test Array{T}(Z) == $funcs(T,5)
                 @test Array{T,1}(Z) == $funcs(T,5)
 
-                @test convert(AbstractArray,Z) === Z
-                @test convert(AbstractArray{T},Z) === Z
-                @test convert(AbstractArray{T,1},Z) === Z
+                @test convert(AbstractArray,Z) ≡ Z
+                @test convert(AbstractArray{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
+                @test convert(AbstractVector{T},Z) ≡ AbstractVector{T}(Z) ≡ Z
 
                 @test $Typ{T,1}(2ones(T,5)) == Z
                 @test $Typ{T}(2ones(T,5)) == Z
@@ -36,9 +36,9 @@ end
                 @test Array{T}(Z) == $funcs(T,5,5)
                 @test Array{T,2}(Z) == $funcs(T,5,5)
 
-                @test convert(AbstractArray,Z) === Z
-                @test convert(AbstractArray{T},Z) === Z
-                @test convert(AbstractMatrix{T},Z) === Z
+                @test convert(AbstractArray,Z) ≡ Z
+                @test convert(AbstractArray{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
+                @test convert(AbstractMatrix{T},Z) ≡ AbstractMatrix{T}(Z) ≡ Z
 
                 @test $Typ{T,2}(2ones(T,5,5)) == Z
                 @test $Typ{T}(2ones(T,5,5)) == Z
@@ -75,13 +75,15 @@ end
         @test Array{T}(F) == fill(one(T),5,5)
         @test Array{T,2}(F) == fill(one(T),5,5)
 
-        @test convert(AbstractArray,F) === F
-        @test convert(AbstractArray{T},F) === F
-        @test convert(AbstractArray{T,2},F) === F
+        @test convert(AbstractArray,F) ≡ F
+        @test convert(AbstractArray{T},F) ≡ AbstractArray{T}(F) ≡ F
+        @test convert(AbstractMatrix{T},F) ≡ AbstractMatrix{T}(F) ≡ F
 
 
-        @test convert(AbstractArray{Float32},F) == Fill{Float32}(one(Float32),5,5)
-        @test convert(AbstractMatrix{Float32},F) == Fill{Float32}(one(Float32),5,5)
+        @test convert(AbstractArray{Float32},F) == AbstractArray{Float32}(F) ==
+                Fill{Float32}(one(Float32),5,5)
+        @test convert(AbstractMatrix{Float32},F) == AbstractMatrix{Float32}(F) ==
+                Fill{Float32}(one(Float32),5,5)
     end
 
 
