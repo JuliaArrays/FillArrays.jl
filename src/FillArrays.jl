@@ -23,7 +23,7 @@ end
 
 rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
 
-IndexStyle(F::AbstractFill) = IndexLinear()
+IndexStyle(::Type{<:AbstractFill}) = IndexLinear()
 
 
 struct Fill{T, N, SZ} <: AbstractFill{T, N}
@@ -123,7 +123,7 @@ rank(E::Eye) = minimum(size(E))
     ifelse(k == j, one(T), zero(T))
 end
 
-IndexStyle(E::Eye) = IndexCartesian()
+IndexStyle(::Type{<:Eye}) = IndexCartesian()
 
 AbstractArray{T}(E::Eye{T}) where T = E
 AbstractMatrix{T}(E::Eye{T}) where T = E
