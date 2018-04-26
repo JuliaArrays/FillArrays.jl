@@ -245,4 +245,28 @@ convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
 convert(::Type{AbstractSparseArray{Tv,Ti,2}}, Z::Eye{T}) where {T,Tv,Ti} =
     convert(SparseMatrixCSC{Tv,Ti}, Z)
 
+## Algebraic identities
+dim_mismatch() =
+    throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
+
+for a in 1:2, b in 1:2
+    # We cannot use Unions{AbstractArray, AbstractVector}, because Julia's dispatch
+    # then picks the generic *(::AbstractArray, ::AbstractArray) method.
+    # There might be a way to use promotion rules to avoid adding so many methods,
+    # but I don't think so.
+    @eval function Base.:*(z::Zeros{T, $a}, v::AbstractArray{U, $b}) where {T, U}
+        size(z, 2) ≠ size(v, 1) && dim_mismatch()
+        Zeros{promote_type(T, U)}(size(z, 1), size(v, 2))
+    end
+    @eval function Base.:*(v::AbstractArray{U, $b}, z::Zeros{T, $a}) where {T, U}
+        size(v, 2) ≠ size(z, 1) && dim_mismatch()
+        Zeros{promote_type(T, U)}(size(v, 1), size(z, 2))
+    end
+    @eval function Base.:*(z::Zeros{T, $a}, z2::Zeros{U, $b}) where {T, U}
+        # Again, necessary to avoid ambiguity
+        size(z, 2) ≠ size(z2, 1) && dim_mismatch()
+        Zeros{promote_type(T, U)}(size(z, 1), size(z2, 2))
+    end
+end
+
 end # module
