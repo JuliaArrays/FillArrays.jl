@@ -194,3 +194,11 @@ end
 @testset "IndexStyle" begin
     @test IndexStyle(Zeros(5,5)) == IndexStyle(typeof(Zeros(5,5))) == IndexLinear() 
 end
+
+@testset "Identities" begin
+    @test Zeros(3,4) * randn(4,5) === randn(3,4) * Zeros(4,5) === Zeros(3, 5)
+    @test_throws DimensionMismatch randn(3,4) * Zeros(3, 3)
+    @test eltype(Zeros{Int}(3,4) * fill(1, 4, 5)) == Int
+    @test eltype(Zeros{Int}(3,4) * fill(3.4, 4, 5)) == Float64
+    @test Zeros(3, 4) * randn(4) == Zeros(3, 4) * Zeros(4) == Zeros(3)
+end

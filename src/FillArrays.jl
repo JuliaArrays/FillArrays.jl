@@ -245,4 +245,35 @@ convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
 convert(::Type{AbstractSparseArray{Tv,Ti,2}}, Z::Eye{T}) where {T,Tv,Ti} =
     convert(SparseMatrixCSC{Tv,Ti}, Z)
 
+## Algebraic identities
+
+check_mult_dims(a, b) =
+    (size(a, 2) ≠ size(b, 1) &&
+     throw(DimensionMismatch("Incompatible matrix multiplication dimensions")))
+
+mult_type_pairs(a, b) = [(:(Zeros{<:Any, $a}), :(AbstractArray{<:Any, $b})),
+                         (:(AbstractArray{<:Any, $a}), :(Zeros{<:Any, $b})),
+                         (:(Zeros{<:Any, $a}), :(Zeros{<:Any, $b}))]
+
+# Vector-matrix & matrix-matrix multiplication
+for (T, U) in vcat(mult_type_pairs(1, 2), mult_type_pairs(2, 2))
+    # We cannot use Unions{AbstractArray, AbstractVector}, because Julia's dispatch
+    # then picks the generic *(::AbstractArray, ::AbstractArray) method.
+    # There might be a way to use promotion rules to avoid adding so many methods,
+    # but I don't think so.
+    @eval function Base.:*(a::$T, b::$U)
+        check_mult_dims(a, b)
+        Zeros{promote_type(eltype(a), eltype(b))}(size(a, 1), size(b, 2))
+    end
+end
+
+# Matrix-vector multiplication
+for (T, U) in mult_type_pairs(2, 1)
+    @eval function Base.:*(a::$T, b::$U)
+        check_mult_dims(a, b)
+        Zeros{promote_type(eltype(a), eltype(b))}(size(a, 1))
+    end
+end
+
+
 end # module
