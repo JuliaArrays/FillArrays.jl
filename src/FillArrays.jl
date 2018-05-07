@@ -286,4 +286,12 @@ function Base.:+(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N}
     return Zeros{promote_type(T, V)}(size(a)...)
 end
 
+# Unary negation.
+Base.:-(a::Zeros) = a
+
+# Subtraction can just re-use addition.
+Base.:-(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N} = -(a + b)
+Base.:-(a::AbstractArray{T, N}, b::Zeros{V, N}) where {T, V, N} = a + b
+Base.:-(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N} = -(a + b)
+
 end # module

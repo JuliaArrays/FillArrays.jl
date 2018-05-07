@@ -203,28 +203,39 @@ end
     @test Zeros(3, 4) * randn(4) == Zeros(3, 4) * Zeros(4) == Zeros(3)
     @test Zeros(3, 4) * Zeros(4, 5) === Zeros(3, 5)
 
-    # Tests for addition with same element type.
     X = randn(3, 5)
-    @test Zeros(3, 5) + X === X === X + Zeros(3, 5)
-    @test Zeros(6, 4) + Zeros(6, 4) === Zeros(6, 4)
-    @test_throws DimensionMismatch X + Zeros(4, 6)
-    @test eltype(Zeros(3, 5) + X) == Float64
+    for op in [+, -]
 
-    # Different eltypes, so have to be careful with eltype of new matrix.
-    @test Zeros{Float32}(3, 5) + X isa Matrix{Float64}
-    @test Zeros{Float32}(3, 5) + X === X
-    @test !(Zeros{ComplexF64}(3, 5) + X === X)
-    @test Zeros{ComplexF64}(3, 5) + X == X
+        # Addition / subtraction with same eltypes.
+        @test op(Zeros(6, 4), Zeros(6, 4)) === Zeros(6, 4)
+        @test_throws DimensionMismatch op(X, Zeros(4, 6))
+        @test eltype(op(Zeros(3, 5), X)) == Float64
 
-    # Different eltypes, the other way around.
-    @test X + Zeros{Float32}(3, 5) isa Matrix{Float64}
-    @test X + Zeros{Float32}(3, 5) === X
-    @test !(X + Zeros{ComplexF64}(3, 5) === X)
-    @test X + Zeros{ComplexF64}(3, 5) == X
+        # Different eltypes, the other way around.
+        @test op(X, Zeros{Float32}(3, 5)) isa Matrix{Float64}
+        @test op(X, Zeros{Float32}(3, 5)) === X
+        @test !(op(X, Zeros{ComplexF64}(3, 5)) === X)
+        @test op(X, Zeros{ComplexF64}(3, 5)) == X
 
-    # Addition of Zeros.
-    @test eltype(Zeros{Float64}(4, 5) + Zeros{Int}(4, 5)) == Float64
-    @test eltype(Zeros{Int}(5, 4) + Zeros{Float32}(5, 4)) == Float32
-    @test Zeros{Float64}(4, 5) + Zeros{Int}(4, 5) isa Zeros{Float64}
-    @test Zeros{Float64}(4, 5) + Zeros{Int}(4, 5) === Zeros{Float64}(4, 5)
+        # Addition / subtraction of Zeros.
+        @test eltype(op(Zeros{Float64}(4, 5), Zeros{Int}(4, 5))) == Float64
+        @test eltype(op(Zeros{Int}(5, 4), Zeros{Float32}(5, 4))) == Float32
+        @test op(Zeros{Float64}(4, 5), Zeros{Int}(4, 5)) isa Zeros{Float64}
+        @test op(Zeros{Float64}(4, 5), Zeros{Int}(4, 5)) === Zeros{Float64}(4, 5)
+    end
+
+    # Zeros +/- dense where + / - have different results.
+    @test +(Zeros(3, 5), X) === X === +(X, Zeros(3, 5))
+    @test -(Zeros(3, 5), X) == -X
+
+    # Addition with different eltypes.
+    @test +(Zeros{Float32}(3, 5), X) isa Matrix{Float64}
+    @test +(Zeros{Float32}(3, 5), X) === X
+    @test !(+(Zeros{ComplexF64}(3, 5), X) === X)
+    @test +(Zeros{ComplexF64}(3, 5), X) == X
+
+    # Subtraction with different eltypes.
+    @test -(Zeros{Float32}(3, 5), X) isa Matrix{Float64}
+    @test -(Zeros{Float32}(3, 5), X) == -X
+    @test -(Zeros{ComplexF64}(3, 5), X) == -X
 end
