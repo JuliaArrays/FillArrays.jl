@@ -265,4 +265,25 @@ Base.:*(a::ZerosVecOrMat, b::AbstractVector) = mult_zeros(a, b)
 Base.:*(a::AbstractVector, b::ZerosVecOrMat) = mult_zeros(a, b)
 Base.:*(a::ZerosVecOrMat, b::ZerosVecOrMat) = mult_zeros(a, b)
 
+# eltypes are the same, so result of promotion is guaranteed to be the same.
+function Base.:+(a::Zeros{T, N}, b::AbstractArray{T, N}) where {T, N}
+    size(a) ≠ size(b) && throw(DimensionMismatch("Incompatible matrix add dimensions."))
+    return b
+end
+Base.:+(a::AbstractArray{T, N}, b::Zeros{T, N}) where {T, N} = b + a
+
+# Mismatched eltypes, so have to be careful to select the appropriate eltype.
+function Base.:+(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
+    size(a) ≠ size(b) && throw(DimensionMismatch("Incompatible matrix add dimensions."))
+    return promote_type(T, V) == V ? b : copy!(similar(b, promote_type(T, V)), b)
+end
+function Base.:+(a::AbstractArray{T, N}, b::Zeros{V, N}) where {T, V, N}
+    size(a) ≠ size(b) && throw(DimensionMismatch("Incompatible matrix add dimensions."))
+    return promote_type(T, V) == T ? a : copy!(similar(a, promote_type(T, V)), a)
+end
+function Base.:+(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N}
+    size(a) ≠ size(b) && throw(DimensionMismatch("Incompatible matrix add dimensions."))
+    return Zeros{promote_type(T, V)}(size(a)...)
+end
+
 end # module
