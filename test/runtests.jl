@@ -203,6 +203,9 @@ end
     @test Zeros(3, 4) * randn(4) == Zeros(3, 4) * Zeros(4) == Zeros(3)
     @test Zeros(3, 4) * Zeros(4, 5) === Zeros(3, 5)
 
+    @test +(Zeros{Float64}(3, 5)) === Zeros{Float64}(3, 5)
+    @test -(Zeros{Float32}(5, 2)) === Zeros{Float32}(5, 2)
+
     X = randn(3, 5)
     for op in [+, -]
 

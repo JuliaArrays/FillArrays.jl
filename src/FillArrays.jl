@@ -265,6 +265,11 @@ Base.:*(a::ZerosVecOrMat, b::AbstractVector) = mult_zeros(a, b)
 Base.:*(a::AbstractVector, b::ZerosVecOrMat) = mult_zeros(a, b)
 Base.:*(a::ZerosVecOrMat, b::ZerosVecOrMat) = mult_zeros(a, b)
 
+
+# Unary = / -.
+Base.:+(a::Zeros) = a
+Base.:-(a::Zeros) = a
+
 # eltypes are the same, so result of promotion is guaranteed to be the same.
 function Base.:+(a::Zeros{T, N}, b::AbstractArray{T, N}) where {T, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("Incompatible matrix add dimensions."))
@@ -285,9 +290,6 @@ function Base.:+(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("Incompatible matrix add dimensions."))
     return Zeros{promote_type(T, V)}(size(a)...)
 end
-
-# Unary negation.
-Base.:-(a::Zeros) = a
 
 # Subtraction can just re-use addition.
 Base.:-(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N} = -(a + b)
