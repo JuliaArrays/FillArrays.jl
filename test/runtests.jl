@@ -216,7 +216,8 @@ end
 
         # Different eltypes, the other way around.
         @test op(X, Zeros{Float32}(3, 5)) isa Matrix{Float64}
-        @test op(X, Zeros{Float32}(3, 5)) === X
+        @test !(op(X, Zeros{Float32}(3, 5)) === X)
+        @test op(X, Zeros{Float32}(3, 5)) == X
         @test !(op(X, Zeros{ComplexF64}(3, 5)) === X)
         @test op(X, Zeros{ComplexF64}(3, 5)) == X
 
@@ -228,12 +229,14 @@ end
     end
 
     # Zeros +/- dense where + / - have different results.
-    @test +(Zeros(3, 5), X) === X === +(X, Zeros(3, 5))
+    @test +(Zeros(3, 5), X) == X && +(X, Zeros(3, 5)) == X
+    @test !(Zeros(3, 5) + X === X) && !(X + Zeros(3, 5) === X)
     @test -(Zeros(3, 5), X) == -X
 
     # Addition with different eltypes.
     @test +(Zeros{Float32}(3, 5), X) isa Matrix{Float64}
-    @test +(Zeros{Float32}(3, 5), X) === X
+    @test !(+(Zeros{Float32}(3, 5), X) === X)
+    @test +(Zeros{Float32}(3, 5), X) == X
     @test !(+(Zeros{ComplexF64}(3, 5), X) === X)
     @test +(Zeros{ComplexF64}(3, 5), X) == X
 
