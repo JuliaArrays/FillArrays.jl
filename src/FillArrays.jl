@@ -58,6 +58,33 @@ convert(::Type{AbstractArray{T,N}}, F::Fill{T,N}) where {T,N} = F
 convert(::Type{AbstractArray{T}}, F::Fill) where {T} = AbstractArray{T}(F)
 convert(::Type{AbstractArray{T,N}}, F::Fill) where {T,N} = AbstractArray{T,N}(F)
 
+Base.:+(a::AbstractFill) = a
+Base.:-(a::Fill) = Fill(-a.value, size(a))
+
+Base.:-(a::AbstractArray, b::AbstractFill) = a + (-b)
+
+function Base.:+(a::Fill{T, N}, b::Fill{V, N}) where {T, V, N}
+    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+    return Fill(convert(promote_type(T, V), a.value + b.value), size(a))
+end
+# Base.:-(a::Fill{T, N}, b::Fill{V, N}) where {T, V, N} = a + (-b)
+# Base.:-(a::Fill, b::AbstractArray)
+
+
+function Base.:+(a::Fill{T, 1}, b::AbstractRange) where {T}
+    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+    Tout = promote_type(T, eltype(b))
+    return (a.value + first(b)):convert(Tout, step(b)):(a.value + last(b))
+end
+function Base.:+(a::Fill{T, 1}, b::UnitRange) where {T}
+    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+    Tout = promote_type(T, eltype(b))
+    return (a.value + first(b)):(a.value + last(b))
+end
+Base.:+(a::AbstractRange, b::AbstractFill) = b + a
+Base.:-(a::AbstractFill, b::AbstractRange) = a + (-b)
+# Base.:-(a::AbstractFill, b::AbstractRange) = a + (-b)
+# Base.:-(a::AbstractRange, b::AbstractFill) = a + (-b)
 
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     @eval begin
@@ -266,8 +293,7 @@ Base.:*(a::AbstractVector, b::ZerosVecOrMat) = mult_zeros(a, b)
 Base.:*(a::ZerosVecOrMat, b::ZerosVecOrMat) = mult_zeros(a, b)
 
 
-Base.:+(a::Zeros) = a
-Base.:-(a::Zeros) = a
+@inline Base.:-(a::Zeros) = a
 
 function Base.:+(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
@@ -291,14 +317,20 @@ function Base.:+(a::Zeros{T, N}, b::UnitRange) where {T, N}
     Tout = promote_type(T, eltype(b))
     return convert(Tout, first(b)):convert(Tout, last(b))
 end
-
 Base.:+(a::AbstractRange, b::Zeros) = b + a
+function Base.:+(a::Zeros{T, N}, b::Fill{V, N}) where {T, V, N}
+    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+    return Fill(convert(promote_type(T, V), b.value), size(a))
+end
+Base.:+(b::Fill{T, N}, a::Zeros{V, N}) where {T, V, N} = a + b
+
 
 function Base.:-(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     return -b + a
 end
-Base.:-(a::AbstractArray{T, N}, b::Zeros{V, N}) where {T, V, N} = a + b
+Base.:-(a::Zeros, b::AbstractFill) = a + (-b)
+Base.:-(a::Zeros, b::AbstractRange) = a + (-b)
 Base.:-(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N} = -(a + b)
 
 end # module

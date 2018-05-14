@@ -1,3 +1,4 @@
+using Revise
 using Compat
 import Compat: axes
 using FillArrays, Compat.Test
@@ -84,10 +85,21 @@ end
                 Fill{Float32}(one(Float32),5,5)
         @test convert(AbstractMatrix{Float32},F) == AbstractMatrix{Float32}(F) ==
                 Fill{Float32}(one(Float32),5,5)
+
+        r = one(T)
+        F = Fill{T}(r, 5, 4)
+        @test +(F) ≡ F
+        @test -(F) ≡ Fill{T}(-r, 5, 4)
+
+        @test F + F ≡ Fill{T}(2r, 5, 4)
+        @test F - F ≡ Fill{T}(zero(T), 5, 4)
     end
 
-
-
+    @test Fill(1.0, 5) + (1:5) ≡ 2.0:1.0:6.0
+    @test (1:5) + Fill(1.0, 5) ≡ 2.0:1.0:6.0
+    @test Fill(1, 5) + (0:4) ≡ 1:5
+    @test Fill(1.0, 5) - (1:5) ≡ 0.0:-1.0:-4.0
+    @show typeof(Fill(1.0, 5) - (1:5))
 
     @test_throws BoundsError Eye((-1,5))
     @test Eye(5,5) isa AbstractMatrix{Float64}
@@ -253,4 +265,11 @@ end
     @test (1:5) - Zeros{Int}(5) === (1:5)
     @test Zeros{Int}(5) - (1:5) === -1:-1:-5
     @test Zeros(5) - (1:5) === -1.0:-1.0:-5.0
+
+    # Test that addition of `Zero`s and `Fill`s yield appropriate `Fill`s.
+    @test Zeros(5, 4) + Fill(5.0, 5, 4) === Fill(5.0, 5, 4)
+    @test Zeros(5, 4) + Fill(5, 5, 4) === Fill(5.0, 5, 4)
+    @test Fill(5, 5, 4) + Zeros(5, 4) === Fill(5.0, 5, 4)
+    @test Zeros(5, 4) - Fill(5, 5, 4) === Fill(-5.0, 5, 4)
+    @test Fill(5, 5, 4) - Zeros(5, 4) === Fill(5.0, 5, 4)
 end
