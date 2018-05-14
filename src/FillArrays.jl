@@ -3,7 +3,7 @@ module FillArrays
 using Compat
 using Compat.LinearAlgebra, Compat.SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert
-import Compat.LinearAlgebra: rank
+import Compat.LinearAlgebra: rank, AbstractRange
 
 export Zeros, Ones, Fill, Eye
 
@@ -281,7 +281,7 @@ function Base.:+(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     return Zeros{promote_type(T, V)}(size(a)...)
 end
-function Base.:+(a::Zeros{T, N}, b::Range) where {T, N}
+function Base.:+(a::Zeros{T, N}, b::AbstractRange) where {T, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
     return convert(Tout, first(b)):convert(Tout, step(b)):convert(Tout, last(b))
@@ -292,7 +292,7 @@ function Base.:+(a::Zeros{T, N}, b::UnitRange) where {T, N}
     return convert(Tout, first(b)):convert(Tout, last(b))
 end
 
-Base.:+(a::Range, b::Zeros) = b + a
+Base.:+(a::AbstractRange, b::Zeros) = b + a
 
 function Base.:-(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))

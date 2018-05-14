@@ -1,4 +1,3 @@
-using Revise
 using Compat
 import Compat: axes
 using FillArrays, Compat.Test
