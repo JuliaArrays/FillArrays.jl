@@ -1,3 +1,4 @@
+using Revise
 using Compat
 import Compat: axes
 using FillArrays, Compat.Test
@@ -244,4 +245,13 @@ end
     @test -(Zeros{Float32}(3, 5), X) isa Matrix{Float64}
     @test -(Zeros{Float32}(3, 5), X) == -X
     @test -(Zeros{ComplexF64}(3, 5), X) == -X
+
+    # Tests for ranges.
+    X = randn(5)
+    @test !(Zeros(5) + X === X)
+    @test Zeros{Int}(5) + (1:5) === (1:5) && (1:5) + Zeros{Int}(5) === (1:5)
+    @test Zeros(5) + (1:5) === (1.0:1.0:5.0) && (1:5) + Zeros(5) === (1.0:1.0:5.0)
+    @test (1:5) - Zeros{Int}(5) === (1:5)
+    @test Zeros{Int}(5) - (1:5) === -1:-1:-5
+    @test Zeros(5) - (1:5) === -1.0:-1.0:-5.0
 end

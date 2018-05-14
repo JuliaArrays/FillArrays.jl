@@ -281,10 +281,22 @@ function Base.:+(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     return Zeros{promote_type(T, V)}(size(a)...)
 end
+function Base.:+(a::Zeros{T, N}, b::Range) where {T, N}
+    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+    Tout = promote_type(T, eltype(b))
+    return convert(Tout, first(b)):convert(Tout, step(b)):convert(Tout, last(b))
+end
+function Base.:+(a::Zeros{T, N}, b::UnitRange) where {T, N}
+    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+    Tout = promote_type(T, eltype(b))
+    return convert(Tout, first(b)):convert(Tout, last(b))
+end
+
+Base.:+(a::Range, b::Zeros) = b + a
 
 function Base.:-(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return -b
+    return -b + a
 end
 Base.:-(a::AbstractArray{T, N}, b::Zeros{V, N}) where {T, V, N} = a + b
 Base.:-(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N} = -(a + b)
