@@ -3,7 +3,8 @@ module FillArrays
 using Compat
 using Compat.LinearAlgebra, Compat.SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert
-import Compat.LinearAlgebra: rank, AbstractRange
+import Compat.LinearAlgebra: rank
+import Compat: AbstractRange
 
 export Zeros, Ones, Fill, Eye
 
