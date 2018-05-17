@@ -2,7 +2,8 @@ __precompile__()
 module FillArrays
 using Compat
 using Compat.LinearAlgebra, Compat.SparseArrays
-import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert
+import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
+                +, -, *, /, \
 import Compat.LinearAlgebra: rank
 import Compat: AbstractRange
 
@@ -260,46 +261,72 @@ function mult_zeros(a, b::AbstractVector)
 end
 
 const ZerosVecOrMat{T} = Union{Zeros{T,1}, Zeros{T,2}}
-Base.:*(a::ZerosVecOrMat, b::AbstractMatrix) = mult_zeros(a, b)
-Base.:*(a::AbstractMatrix, b::ZerosVecOrMat) = mult_zeros(a, b)
-Base.:*(a::ZerosVecOrMat, b::AbstractVector) = mult_zeros(a, b)
-Base.:*(a::AbstractVector, b::ZerosVecOrMat) = mult_zeros(a, b)
-Base.:*(a::ZerosVecOrMat, b::ZerosVecOrMat) = mult_zeros(a, b)
+*(a::ZerosVecOrMat, b::AbstractMatrix) = mult_zeros(a, b)
+*(a::AbstractMatrix, b::ZerosVecOrMat) = mult_zeros(a, b)
+*(a::ZerosVecOrMat, b::AbstractVector) = mult_zeros(a, b)
+*(a::AbstractVector, b::ZerosVecOrMat) = mult_zeros(a, b)
+*(a::ZerosVecOrMat, b::ZerosVecOrMat) = mult_zeros(a, b)
 
 
-Base.:+(a::Zeros) = a
-Base.:-(a::Zeros) = a
++(a::Zeros) = a
+-(a::Zeros) = a
 
-function Base.:+(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return promote_type(T, V) == V ? copy(b) : map(x->convert(promote_type(T, V), x), b)
+if VERSION < v"0.7-"
+    copy_convert(::Type{T}, ::Type{T}, b) where T = copy(b)
+    copy_convert(::Type{T}, ::Type{V}, b) where {T,V} = AbstractArray{V}(b)
+
+    function +(a::Zeros{T, N}, b::Array{V, N}) where {T, V, N}
+        size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+        return copy_convert(V, promote_type(T,V), b)
+    end
+    function +(a::Array{T, N}, b::Zeros{V, N}) where {T, V, N}
+        size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+        return copy_convert(T, promote_type(T,V), a)
+    end
+
+else
+    function +(a::Zeros{T, N}, b::Array{V, N}) where {T, V, N}
+        size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+        return AbstractArray{promote_type(T,V),N}(b)
+    end
+    function +(a::Array{T, N}, b::Zeros{V, N}) where {T, V, N}
+        size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+        return AbstractArray{promote_type(T,V),N}(a)
+    end
 end
-function Base.:+(a::AbstractArray{T, N}, b::Zeros{V, N}) where {T, V, N}
+
+function +(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return promote_type(T, V) == T ? copy(a) : map(x->convert(promote_type(T, V), x), a)
+    return Zeros{promote_type(T,V)}(size(a)...)
 end
-function Base.:+(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N}
+
+function -(a::Zeros{T, N}, b::Array{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return Zeros{promote_type(T, V)}(size(a)...)
+    return -b + a
 end
-function Base.:+(a::Zeros{T, N}, b::AbstractRange) where {T, N}
+-(a::Array{T, N}, b::Zeros{V, N}) where {T, V, N} = a + b
+-(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N} = -(a + b)
+
+
+
++(a::AbstractRange, b::Zeros) = b + a
+
+function +(a::Zeros{T, 1}, b::AbstractRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
     return convert(Tout, first(b)):convert(Tout, step(b)):convert(Tout, last(b))
 end
-function Base.:+(a::Zeros{T, N}, b::UnitRange) where {T, N}
+function +(a::Zeros{T, 1}, b::UnitRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
     return convert(Tout, first(b)):convert(Tout, last(b))
 end
 
-Base.:+(a::AbstractRange, b::Zeros) = b + a
-
-function Base.:-(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
+function -(a::Zeros{T, 1}, b::AbstractRange{V}) where {T, V}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     return -b + a
 end
-Base.:-(a::AbstractArray{T, N}, b::Zeros{V, N}) where {T, V, N} = a + b
-Base.:-(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N} = -(a + b)
+-(a::AbstractRange{T}, b::Zeros{V, 1}) where {T, V} = a + b
+
 
 end # module

@@ -192,7 +192,7 @@ end
 
 
 @testset "IndexStyle" begin
-    @test IndexStyle(Zeros(5,5)) == IndexStyle(typeof(Zeros(5,5))) == IndexLinear() 
+    @test IndexStyle(Zeros(5,5)) == IndexStyle(typeof(Zeros(5,5))) == IndexLinear()
 end
 
 @testset "Identities" begin
