@@ -2,7 +2,7 @@ using Compat
 import Compat: axes
 using FillArrays, Compat.Test
 if VERSION ≥ v"0.7-"
-    using LinearAlgebra, SparseArrays
+    using LinearAlgebra, SparseArrays, Random
 end
 
 @testset "fill array constructors and convert" begin
@@ -117,6 +117,58 @@ end
     end
 end
 
+# Check that all pair-wise combinations of + / - elements of As and Bs yield the correct
+# type, and produce numerically correct results.
+function test_addition_and_subtraction(As, Bs, Tout::Type)
+    for A in As, B in Bs
+        @test A + B isa Tout{promote_type(eltype(A), eltype(B))}
+        @test Array(A + B) == Array(A) + Array(B)
+
+        @test A - B isa Tout{promote_type(eltype(A), eltype(B))}
+        @test Array(A - B) == Array(A) - Array(B)
+
+        @test B + A isa Tout{promote_type(eltype(B), eltype(A))}
+        @test Array(B + A) == Array(B) + Array(A)
+
+        @test B - A isa Tout{promote_type(eltype(B), eltype(A))}
+        @test Array(B - A) == Array(B) - Array(A)
+    end
+end
+
+# Check that all permutations of + / - throw a `DimensionMismatch` exception.
+function test_addition_and_subtraction_dim_mismatch(a, b)
+    @test_throws DimensionMismatch a + b
+    @test_throws DimensionMismatch a - b
+    @test_throws DimensionMismatch b + a
+    @test_throws DimensionMismatch b - a
+end
+
+@testset "FillArray addition and subtraction" begin
+
+    # Construct FillArray for repeated use.
+    rng = MersenneTwister(123456)
+    A_fill, B_fill = Fill(randn(rng, Float64), 5), Fill(4, 5)
+
+    # Unary +/- constructs a new FillArray.
+    @test +A_fill === A_fill
+    @test -A_fill === Fill(-A_fill.value, 5)
+
+    # FillArray +/- FillArray should construct a new FillArray.
+    test_addition_and_subtraction([A_fill, B_fill], [A_fill, B_fill], Fill)
+    test_addition_and_subtraction_dim_mismatch(A_fill, Fill(randn(rng), 5, 2))
+
+    # FillArray + Array (etc) should construct a new Array using `getindex`.
+    A_dense, B_dense = randn(rng, 5), [5, 4, 3, 2, 1]
+    test_addition_and_subtraction([A_fill, B_fill], [A_dense, B_dense], Array)
+    test_addition_and_subtraction_dim_mismatch(A_fill, randn(rng, 5, 2))
+
+    # FillArray + StepLenRange / UnitRange (etc) should yield an AbstractRange.
+    A_ur, B_ur = 1.0:5.0, 6:10
+    test_addition_and_subtraction([A_fill, B_fill], (A_ur, B_ur), AbstractRange)
+    test_addition_and_subtraction_dim_mismatch(A_fill, 1.0:6.0)
+    test_addition_and_subtraction_dim_mismatch(A_fill, 5:10)
+end
+
 @testset "Other matrix types" begin
     @test Diagonal(Zeros(5)) == Diagonal(zeros(5))
     if VERSION < v"0.7-"  # test is broken on master
@@ -205,6 +257,19 @@ end
 
     @test +(Zeros{Float64}(3, 5)) === Zeros{Float64}(3, 5)
     @test -(Zeros{Float32}(5, 2)) === Zeros{Float32}(5, 2)
+
+    # `Zeros` are closed under addition and subtraction (both unary and binary).
+    z1, z2 = Zeros{Float64}(4), Zeros{Int}(4)
+    @test +(z1) === z1
+    @test -(z1) === z1
+
+    test_addition_and_subtraction([z1, z2], [z1, z2], Zeros)
+    test_addition_and_subtraction_dim_mismatch(z1, Zeros{Float64}(4, 2))
+
+    # `Zeros` +/- `Fill`s should yield `Fills`.
+    fill1, fill2 = Fill(5.0, 4), Fill(5, 4)
+    test_addition_and_subtraction([z1, z2], [fill1, fill2], Fill)
+    test_addition_and_subtraction_dim_mismatch(z1, Fill(5, 5))
 
     X = randn(3, 5)
     for op in [+, -]

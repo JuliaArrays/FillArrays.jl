@@ -60,6 +60,32 @@ convert(::Type{AbstractArray{T,N}}, F::Fill{T,N}) where {T,N} = F
 convert(::Type{AbstractArray{T}}, F::Fill) where {T} = AbstractArray{T}(F)
 convert(::Type{AbstractArray{T,N}}, F::Fill) where {T,N} = AbstractArray{T,N}(F)
 
+Base.:+(a::AbstractFill) = a
+Base.:-(a::Fill) = Fill(-a.value, size(a))
+
+# Fill +/- Fill
+function Base.:+(a::Fill{T, N}, b::Fill{V, N}) where {T, V, N}
+    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+    return Fill(convert(promote_type(T, V), a.value + b.value), size(a))
+end
+Base.:-(a::Fill, b::Fill) = a + (-b)
+
+function Base.:+(a::Fill{T, 1}, b::AbstractRange) where {T}
+    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+    Tout = promote_type(T, eltype(b))
+    return (a.value + first(b)):convert(Tout, step(b)):(a.value + last(b))
+end
+function Base.:+(a::Fill{T, 1}, b::UnitRange) where {T}
+    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+    Tout = promote_type(T, eltype(b))
+    return (a.value + first(b)):(a.value + last(b))
+end
+Base.:+(a::AbstractRange, b::AbstractFill) = b + a
+
+Base.:-(a::AbstractFill, b::AbstractRange) = a + (-b)
+Base.:-(a::AbstractRange, b::AbstractFill) = a + (-b)
+
+
 
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     @eval begin
@@ -271,6 +297,23 @@ const ZerosVecOrMat{T} = Union{Zeros{T,1}, Zeros{T,2}}
 +(a::Zeros) = a
 -(a::Zeros) = a
 
+# Zeros +/- Zeros
+function +(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N}
+    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+    return Zeros{promote_type(T,V)}(size(a)...)
+end
+-(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N} = -(a + b)
+
+# Zeros +/- Fill and Fill +/- Zeros
+function +(a::Fill{T}, b::Zeros{V}) where {T, V}
+    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+    return Fill{promote_type(T, V)}(a.value, size(a)...)
+end
++(a::Zeros, b::Fill) = b + a
+-(a::Fill, b::Zeros) = a + b
+-(a::Zeros, b::Fill) = a + (-b)
+
+# Zeros +/- Array and Array +/- Zeros
 if VERSION < v"0.7-"
     copy_convert(::Type{T}, ::Type{T}, b) where T = copy(b)
     copy_convert(::Type{T}, ::Type{V}, b) where {T,V} = AbstractArray{V}(b)
@@ -295,17 +338,12 @@ else
     end
 end
 
-function +(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return Zeros{promote_type(T,V)}(size(a)...)
-end
-
 function -(a::Zeros{T, N}, b::Array{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     return -b + a
 end
 -(a::Array{T, N}, b::Zeros{V, N}) where {T, V, N} = a + b
--(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N} = -(a + b)
+
 
 
 
@@ -327,27 +365,5 @@ function -(a::Zeros{T, 1}, b::AbstractRange{V}) where {T, V}
     return -b + a
 end
 -(a::AbstractRange{T}, b::Zeros{V, 1}) where {T, V} = a + b
-
-
-# eltypes are the same, so result of promotion is guaranteed to be the same.
-function Base.:+(a::Zeros{T, N}, b::AbstractArray{T, N}) where {T, N}
-    size(a) ≠ size(b) && throw(DimensionMismatch("Incompatible matrix add dimensions."))
-    return b
-end
-Base.:+(a::AbstractArray{T, N}, b::Zeros{T, N}) where {T, N} = b + a
-
-# Mismatched eltypes, so have to be careful to select the appropriate eltype.
-function Base.:+(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
-    size(a) ≠ size(b) && throw(DimensionMismatch("Incompatible matrix add dimensions."))
-    return promote_type(T, V) == V ? b : copy!(similar(b, promote_type(T, V)), b)
-end
-function Base.:+(a::AbstractArray{T, N}, b::Zeros{V, N}) where {T, V, N}
-    size(a) ≠ size(b) && throw(DimensionMismatch("Incompatible matrix add dimensions."))
-    return promote_type(T, V) == T ? a : copy!(similar(a, promote_type(T, V)), a)
-end
-function Base.:+(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N}
-    size(a) ≠ size(b) && throw(DimensionMismatch("Incompatible matrix add dimensions."))
-    return Zeros{promote_type(T, V)}(size(a)...)
-end
 
 end # module
