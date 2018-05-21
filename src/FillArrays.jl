@@ -23,6 +23,16 @@ end
     getindex_value(F)
 end
 
+# Following definition is required to disambiguate getindex when
+# StaticArrays is imported.  To reproduce, remove the following
+# definition and run
+#     julia --print 'import StaticArrays; using FillArrays; Zeros(3)[1]'
+#  See: https://github.com/JuliaArrays/FillArrays.jl/issues/13
+@inline function getindex(F::AbstractFill{T, 1}, k::Integer) where T
+    @boundscheck checkbounds(F, k)
+    getindex_value(F)
+end
+
 rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
 
 IndexStyle(::Type{<:AbstractFill}) = IndexLinear()
