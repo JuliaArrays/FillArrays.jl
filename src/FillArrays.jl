@@ -293,6 +293,19 @@ const ZerosVecOrMat{T} = Union{Zeros{T,1}, Zeros{T,2}}
 *(a::AbstractVector, b::ZerosVecOrMat) = mult_zeros(a, b)
 *(a::ZerosVecOrMat, b::ZerosVecOrMat) = mult_zeros(a, b)
 
+function *(a::Adjoint{T, <:AbstractVector{T}}, b::Zeros{S, 1}) where {T, S}
+    la, lb = length(a), length(b)
+    la ≠ lb && throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))
+    return zero(promote_type(T, S))
+end
+*(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::Zeros{<:Any, 1}) = mult_zeros(a, b)
+
+function *(a::Transpose{T, <:AbstractVector{T}}, b::Zeros{T, 1}) where T<:Real
+    la, lb = length(a), length(b)
+    la ≠ lb && throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))
+    return zero(T)
+end
+*(a::Transpose{T, <:AbstractMatrix{T}}, b::Zeros{T, 1}) where T<:Real = mult_zeros(a, b)
 
 +(a::Zeros) = a
 -(a::Zeros) = a
