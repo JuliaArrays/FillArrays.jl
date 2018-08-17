@@ -4,7 +4,7 @@ using Compat
 using Compat.LinearAlgebra, Compat.SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
                 +, -, *, /, \
-import Compat.LinearAlgebra: rank
+import Compat.LinearAlgebra: rank, Adjoint
 import Compat: AbstractRange
 
 export Zeros, Ones, Fill, Eye
