@@ -255,7 +255,7 @@ end
     @test Zeros(3, 4) * randn(4) == Zeros(3, 4) * Zeros(4) == Zeros(3)
     @test Zeros(3, 4) * Zeros(4, 5) === Zeros(3, 5)
 
-    if VERSION >= v"1.0.0"
+    if VERSION >= v"0.7"
         # Check multiplication by Adjoint vectors works as expected.
         @test randn(4, 3)' * Zeros(4) === Zeros(3)
         @test randn(4)' * Zeros(4) === zero(Float64)

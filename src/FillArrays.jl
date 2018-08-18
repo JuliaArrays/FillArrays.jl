@@ -293,7 +293,7 @@ const ZerosVecOrMat{T} = Union{Zeros{T,1}, Zeros{T,2}}
 *(a::AbstractVector, b::ZerosVecOrMat) = mult_zeros(a, b)
 *(a::ZerosVecOrMat, b::ZerosVecOrMat) = mult_zeros(a, b)
 
-if VERSION >= v"1.0.0"
+if VERSION >= v"0.7"
     function *(a::Adjoint{T, <:AbstractVector{T}}, b::Zeros{S, 1}) where {T, S}
         la, lb = length(a), length(b)
         if la ≠ lb
