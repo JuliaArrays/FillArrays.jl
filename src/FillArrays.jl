@@ -3,7 +3,7 @@ module FillArrays
 using Compat
 using Compat.LinearAlgebra, Compat.SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
-                +, -, *, /, \
+                +, -, *, /, \, sum, cumsum
 import Compat.LinearAlgebra: rank
 import Compat: AbstractRange
 
@@ -60,30 +60,30 @@ convert(::Type{AbstractArray{T,N}}, F::Fill{T,N}) where {T,N} = F
 convert(::Type{AbstractArray{T}}, F::Fill) where {T} = AbstractArray{T}(F)
 convert(::Type{AbstractArray{T,N}}, F::Fill) where {T,N} = AbstractArray{T,N}(F)
 
-Base.:+(a::AbstractFill) = a
-Base.:-(a::Fill) = Fill(-a.value, size(a))
++(a::AbstractFill) = a
+-(a::Fill) = Fill(-a.value, size(a))
 
 # Fill +/- Fill
-function Base.:+(a::Fill{T, N}, b::Fill{V, N}) where {T, V, N}
+function +(a::Fill{T, N}, b::Fill{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     return Fill(convert(promote_type(T, V), a.value + b.value), size(a))
 end
-Base.:-(a::Fill, b::Fill) = a + (-b)
+-(a::Fill, b::Fill) = a + (-b)
 
-function Base.:+(a::Fill{T, 1}, b::AbstractRange) where {T}
+function +(a::Fill{T, 1}, b::AbstractRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
     return (a.value + first(b)):convert(Tout, step(b)):(a.value + last(b))
 end
-function Base.:+(a::Fill{T, 1}, b::UnitRange) where {T}
+function +(a::Fill{T, 1}, b::UnitRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
     return (a.value + first(b)):(a.value + last(b))
 end
-Base.:+(a::AbstractRange, b::AbstractFill) = b + a
++(a::AbstractRange, b::AbstractFill) = b + a
 
-Base.:-(a::AbstractFill, b::AbstractRange) = a + (-b)
-Base.:-(a::AbstractRange, b::AbstractFill) = a + (-b)
+-(a::AbstractFill, b::AbstractRange) = a + (-b)
+-(a::AbstractRange, b::AbstractFill) = a + (-b)
 
 
 
@@ -384,5 +384,23 @@ function -(a::Zeros{T, 1}, b::AbstractRange{V}) where {T, V}
     return -b + a
 end
 -(a::AbstractRange{T}, b::Zeros{V, 1}) where {T, V} = a + b
+
+
+#########
+# Cumsum
+#########
+
+sum(x::AbstractFill) = getindex_value(x)*length(x)
+
+if VERSION ≥ v"0.7"
+    cumsum(x::AbstractFill) = range(getindex_value(x); step=getindex_value(x),
+                                                        length=length(x))
+else
+    cumsum(x::AbstractFill) = range(getindex_value(x), getindex_value(x),
+                                                        length(x))
+end
+
+cumsum(x::Ones{II}) where II<:Integer = Base.OneTo{II}(length(x))
+
 
 end # module

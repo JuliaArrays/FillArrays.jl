@@ -333,3 +333,15 @@ end
     @test Zeros{Int}(5) - (1:5) === -1:-1:-5
     @test Zeros(5) - (1:5) === -1.0:-1.0:-5.0
 end
+
+@testset "Cumsum" begin
+    x = Fill(3,10)
+    @test sum(x) ≡ 30
+    @test cumsum(x) ≡ 3:3:30
+
+    @test sum(Ones(10)) ≡ 10.0
+    @test cumsum(Ones(10)) ≡ 1.0:10.0
+
+    @test sum(Ones{Int}(10)) ≡ 10
+    @test cumsum(Ones{Int}(10)) ≡ Base.OneTo(10)
+end
