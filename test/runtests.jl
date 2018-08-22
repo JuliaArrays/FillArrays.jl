@@ -334,14 +334,25 @@ end
     @test Zeros(5) - (1:5) === -1.0:-1.0:-5.0
 end
 
+@testset "maximum/minimum" begin
+    @test maximum(Fill(1, 1_000_000_000)) == minimum(Fill(1, 1_000_000_000)) == 1
+end
+
+
+
 @testset "Cumsum" begin
-    x = Fill(3,10)
-    @test sum(x) ≡ 30
-    @test cumsum(x) ≡ 3:3:30
+    @test sum(Fill(3,10)) ≡ 30
+    @test cumsum(Fill(3,10)) ≡ 3:3:30
 
     @test sum(Ones(10)) ≡ 10.0
     @test cumsum(Ones(10)) ≡ 1.0:10.0
 
     @test sum(Ones{Int}(10)) ≡ 10
     @test cumsum(Ones{Int}(10)) ≡ Base.OneTo(10)
+
+    @test sum(Zeros(10)) ≡ 0.0
+    @test cumsum(Zeros(10)) ≡ Zeros(10)
+
+    @test sum(Zeros{Int}(10)) ≡ 0
+    @test cumsum(Zeros{Int}(10)) ≡ Zeros{Int}(10)
 end

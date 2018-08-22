@@ -3,7 +3,7 @@ module FillArrays
 using Compat
 using Compat.LinearAlgebra, Compat.SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
-                +, -, *, /, \, sum, cumsum
+                +, -, *, /, \, sum, cumsum, maximum, minimum
 import Compat.LinearAlgebra: rank
 import Compat: AbstractRange
 
@@ -385,12 +385,21 @@ function -(a::Zeros{T, 1}, b::AbstractRange{V}) where {T, V}
 end
 -(a::AbstractRange{T}, b::Zeros{V, 1}) where {T, V} = a + b
 
+#########
+# maximum/minimum
+#########
+
+for op in (:maximum, :minimum)
+    @eval $op(x::AbstractFill) = getindex_value(x)
+end
+
 
 #########
 # Cumsum
 #########
 
 sum(x::AbstractFill) = getindex_value(x)*length(x)
+sum(x::Zeros) = getindex_value(x)
 
 if VERSION ≥ v"0.7"
     cumsum(x::AbstractFill) = range(getindex_value(x); step=getindex_value(x),
@@ -400,6 +409,7 @@ else
                                                         length(x))
 end
 
+cumsum(x::Zeros) = x
 cumsum(x::Ones{II}) where II<:Integer = Base.OneTo{II}(length(x))
 
 
