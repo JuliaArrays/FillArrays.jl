@@ -324,7 +324,7 @@ end
 -(a::Zeros) = a
 
 # Zeros +/- Zeros
-function +(a::Zeros{T}, b::Zeros{V}) where {T, V, N}
+function +(a::Zeros{T}, b::Zeros{V}) where {T, V}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     return Zeros{promote_type(T,V)}(size(a)...)
 end

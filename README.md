@@ -1,6 +1,7 @@
 # FillArrays.jl
 
 [![Build Status](https://travis-ci.org/JuliaArrays/FillArrays.jl.svg?branch=master)](https://travis-ci.org/JuliaArrays/FillArrays.jl)
+[![codecov](https://codecov.io/gh/JuliaArrays/FillArrays.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaArrays/FillArrays.jl)
 
 Julia package to lazily representing matrices filled with a single entry,
 as well as identity matrices.  This package exports the following types: `Eye`,

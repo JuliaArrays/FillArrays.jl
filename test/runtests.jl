@@ -371,18 +371,20 @@ end
     @test cumsum(Zeros{Int}(10)) ≡ Zeros{Int}(10)
 end
 
-@testset "Broadcast" begin
-    x = Fill(5,5)
-    @test (.+)(x) ≡ x
-    @test (.-)(x) ≡ -x
-    @test exp.(x) ≡ Fill(exp(5),5)
-    @test x .+ 1 ≡ Fill(6,5)
-    @test x .+ x ≡ Fill(10,5)
+if VERSION ≥ v"0.7"
+    @testset "Broadcast" begin
+        x = Fill(5,5)
+        @test (.+)(x) ≡ x
+        @test (.-)(x) ≡ -x
+        @test exp.(x) ≡ Fill(exp(5),5)
+        @test x .+ 1 ≡ Fill(6,5)
+        @test x .+ x ≡ Fill(10,5)
 
-    x = Ones(5,5)
-    @test (.+)(x) ≡ Fill(1.0,5,5)
-    @test (.-)(x) ≡ Fill(-1.0,5,5)
-    @test exp.(x) ≡ Fill(exp(1),5,5)
-    @test x .+ 1 ≡ Fill(2.0,5,5)
-    @test x .+ x ≡ Fill(2.0,5,5)
+        x = Ones(5,5)
+        @test (.+)(x) ≡ Fill(1.0,5,5)
+        @test (.-)(x) ≡ Fill(-1.0,5,5)
+        @test exp.(x) ≡ Fill(exp(1),5,5)
+        @test x .+ 1 ≡ Fill(2.0,5,5)
+        @test x .+ x ≡ Fill(2.0,5,5)
+    end
 end
