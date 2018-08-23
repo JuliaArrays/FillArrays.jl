@@ -7,10 +7,14 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
 import Compat.LinearAlgebra: rank
 import Compat: AbstractRange
 
+if VERSION ≥ v"0.7"
+    import Base.Broadcast: broadcasted, DefaultArrayStyle
+end
+
+
 export Zeros, Ones, Fill, Eye
 
 abstract type AbstractFill{T, N} <: AbstractArray{T, N} end
-
 
 
 @inline function getindex(F::AbstractFill, k::Integer)
@@ -387,6 +391,21 @@ function -(a::Zeros{T, 1}, b::AbstractRange{V}) where {T, V}
     return -b + a
 end
 -(a::AbstractRange{T}, b::Zeros{V, 1}) where {T, V} = a + b
+
+
+#########
+# broadcasting
+#########
+
+if VERSION ≥ v"0.7"
+    broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,N} = Fill(op(getindex_value(r)), size(r))
+    broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Number) where {T,N} = Fill(op(getindex_value(r),x), size(r))
+    broadcasted(::DefaultArrayStyle{N}, op, x::Number, r::AbstractFill{T,N}) where {T,N} = Fill(op(x, getindex_value(r)), size(r))
+    function broadcasted(::DefaultArrayStyle{N}, op, r1::AbstractFill{T,N}, r2::AbstractFill{V,N}) where {T,V,N}
+        size(r1) ≠ size(r2) && throw(DimensionMismatch("dimensions must match."))
+        Fill(op(getindex_value(r1),getindex_value(r2)), size(r1))
+    end
+end
 
 #########
 # maximum/minimum
