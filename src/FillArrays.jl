@@ -67,6 +67,12 @@ convert(::Type{AbstractFill}, F::AbstractFill) = F
 convert(::Type{AbstractFill{T}}, F::AbstractFill) where T = convert(AbstractArray{T}, F)
 convert(::Type{AbstractFill{T,N}}, F::AbstractFill) where {T,N} = convert(AbstractArray{T,N}, F)
 
+
+function getindex(F::Fill, kj::Vararg{AbstractVector{II},N}) where {II<:Integer,N}
+    checkbounds(F, kj...)
+    Fill(getindex_value(F), length.(kj))
+end
+
 +(a::AbstractFill) = a
 -(a::AbstractFill) = Fill(-getindex_value(a), size(a))
 
@@ -125,11 +131,20 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         convert(::Type{AbstractArray{T,N}}, F::$Typ{T,N}) where {T,N} = AbstractArray{T,N}(F)
         convert(::Type{AbstractArray{T}}, F::$Typ) where T = AbstractArray{T}(F)
         convert(::Type{AbstractArray{T,N}}, F::$Typ) where {T,N} = AbstractArray{T,N}(F)
+
+        function getindex(F::$Typ{T}, kj::Vararg{AbstractVector{II},N}) where {T,II<:Integer,N}
+            checkbounds(F, kj...)
+            $Typ{T}(length.(kj))
+        end
     end
 end
 
+
+
 rank(F::Zeros) = 0
 rank(F::Ones) = 1
+
+
 
 
 struct Eye{T, SZ} <: AbstractMatrix{T}

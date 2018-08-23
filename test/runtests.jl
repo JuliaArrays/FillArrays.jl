@@ -388,3 +388,23 @@ if VERSION ≥ v"0.7"
         @test x .+ x ≡ Fill(2.0,5,5)
     end
 end
+
+@testset "Sub-arrays" begin
+    A = Fill(3.0,5)
+    @test A[1:3] ≡ Fill(3.0,3)
+    @test A[1:3,1:1] ≡ Fill(3.0,3,1)
+    @test_broken A[1:3,2] ≡ Zeros{Int}(3)
+    @test_throws BoundsError A[1:26]
+
+    A = Ones{Int}(5,5)
+    @test A[1:3] ≡ Ones{Int}(3)
+    @test A[1:3,1:2] ≡ Ones{Int}(3,2)
+    @test_broken A[1:3,2] ≡ Ones{Int}(3)
+    @test_throws BoundsError A[1:26]
+
+    A = Zeros{Int}(5,5)
+    @test A[1:3] ≡ Zeros{Int}(3)
+    @test A[1:3,1:2] ≡ Zeros{Int}(3,2)
+    @test_broken A[1:3,2] ≡ Zeros{Int}(3)
+    @test_throws BoundsError A[1:26]
+end
