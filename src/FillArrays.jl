@@ -425,6 +425,13 @@ if VERSION ≥ v"0.7"
         size(r1) ≠ size(r2) && throw(DimensionMismatch("dimensions must match."))
         Fill(op(getindex_value(r1),getindex_value(r2)), size(r1))
     end
+
+    for op in (:*, :/, :\)
+        @eval function broadcasted(::DefaultArrayStyle{N}, ::typeof($op), r1::Ones{T,N}, r2::Ones{V,N}) where {T,V,N}
+            size(r1) ≠ size(r2) && throw(DimensionMismatch("dimensions must match."))
+            Ones{promote_type(T,V)}(size(r1))
+        end
+    end
 end
 
 #########
@@ -452,7 +459,9 @@ else
 end
 
 cumsum(x::Zeros) = x
+cumsum(x::Zeros{Bool}) = x
 cumsum(x::Ones{II}) where II<:Integer = Base.OneTo{II}(length(x))
-
+cumsum(x::Ones{Bool}) = Base.OneTo{Int}(length(x))
+cumsum(x::AbstractFill{Bool}) = cumsum(convert(AbstractFill{Int}, x))
 
 end # module
