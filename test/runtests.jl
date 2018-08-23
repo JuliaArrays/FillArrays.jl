@@ -386,6 +386,8 @@ if VERSION ≥ v"0.7"
         @test exp.(x) ≡ Fill(exp(1),5,5)
         @test x .+ 1 ≡ Fill(2.0,5,5)
         @test x .+ x ≡ Fill(2.0,5,5)
+
+        @test Zeros{Int}(5) .+ Zeros(5) isa Zeros{Float64}
     end
 end
 
