@@ -86,14 +86,10 @@ end
                 Fill{Float32}(one(Float32),5,5)
     end
 
-
-
-
     @test_throws BoundsError Eye((-1,5))
     @test Eye(5,5) isa AbstractMatrix{Float64}
     @test Eye(5,5) == Eye(5) == Eye((5,5)) == Eye{Float64}(5) == Eye{Float64}(5, 5)
     @test eltype(Eye(5,5)) == Float64
-
 
     for T in (Int, Float64)
         E = Eye{T}(5, 5)
@@ -114,6 +110,22 @@ end
 
         @test Eye{T}(ones(T, 5, 5)) == E
         @test Eye(ones(T, 5, 5)) == E
+    end
+
+    @testset "Bool should change type" begin
+        x = Fill(true,5)
+        y = x + x
+        @test y isa Fill{Int,1}
+        @test y[1] == 2
+
+        x = Ones{Bool}(5)
+        y = x + x
+        @test y isa Fill{Int,1}
+        @test y[1] == 2
+        @test x + Zeros{Bool}(5) ≡ x
+        @test x - Zeros{Bool}(5) ≡ x
+        @test Zeros{Bool}(5) + x ≡ x
+        @test -x ≡ Fill(-1,5)
     end
 end
 
@@ -144,6 +156,10 @@ function test_addition_and_subtraction_dim_mismatch(a, b)
 end
 
 @testset "FillArray addition and subtraction" begin
+    test_addition_and_subtraction_dim_mismatch(Zeros(5), Zeros(6))
+    test_addition_and_subtraction_dim_mismatch(Zeros(5), Zeros{Int}(6))
+    test_addition_and_subtraction_dim_mismatch(Zeros(5), Zeros(6,6))
+    test_addition_and_subtraction_dim_mismatch(Zeros(5), Zeros{Int}(6,5))
 
     # Construct FillArray for repeated use.
     rng = MersenneTwister(123456)

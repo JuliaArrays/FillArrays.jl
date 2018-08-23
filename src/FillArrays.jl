@@ -59,16 +59,19 @@ convert(::Type{AbstractArray{T}}, F::Fill{T}) where T = F
 convert(::Type{AbstractArray{T,N}}, F::Fill{T,N}) where {T,N} = F
 convert(::Type{AbstractArray{T}}, F::Fill) where {T} = AbstractArray{T}(F)
 convert(::Type{AbstractArray{T,N}}, F::Fill) where {T,N} = AbstractArray{T,N}(F)
+convert(::Type{AbstractFill}, F::AbstractFill) = F
+convert(::Type{AbstractFill{T}}, F::AbstractFill) where T = convert(AbstractArray{T}, F)
+convert(::Type{AbstractFill{T,N}}, F::AbstractFill) where {T,N} = convert(AbstractArray{T,N}, F)
 
 +(a::AbstractFill) = a
--(a::Fill) = Fill(-a.value, size(a))
+-(a::AbstractFill) = Fill(-getindex_value(a), size(a))
 
 # Fill +/- Fill
-function +(a::Fill{T, N}, b::Fill{V, N}) where {T, V, N}
+function +(a::AbstractFill{T, N}, b::AbstractFill{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return Fill(convert(promote_type(T, V), a.value + b.value), size(a))
+    return Fill(getindex_value(a) + getindex_value(b), size(a))
 end
--(a::Fill, b::Fill) = a + (-b)
+-(a::AbstractFill, b::AbstractFill) = a + (-b)
 
 function +(a::Fill{T, 1}, b::AbstractRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
@@ -317,20 +320,20 @@ end
 -(a::Zeros) = a
 
 # Zeros +/- Zeros
-function +(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N}
+function +(a::Zeros{T}, b::Zeros{V}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     return Zeros{promote_type(T,V)}(size(a)...)
 end
--(a::Zeros{T, N}, b::Zeros{V, N}) where {T, V, N} = -(a + b)
+-(a::Zeros, b::Zeros) = -(a + b)
 
 # Zeros +/- Fill and Fill +/- Zeros
-function +(a::Fill{T}, b::Zeros{V}) where {T, V}
+function +(a::AbstractFill{T}, b::Zeros{V}) where {T, V}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return Fill{promote_type(T, V)}(a.value, size(a)...)
+    return convert(AbstractFill{promote_type(T, V)}, a)
 end
-+(a::Zeros, b::Fill) = b + a
--(a::Fill, b::Zeros) = a + b
--(a::Zeros, b::Fill) = a + (-b)
++(a::Zeros, b::AbstractFill) = b + a
+-(a::AbstractFill, b::Zeros) = a + b
+-(a::Zeros, b::AbstractFill) = a + (-b)
 
 # Zeros +/- Array and Array +/- Zeros
 if VERSION < v"0.7-"
