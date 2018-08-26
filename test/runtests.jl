@@ -4,6 +4,7 @@ using FillArrays, Compat.Test
 if VERSION ≥ v"0.7-"
     using LinearAlgebra, SparseArrays, Random
 end
+import FillArrays: AbstractFill
 
 @testset "fill array constructors and convert" begin
     for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
@@ -36,9 +37,10 @@ end
                 @test Array{T}(Z) == $funcs(T,5,5)
                 @test Array{T,2}(Z) == $funcs(T,5,5)
 
-                @test convert(AbstractArray,Z) ≡ Z
-                @test convert(AbstractArray{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
-                @test convert(AbstractMatrix{T},Z) ≡ AbstractMatrix{T}(Z) ≡ Z
+                @test convert(AbstractArray,Z) ≡ convert(AbstractFill,Z) ≡ Z
+                @test convert(AbstractArray{T},Z) ≡ convert(AbstractFill{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
+                @test convert(AbstractMatrix{T},Z) ≡ convert(AbstractFill{T,2},Z) ≡ AbstractMatrix{T}(Z) ≡ Z
+
 
                 @test $Typ{T,2}(2ones(T,5,5)) == Z
                 @test $Typ{T}(2ones(T,5,5)) == Z
@@ -271,6 +273,10 @@ end
     @test Zeros(3, 4) * randn(4) == Zeros(3, 4) * Zeros(4) == Zeros(3)
     @test Zeros(3, 4) * Zeros(4, 5) === Zeros(3, 5)
 
+    @test [1,2,3]*Zeros(1) ≡ Zeros(3)
+    @test [1,2,3]*Zeros(1,3) ≡ Zeros(3,3)
+    @test_throws DimensionMismatch [1,2,3]*Zeros(3)
+
     if VERSION >= v"0.7"
         # Check multiplication by Adjoint vectors works as expected.
         @test randn(4, 3)' * Zeros(4) === Zeros(3)
@@ -369,7 +375,13 @@ end
 
     @test sum(Zeros{Int}(10)) ≡ 0
     @test cumsum(Zeros{Int}(10)) ≡ Zeros{Int}(10)
+
+    @test cumsum(Zeros{Bool}(10)) ≡ Zeros{Bool}(10)
+    @test cumsum(Ones{Bool}(10)) ≡ Base.OneTo{Int}(10)
+    @test cumsum(Fill(true,10)) ≡ 1:1:10
 end
+
+
 
 if VERSION ≥ v"0.7"
     @testset "Broadcast" begin
@@ -379,14 +391,15 @@ if VERSION ≥ v"0.7"
         @test exp.(x) ≡ Fill(exp(5),5)
         @test x .+ 1 ≡ Fill(6,5)
         @test x .+ x ≡ Fill(10,5)
+        @test x .+ Ones(5) ≡ Fill(6.0,5)
 
-        x = Ones(5,5)
-        @test (.+)(x) ≡ Fill(1.0,5,5)
-        @test (.-)(x) ≡ Fill(-1.0,5,5)
-        @test exp.(x) ≡ Fill(exp(1),5,5)
-        @test x .+ 1 ≡ Fill(2.0,5,5)
-        @test x .+ x ≡ Fill(2.0,5,5)
-        @test x .* x ≡ x ./ x ≡ x .\ x ≡ x
+        y = Ones(5,5)
+        @test (.+)(y) ≡ Fill(1.0,5,5)
+        @test (.-)(y) ≡ Fill(-1.0,5,5)
+        @test exp.(y) ≡ Fill(exp(1),5,5)
+        @test y .+ 1 ≡ Fill(2.0,5,5)
+        @test y .+ y ≡ Fill(2.0,5,5)
+        @test y .* y ≡ y ./ y ≡ y .\ y ≡ y
 
         @test Zeros{Int}(5) .+ Zeros(5) isa Zeros{Float64}
     end
