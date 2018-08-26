@@ -392,6 +392,7 @@ if VERSION ≥ v"0.7"
         @test x .+ 1 ≡ Fill(6,5)
         @test x .+ x ≡ Fill(10,5)
         @test x .+ Ones(5) ≡ Fill(6.0,5)
+        @test f.(x, Ones(5)) ≡ Fill(f(5,1.0),5)
 
         y = Ones(5,5)
         @test (.+)(y) ≡ Fill(1.0,5,5)
@@ -404,6 +405,7 @@ if VERSION ≥ v"0.7"
         @test Zeros{Int}(5) .+ Zeros(5) isa Zeros{Float64}
     end
 end
+
 
 @testset "Sub-arrays" begin
     A = Fill(3.0,5)
