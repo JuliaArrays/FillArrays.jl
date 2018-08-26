@@ -392,6 +392,7 @@ if VERSION ≥ v"0.7"
         @test x .+ 1 ≡ Fill(6,5)
         @test x .+ x ≡ Fill(10,5)
         @test x .+ Ones(5) ≡ Fill(6.0,5)
+        f = (x,y) -> cos(x*y)
         @test f.(x, Ones(5)) ≡ Fill(f(5,1.0),5)
 
         y = Ones(5,5)
