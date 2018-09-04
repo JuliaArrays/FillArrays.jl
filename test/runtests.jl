@@ -414,6 +414,7 @@ end
     @test A[1:3,1:1] ≡ Fill(3.0,3,1)
     @test_broken A[1:3,2] ≡ Zeros{Int}(3)
     @test_throws BoundsError A[1:26]
+    @test A[[true, false, true, false, false]] ≡ Fill(3.0, 2)
 
     A = Ones{Int}(5,5)
     @test A[1:3] ≡ Ones{Int}(3)

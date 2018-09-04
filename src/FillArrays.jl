@@ -73,6 +73,13 @@ function getindex(F::Fill, kj::Vararg{AbstractVector{II},N}) where {II<:Integer,
     Fill(getindex_value(F), length.(kj))
 end
 
+function getindex(A::Fill, kr::AbstractArray{Bool})
+   length(A) == length(kr) || throw(DimensionMismatch())
+   Fill(getindex_value(A), count(kr))
+end
+getindex(A::Fill, kr::AbstractVector{Bool}) =
+    invoke(getindex, Tuple{Fill, AbstractArray{Bool}}, A, kr)
+
 +(a::AbstractFill) = a
 -(a::AbstractFill) = Fill(-getindex_value(a), size(a))
 
