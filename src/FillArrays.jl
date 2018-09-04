@@ -73,12 +73,14 @@ function getindex(F::Fill, kj::Vararg{AbstractVector{II},N}) where {II<:Integer,
     Fill(getindex_value(F), length.(kj))
 end
 
-function getindex(A::Fill, kr::AbstractArray{Bool})
+function getindex(A::Fill, kr::AbstractVector{Bool})
    length(A) == length(kr) || throw(DimensionMismatch())
    Fill(getindex_value(A), count(kr))
 end
-getindex(A::Fill, kr::AbstractVector{Bool}) =
-    invoke(getindex, Tuple{Fill, AbstractArray{Bool}}, A, kr)
+function getindex(A::Fill, kr::AbstractArray{Bool})
+   size(A) == size(kr) || throw(DimensionMismatch())
+   Fill(getindex_value(A), count(kr))
+end
 
 +(a::AbstractFill) = a
 -(a::AbstractFill) = Fill(-getindex_value(a), size(a))
@@ -143,12 +145,14 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
             checkbounds(F, kj...)
             $Typ{T}(length.(kj))
         end
-        function getindex(A::$Typ{T}, kr::AbstractArray{Bool}) where T
+        function getindex(A::$Typ{T}, kr::AbstractVector{Bool}) where T
             length(A) == length(kr) || throw(DimensionMismatch())
             $Typ{T}(count(kr))
         end
-        getindex(A::$Typ, kr::AbstractVector{Bool}) =
-            invoke(getindex, Tuple{$Typ, AbstractArray{Bool}}, A, kr)
+        function getindex(A::$Typ{T}, kr::AbstractArray{Bool}) where T
+            size(A) == size(kr) || throw(DimensionMismatch())
+            $Typ{T}(count(kr))
+        end
     end
 end
 
