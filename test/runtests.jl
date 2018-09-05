@@ -415,6 +415,8 @@ end
     @test_broken A[1:3,2] ≡ Zeros{Int}(3)
     @test_throws BoundsError A[1:26]
     @test A[[true, false, true, false, false]] ≡ Fill(3.0, 2)
+    A = Fill(3.0, 2, 2)
+    @test A[[true true; true false]] ≡ Fill(3.0, 3)
     @test_throws DimensionMismatch A[[true, false]]
 
     A = Ones{Int}(5,5)
@@ -424,6 +426,7 @@ end
     @test_throws BoundsError A[1:26]
     A = Ones{Int}(2,2)
     @test A[[true false; true false]] ≡ Ones{Int}(2)
+    @test A[[true, false, true, false]] ≡ Ones{Int}(2)
     @test_throws DimensionMismatch A[[true false false; true false false]]
 
     A = Zeros{Int}(5,5)
@@ -433,5 +436,6 @@ end
     @test_throws BoundsError A[1:26]
     A = Zeros{Int}(2,2)
     @test A[[true false; true false]] ≡ Zeros{Int}(2)
+    @test A[[true, false, true, false]] ≡ Zeros{Int}(2)
     @test_throws DimensionMismatch A[[true false false; true false false]]
 end
