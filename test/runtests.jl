@@ -4,48 +4,46 @@ using FillArrays, LinearAlgebra, SparseArrays, Random, Test
 import FillArrays: AbstractFill
 
 @testset "fill array constructors and convert" begin
-    for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
-        @eval begin
-            @test_throws BoundsError $Typ((-1,5))
-            @test $Typ(5) isa AbstractVector{Float64}
-            @test $Typ(5,5) isa AbstractMatrix{Float64}
-            @test $Typ(5) == $Typ((5,))
-            @test $Typ(5,5) == $Typ((5,5))
-            @test eltype($Typ(5,5)) == Float64
+    @testset for (Typ, funcs) in ((Zeros, zeros), (Ones, ones))
+        @test_throws BoundsError Typ((-1,5))
+        @test Typ(5) isa AbstractVector{Float64}
+        @test Typ(5,5) isa AbstractMatrix{Float64}
+        @test Typ(5) == Typ((5,))
+        @test Typ(5,5) == Typ((5,5))
+        @test eltype(Typ(5,5)) == Float64
 
-            for T in (Int, Float64)
-                Z = $Typ{T}(5)
-                @test eltype(Z) == T
-                @test Array(Z) == $funcs(T,5)
-                @test Array{T}(Z) == $funcs(T,5)
-                @test Array{T,1}(Z) == $funcs(T,5)
+        for T in (Int, Float64)
+            Z = Typ{T}(5)
+            @test eltype(Z) == T
+            @test Array(Z) == funcs(T,5)
+            @test Array{T}(Z) == funcs(T,5)
+            @test Array{T,1}(Z) == funcs(T,5)
 
-                @test convert(AbstractArray,Z) ≡ Z
-                @test convert(AbstractArray{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
-                @test convert(AbstractVector{T},Z) ≡ AbstractVector{T}(Z) ≡ Z
+            @test convert(AbstractArray,Z) ≡ Z
+            @test convert(AbstractArray{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
+            @test convert(AbstractVector{T},Z) ≡ AbstractVector{T}(Z) ≡ Z
 
-                @test $Typ{T,1}(2ones(T,5)) == Z
-                @test $Typ{T}(2ones(T,5)) == Z
-                @test $Typ(2ones(T,5)) == Z
+            @test Typ{T,1}(2ones(T,5)) == Z
+            @test Typ{T}(2ones(T,5)) == Z
+            @test Typ(2ones(T,5)) == Z
 
-                Z = $Typ{T}(5, 5)
-                @test eltype(Z) == T
-                @test Array(Z) == $funcs(T,5,5)
-                @test Array{T}(Z) == $funcs(T,5,5)
-                @test Array{T,2}(Z) == $funcs(T,5,5)
+            Z = Typ{T}(5, 5)
+            @test eltype(Z) == T
+            @test Array(Z) == funcs(T,5,5)
+            @test Array{T}(Z) == funcs(T,5,5)
+            @test Array{T,2}(Z) == funcs(T,5,5)
 
-                @test convert(AbstractArray,Z) ≡ convert(AbstractFill,Z) ≡ Z
-                @test convert(AbstractArray{T},Z) ≡ convert(AbstractFill{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
-                @test convert(AbstractMatrix{T},Z) ≡ convert(AbstractFill{T,2},Z) ≡ AbstractMatrix{T}(Z) ≡ Z
+            @test convert(AbstractArray,Z) ≡ convert(AbstractFill,Z) ≡ Z
+            @test convert(AbstractArray{T},Z) ≡ convert(AbstractFill{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
+            @test convert(AbstractMatrix{T},Z) ≡ convert(AbstractFill{T,2},Z) ≡ AbstractMatrix{T}(Z) ≡ Z
 
 
-                @test $Typ{T,2}(2ones(T,5,5)) == Z
-                @test $Typ{T}(2ones(T,5,5)) == Z
-                @test $Typ(2ones(T,5,5)) == Z
+            @test Typ{T,2}(2ones(T,5,5)) == Z
+            @test Typ{T}(2ones(T,5,5)) == Z
+            @test Typ(2ones(T,5,5)) == Z
 
-                @test AbstractArray{Float32}(Z) == $Typ{Float32}(5,5)
-                @test AbstractArray{Float32,2}(Z) == $Typ{Float32}(5,5)
-            end
+            @test AbstractArray{Float32}(Z) == Typ{Float32}(5,5)
+            @test AbstractArray{Float32,2}(Z) == Typ{Float32}(5,5)
         end
     end
 
