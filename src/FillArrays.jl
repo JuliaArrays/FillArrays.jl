@@ -1,15 +1,12 @@
-__precompile__()
 module FillArrays
-using Compat
-using Compat.LinearAlgebra, Compat.SparseArrays
+
+using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
                 +, -, *, /, \, sum, cumsum, maximum, minimum
-import Compat.LinearAlgebra: rank
-import Compat: AbstractRange
+import LinearAlgebra: rank
 
-if VERSION ≥ v"0.7"
-    import Base.Broadcast: broadcasted, DefaultArrayStyle
-end
+import Base.Broadcast: broadcasted, DefaultArrayStyle
+
 
 
 export Zeros, Ones, Fill, Eye
@@ -224,15 +221,9 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     end
 end
 
-if VERSION < v"0.7.0-DEV.2565"
-    convert(::Type{Array},     E::Eye{T}) where T = eye(T, E.size[1], E.size[2])
-    convert(::Type{Array{T}},  E::Eye)    where T = eye(T, E.size[1], E.size[2])
-    convert(::Type{Matrix{T}}, E::Eye)    where T = eye(T, E.size[1], E.size[2])
-else
-    convert(::Type{Array},     E::Eye{T}) where T = Matrix{T}(I, E.size[1], E.size[2])
-    convert(::Type{Array{T}},  E::Eye)    where T = Matrix{T}(I, E.size[1], E.size[2])
-    convert(::Type{Matrix{T}}, E::Eye)    where T = Matrix{T}(I, E.size[1], E.size[2])
-end
+convert(::Type{Array},     E::Eye{T}) where T = Matrix{T}(I, E.size[1], E.size[2])
+convert(::Type{Array{T}},  E::Eye)    where T = Matrix{T}(I, E.size[1], E.size[2])
+convert(::Type{Matrix{T}}, E::Eye)    where T = Matrix{T}(I, E.size[1], E.size[2])
 
 function convert(::Type{Diagonal}, Z::Zeros{T,2}) where T
     n,m = size(Z)
@@ -281,31 +272,18 @@ convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Zeros{T}) where {T,Tv,Ti} = spzer
 convert(::Type{AbstractSparseArray{Tv,Ti,N}}, Z::Zeros{T,N}) where {T,Tv,Ti,N} = spzeros(Tv, Ti, size(Z)...)
 
 
-if VERSION < v"0.7.0-DEV.2565"
-    convert(::Type{SparseMatrixCSC}, Z::Eye{T}) where T = speye(T, size(Z)...)
-    convert(::Type{SparseMatrixCSC{Tv}}, Z::Eye{T}) where {T,Tv} = speye(Tv, size(Z)...)
-    # works around missing `speye`:
-    convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
-        convert(SparseMatrixCSC{Tv,Ti}, speye(Tv, size(Z)...))
+convert(::Type{SparseMatrixCSC}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
+convert(::Type{SparseMatrixCSC{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
+# works around missing `speye`:
+convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti<:Integer} =
+    convert(SparseMatrixCSC{Tv,Ti}, SparseMatrixCSC{Tv}(I, size(Z)...))
 
-    convert(::Type{AbstractSparseMatrix}, Z::Eye{T}) where {T} = speye(T, size(Z)...)
-    convert(::Type{AbstractSparseMatrix{Tv}}, Z::Eye{T}) where {T,Tv} = speye(Tv, size(Z)...)
+convert(::Type{AbstractSparseMatrix}, Z::Eye{T}) where {T} = SparseMatrixCSC{T}(I, size(Z)...)
+convert(::Type{AbstractSparseMatrix{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
 
-    convert(::Type{AbstractSparseArray}, Z::Eye{T}) where T = speye(T, size(Z)...)
-    convert(::Type{AbstractSparseArray{Tv}}, Z::Eye{T}) where {T,Tv} = speye(Tv, size(Z)...)
-else
-    convert(::Type{SparseMatrixCSC}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
-    convert(::Type{SparseMatrixCSC{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
-    # works around missing `speye`:
-    convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti<:Integer} =
-        convert(SparseMatrixCSC{Tv,Ti}, SparseMatrixCSC{Tv}(I, size(Z)...))
+convert(::Type{AbstractSparseArray}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
+convert(::Type{AbstractSparseArray{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
 
-    convert(::Type{AbstractSparseMatrix}, Z::Eye{T}) where {T} = SparseMatrixCSC{T}(I, size(Z)...)
-    convert(::Type{AbstractSparseMatrix{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
-
-    convert(::Type{AbstractSparseArray}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
-    convert(::Type{AbstractSparseArray{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
-end
 
 convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
     convert(SparseMatrixCSC{Tv,Ti}, Z)
@@ -332,25 +310,25 @@ const ZerosVecOrMat{T} = Union{Zeros{T,1}, Zeros{T,2}}
 *(a::AbstractVector, b::ZerosVecOrMat) = mult_zeros(a, b)
 *(a::ZerosVecOrMat, b::ZerosVecOrMat) = mult_zeros(a, b)
 
-if VERSION >= v"0.7"
-    function *(a::Adjoint{T, <:AbstractVector{T}}, b::Zeros{S, 1}) where {T, S}
-        la, lb = length(a), length(b)
-        if la ≠ lb
-            throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))
-        end
-        return zero(promote_type(T, S))
-    end
-    *(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::Zeros{<:Any, 1}) = mult_zeros(a, b)
 
-    function *(a::Transpose{T, <:AbstractVector{T}}, b::Zeros{T, 1}) where T<:Real
-        la, lb = length(a), length(b)
-        if la ≠ lb
-            throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))
-        end
-        return zero(T)
+function *(a::Adjoint{T, <:AbstractVector{T}}, b::Zeros{S, 1}) where {T, S}
+    la, lb = length(a), length(b)
+    if la ≠ lb
+        throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))
     end
-    *(a::Transpose{T, <:AbstractMatrix{T}}, b::Zeros{T, 1}) where T<:Real = mult_zeros(a, b)
+    return zero(promote_type(T, S))
 end
+*(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::Zeros{<:Any, 1}) = mult_zeros(a, b)
+
+function *(a::Transpose{T, <:AbstractVector{T}}, b::Zeros{T, 1}) where T<:Real
+    la, lb = length(a), length(b)
+    if la ≠ lb
+        throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))
+    end
+    return zero(T)
+end
+*(a::Transpose{T, <:AbstractMatrix{T}}, b::Zeros{T, 1}) where T<:Real = mult_zeros(a, b)
+
 
 +(a::Zeros) = a
 -(a::Zeros) = a
@@ -372,28 +350,13 @@ end
 -(a::Zeros, b::AbstractFill) = a + (-b)
 
 # Zeros +/- Array and Array +/- Zeros
-if VERSION < v"0.7-"
-    copy_convert(::Type{T}, ::Type{T}, b) where T = copy(b)
-    copy_convert(::Type{T}, ::Type{V}, b) where {T,V} = AbstractArray{V}(b)
-
-    function +(a::Zeros{T, N}, b::Array{V, N}) where {T, V, N}
-        size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-        return copy_convert(V, promote_type(T,V), b)
-    end
-    function +(a::Array{T, N}, b::Zeros{V, N}) where {T, V, N}
-        size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-        return copy_convert(T, promote_type(T,V), a)
-    end
-
-else
-    function +(a::Zeros{T, N}, b::Array{V, N}) where {T, V, N}
-        size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-        return AbstractArray{promote_type(T,V),N}(b)
-    end
-    function +(a::Array{T, N}, b::Zeros{V, N}) where {T, V, N}
-        size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-        return AbstractArray{promote_type(T,V),N}(a)
-    end
+function +(a::Zeros{T, N}, b::Array{V, N}) where {T, V, N}
+    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+    return AbstractArray{promote_type(T,V),N}(b)
+end
+function +(a::Array{T, N}, b::Zeros{V, N}) where {T, V, N}
+    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+    return AbstractArray{promote_type(T,V),N}(a)
 end
 
 function -(a::Zeros{T, N}, b::Array{V, N}) where {T, V, N}
@@ -429,27 +392,26 @@ end
 # broadcasting
 #########
 
-if VERSION ≥ v"0.7"
-    for op in (:+, :-)
-        @eval broadcasted(::DefaultArrayStyle{N}, ::typeof($op), r1::AbstractFill{T,N}, r2::AbstractFill{V,N}) where {T,V,N} =
-            $op(r1, r2)
-    end
+for op in (:+, :-)
+    @eval broadcasted(::DefaultArrayStyle{N}, ::typeof($op), r1::AbstractFill{T,N}, r2::AbstractFill{V,N}) where {T,V,N} =
+        $op(r1, r2)
+end
 
-    broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,N} = Fill(op(getindex_value(r)), size(r))
-    broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Number) where {T,N} = Fill(op(getindex_value(r),x), size(r))
-    broadcasted(::DefaultArrayStyle{N}, op, x::Number, r::AbstractFill{T,N}) where {T,N} = Fill(op(x, getindex_value(r)), size(r))
-    function broadcasted(::DefaultArrayStyle{N}, op, r1::AbstractFill{T,N}, r2::AbstractFill{V,N}) where {T,V,N}
+broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,N} = Fill(op(getindex_value(r)), size(r))
+broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Number) where {T,N} = Fill(op(getindex_value(r),x), size(r))
+broadcasted(::DefaultArrayStyle{N}, op, x::Number, r::AbstractFill{T,N}) where {T,N} = Fill(op(x, getindex_value(r)), size(r))
+function broadcasted(::DefaultArrayStyle{N}, op, r1::AbstractFill{T,N}, r2::AbstractFill{V,N}) where {T,V,N}
+    size(r1) ≠ size(r2) && throw(DimensionMismatch("dimensions must match."))
+    Fill(op(getindex_value(r1),getindex_value(r2)), size(r1))
+end
+
+for op in (:*, :/, :\)
+    @eval function broadcasted(::DefaultArrayStyle{N}, ::typeof($op), r1::Ones{T,N}, r2::Ones{V,N}) where {T,V,N}
         size(r1) ≠ size(r2) && throw(DimensionMismatch("dimensions must match."))
-        Fill(op(getindex_value(r1),getindex_value(r2)), size(r1))
-    end
-
-    for op in (:*, :/, :\)
-        @eval function broadcasted(::DefaultArrayStyle{N}, ::typeof($op), r1::Ones{T,N}, r2::Ones{V,N}) where {T,V,N}
-            size(r1) ≠ size(r2) && throw(DimensionMismatch("dimensions must match."))
-            Ones{promote_type(T,V)}(size(r1))
-        end
+        Ones{promote_type(T,V)}(size(r1))
     end
 end
+
 
 #########
 # maximum/minimum
@@ -467,13 +429,8 @@ end
 sum(x::AbstractFill) = getindex_value(x)*length(x)
 sum(x::Zeros) = getindex_value(x)
 
-if VERSION ≥ v"0.7"
-    cumsum(x::AbstractFill) = range(getindex_value(x); step=getindex_value(x),
-                                                        length=length(x))
-else
-    cumsum(x::AbstractFill) = range(getindex_value(x), getindex_value(x),
-                                                        length(x))
-end
+cumsum(x::AbstractFill) = range(getindex_value(x); step=getindex_value(x),
+                                                    length=length(x))
 
 cumsum(x::Zeros) = x
 cumsum(x::Zeros{Bool}) = x

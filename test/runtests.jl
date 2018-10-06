@@ -1,9 +1,6 @@
-using Compat
-import Compat: axes
-using FillArrays, Compat.Test
-if VERSION ≥ v"0.7-"
-    using LinearAlgebra, SparseArrays, Random
-end
+
+using FillArrays, LinearAlgebra, SparseArrays, Random, Test
+
 import FillArrays: AbstractFill
 
 @testset "fill array constructors and convert" begin
@@ -95,7 +92,7 @@ import FillArrays: AbstractFill
 
     for T in (Int, Float64)
         E = Eye{T}(5, 5)
-        M = VERSION < v"0.7.0-DEV.2565" ? eye(T, 5, 5) : Matrix{T}(I, 5, 5)
+        M = Matrix{T}(I, 5, 5)
 
         @test eltype(E) == T
         @test Array(E) == M
@@ -189,9 +186,6 @@ end
 
 @testset "Other matrix types" begin
     @test Diagonal(Zeros(5)) == Diagonal(zeros(5))
-    if VERSION < v"0.7-"  # test is broken on master
-        @test_throws MethodError convert(Diagonal, Zeros(5))
-    end
 
     @test Diagonal(Zeros(8,5)) == Diagonal(zeros(5))
     @test convert(Diagonal, Zeros(5,5)) == Diagonal(zeros(5))
@@ -277,19 +271,17 @@ end
     @test [1,2,3]*Zeros(1,3) ≡ Zeros(3,3)
     @test_throws DimensionMismatch [1,2,3]*Zeros(3)
 
-    if VERSION >= v"0.7"
-        # Check multiplication by Adjoint vectors works as expected.
-        @test randn(4, 3)' * Zeros(4) === Zeros(3)
-        @test randn(4)' * Zeros(4) === zero(Float64)
-        @test [1, 2, 3]' * Zeros{Int}(3) === zero(Int)
-        @test_throws DimensionMismatch randn(4)' * Zeros(3)
+    # Check multiplication by Adjoint vectors works as expected.
+    @test randn(4, 3)' * Zeros(4) === Zeros(3)
+    @test randn(4)' * Zeros(4) === zero(Float64)
+    @test [1, 2, 3]' * Zeros{Int}(3) === zero(Int)
+    @test_throws DimensionMismatch randn(4)' * Zeros(3)
 
-        # Check multiplication by Transpose-d vectors works as expected.
-        @test transpose(randn(4, 3)) * Zeros(4) === Zeros(3)
-        @test transpose(randn(4)) * Zeros(4) === zero(Float64)
-        @test transpose([1, 2, 3]) * Zeros{Int}(3) === zero(Int)
-        @test_throws DimensionMismatch transpose(randn(4)) * Zeros(3)
-    end
+    # Check multiplication by Transpose-d vectors works as expected.
+    @test transpose(randn(4, 3)) * Zeros(4) === Zeros(3)
+    @test transpose(randn(4)) * Zeros(4) === zero(Float64)
+    @test transpose([1, 2, 3]) * Zeros{Int}(3) === zero(Int)
+    @test_throws DimensionMismatch transpose(randn(4)) * Zeros(3)
 
     @test +(Zeros{Float64}(3, 5)) === Zeros{Float64}(3, 5)
     @test -(Zeros{Float32}(5, 2)) === Zeros{Float32}(5, 2)
@@ -381,32 +373,27 @@ end
     @test cumsum(Fill(true,10)) ≡ 1:1:10
 end
 
+@testset "Broadcast" begin
+    x = Fill(5,5)
+    @test (.+)(x) ≡ x
+    @test (.-)(x) ≡ -x
+    @test exp.(x) ≡ Fill(exp(5),5)
+    @test x .+ 1 ≡ Fill(6,5)
+    @test x .+ x ≡ Fill(10,5)
+    @test x .+ Ones(5) ≡ Fill(6.0,5)
+    f = (x,y) -> cos(x*y)
+    @test f.(x, Ones(5)) ≡ Fill(f(5,1.0),5)
 
+    y = Ones(5,5)
+    @test (.+)(y) ≡ Fill(1.0,5,5)
+    @test (.-)(y) ≡ Fill(-1.0,5,5)
+    @test exp.(y) ≡ Fill(exp(1),5,5)
+    @test y .+ 1 ≡ Fill(2.0,5,5)
+    @test y .+ y ≡ Fill(2.0,5,5)
+    @test y .* y ≡ y ./ y ≡ y .\ y ≡ y
 
-if VERSION ≥ v"0.7"
-    @testset "Broadcast" begin
-        x = Fill(5,5)
-        @test (.+)(x) ≡ x
-        @test (.-)(x) ≡ -x
-        @test exp.(x) ≡ Fill(exp(5),5)
-        @test x .+ 1 ≡ Fill(6,5)
-        @test x .+ x ≡ Fill(10,5)
-        @test x .+ Ones(5) ≡ Fill(6.0,5)
-        f = (x,y) -> cos(x*y)
-        @test f.(x, Ones(5)) ≡ Fill(f(5,1.0),5)
-
-        y = Ones(5,5)
-        @test (.+)(y) ≡ Fill(1.0,5,5)
-        @test (.-)(y) ≡ Fill(-1.0,5,5)
-        @test exp.(y) ≡ Fill(exp(1),5,5)
-        @test y .+ 1 ≡ Fill(2.0,5,5)
-        @test y .+ y ≡ Fill(2.0,5,5)
-        @test y .* y ≡ y ./ y ≡ y .\ y ≡ y
-
-        @test Zeros{Int}(5) .+ Zeros(5) isa Zeros{Float64}
-    end
+    @test Zeros{Int}(5) .+ Zeros(5) isa Zeros{Float64}
 end
-
 
 @testset "Sub-arrays" begin
     A = Fill(3.0,5)
