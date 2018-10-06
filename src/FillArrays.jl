@@ -2,8 +2,8 @@ module FillArrays
 
 using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
-                +, -, *, /, \, sum, cumsum, maximum, minimum
-import LinearAlgebra: rank
+                +, -, *, /, \, sum, cumsum, maximum, minimum, sort, sort!
+import LinearAlgebra: rank, svdvals!
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle
 
@@ -78,6 +78,10 @@ function getindex(A::Fill, kr::AbstractArray{Bool})
    size(A) == size(kr) || throw(DimensionMismatch())
    Fill(getindex_value(A), count(kr))
 end
+
+sort(a::AbstractFill; kwds...) = a
+sort!(a::AbstractFill; kwds...) = a
+svdvals!(a::AbstractFill{<:Any,2}) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(min(size(a)...)-1)]
 
 +(a::AbstractFill) = a
 -(a::AbstractFill) = Fill(-getindex_value(a), size(a))
@@ -159,45 +163,20 @@ rank(F::Zeros) = 0
 rank(F::Ones) = 1
 
 
+const Eye{T, SZ} = Diagonal{T, Ones{T,1,SZ}}
+
+Eye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
+Eye(n::Integer) = Diagonal(Ones(n))
 
 
-struct Eye{T, SZ} <: AbstractMatrix{T}
-    size::SZ
-    @inline function Eye{T}(sz::SZ) where {T,SZ<:Tuple{Vararg{Integer,2}}}
-        @boundscheck any(k -> k < 0, sz) && throw(BoundsError())
-        new{T,SZ}(sz)
-    end
 
-    Eye{T}(sz::Vararg{Integer,2}) where {T} = Eye{T}(sz)
-end
-
-Eye{T}(n::Integer) where T = Eye{T}(n, n)
-Eye(n::Integer, m::Integer) = Eye{Float64}(n, m)
-Eye(sz::Tuple{Vararg{Integer,2}}) = Eye{Float64}(sz)
-Eye(n::Integer) = Eye(n, n)
+@deprecate Eye(n::Integer, m::Integer) view(Eye(max(n,m)), 1:n, 1:m)
+@deprecate Eye{T}(n::Integer, m::Integer) where T view(Eye{T}(max(n,m)), 1:n, 1:m)
+@deprecate Eye{T}(sz::Tuple{Vararg{Integer,2}}) where T Eye{T}(sz...)
+@deprecate Eye(sz::Tuple{Vararg{Integer,2}}) Eye{Float64}(sz...)
 
 @inline Eye{T}(A::AbstractMatrix) where T = Eye{T}(size(A))
 @inline Eye(A::AbstractMatrix) = Eye{eltype(A)}(size(A))
-
-size(E::Eye) = E.size
-rank(E::Eye) = minimum(size(E))
-
-@inline function getindex(E::Eye{T}, k::Integer, j::Integer) where T
-    @boundscheck checkbounds(E, k, j)
-    ifelse(k == j, one(T), zero(T))
-end
-
-IndexStyle(::Type{<:Eye}) = IndexCartesian()
-
-AbstractArray{T}(E::Eye{T}) where T = E
-AbstractMatrix{T}(E::Eye{T}) where T = E
-AbstractArray{T}(E::Eye) where T = Eye{T}(E.size)
-AbstractMatrix{T}(E::Eye) where T = Eye{T}(E.size)
-convert(::Type{AbstractArray{T}}, E::Eye{T}) where T = E
-convert(::Type{AbstractMatrix{T}}, E::Eye{T}) where T = E
-convert(::Type{AbstractArray{T}}, E::Eye) where T = Eye{T}(E.size)
-convert(::Type{AbstractMatrix{T}}, E::Eye) where T = Eye{T}(E.size)
-
 
 
 #########
@@ -221,10 +200,6 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     end
 end
 
-convert(::Type{Array},     E::Eye{T}) where T = Matrix{T}(I, E.size[1], E.size[2])
-convert(::Type{Array{T}},  E::Eye)    where T = Matrix{T}(I, E.size[1], E.size[2])
-convert(::Type{Matrix{T}}, E::Eye)    where T = Matrix{T}(I, E.size[1], E.size[2])
-
 function convert(::Type{Diagonal}, Z::Zeros{T,2}) where T
     n,m = size(Z)
     n ≠ m && throw(BoundsError(Z))
@@ -235,19 +210,6 @@ function convert(::Type{Diagonal{T}}, Z::Zeros{V,2}) where {T,V}
     n,m = size(Z)
     n ≠ m && throw(BoundsError(Z))
     Diagonal(zeros(T, n))
-end
-
-
-function convert(::Type{Diagonal}, E::Eye{T}) where T
-    n,m = size(E)
-    n ≠ m && throw(BoundsError(E))
-    Diagonal(ones(T, n))
-end
-
-function convert(::Type{Diagonal{T}}, E::Eye{V}) where {T,V}
-    n,m = size(E)
-    n ≠ m && throw(BoundsError(E))
-    Diagonal(ones(T, n))
 end
 
 ## Sparse arrays
