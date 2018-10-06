@@ -342,7 +342,7 @@ end
 @testset "maximum/minimum/svd/sort" begin
     @test maximum(Fill(1, 1_000_000_000)) == minimum(Fill(1, 1_000_000_000)) == 1
     @test svdvals(fill(2,5,6)) ≈ svdvals(Fill(2,5,6))
-    @test svdvals(Eye(5)) === Ones(5)
+    @test svdvals(Eye(5)) === Fill(1.0,5)
     @test sort(Ones(5)) == sort!(Ones(5))
 end
 
