@@ -9,7 +9,7 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle
 
 
 
-export Zeros, Ones, Fill, Eye
+export Zeros, Ones, Fill, Eye, EyeFill
 
 abstract type AbstractFill{T, N} <: AbstractArray{T, N} end
 
@@ -200,6 +200,52 @@ convert(::Type{AbstractMatrix{T}}, E::Eye) where T = Eye{T}(E.size)
 
 
 
+struct EyeFill{T, SZ} <: AbstractMatrix{T}
+    value::T
+    size::SZ
+
+    @inline function EyeFill{T}(value::T, sz::SZ) where {T,SZ<:Tuple{Vararg{Integer,2}}}
+        @boundscheck any(k -> k < 0, sz) && throw(BoundsError())
+        new{T,SZ}(value, sz)
+    end
+    @inline function EyeFill{T}(value, sz::SZ) where {T,SZ<:Tuple{Vararg{Integer,2}}}
+        EyeFill{T}(convert(T, value)::T, sz)
+    end
+
+    EyeFill{T}(value::T, sz::Vararg{Integer,2}) where {T} = EyeFill{T}(value, sz)
+    EyeFill{T}(value, sz::Vararg{Integer,2}) where {T} = EyeFill{T}(convert(T, value)::T, sz)
+end
+
+EyeFill{T}(value::T, n::Integer) where T = EyeFill{T}(value, n, n)
+EyeFill(value::T, n::Integer, m::Integer) where T = EyeFill{T}(value, n, m)
+EyeFill(value::T, sz::Tuple{Vararg{Integer,2}}) where T = EyeFill{T}(value, sz)
+EyeFill(value, n::Integer) = EyeFill(value, n, n)
+
+@inline EyeFill{T}(value::T, A::AbstractMatrix) where T = EyeFill{T}(value, size(A))
+@inline EyeFill(value::T, A::AbstractMatrix) where T = EyeFill{T}(value, size(A))
+EyeFill{T}(value, A::AbstractMatrix) where T = EyeFill{T}(convert(T, value)::T, size(A))
+
+size(E::EyeFill) = E.size
+rank(E::EyeFill) = minimum(size(E))
+
+@inline function getindex(E::EyeFill{T}, k::Integer, j::Integer) where T
+    @boundscheck checkbounds(E, k, j)
+    ifelse(k == j, E.value, zero(T))
+end
+
+IndexStyle(::Type{<:EyeFill}) = IndexCartesian()
+
+AbstractArray{T}(E::EyeFill{T}) where T = E
+AbstractMatrix{T}(E::EyeFill{T}) where T = E
+AbstractArray{T}(E::EyeFill) where T = EyeFill{T}(E.value, E.size)
+AbstractMatrix{T}(E::EyeFill) where T = EyeFill{T}(E.value, E.size)
+convert(::Type{AbstractArray{T}}, E::EyeFill{T}) where T = E
+convert(::Type{AbstractMatrix{T}}, E::EyeFill{T}) where T = E
+convert(::Type{AbstractArray{T}}, E::EyeFill) where T = EyeFill{T}(E.value, E.size)
+convert(::Type{AbstractMatrix{T}}, E::EyeFill) where T = EyeFill{T}(E.value, E.size)
+
+
+
 #########
 #  Special matrix types
 #########
@@ -225,6 +271,10 @@ convert(::Type{Array},     E::Eye{T}) where T = Matrix{T}(I, E.size[1], E.size[2
 convert(::Type{Array{T}},  E::Eye)    where T = Matrix{T}(I, E.size[1], E.size[2])
 convert(::Type{Matrix{T}}, E::Eye)    where T = Matrix{T}(I, E.size[1], E.size[2])
 
+convert(::Type{Array},     E::EyeFill{T}) where T = Matrix{T}(E.value * I, E.size[1], E.size[2])
+convert(::Type{Array{T}},  E::EyeFill)    where T = Matrix{T}(E.value * I, E.size[1], E.size[2])
+convert(::Type{Matrix{T}}, E::EyeFill)    where T = Matrix{T}(E.value * I, E.size[1], E.size[2])
+
 function convert(::Type{Diagonal}, Z::Zeros{T,2}) where T
     n,m = size(Z)
     n ≠ m && throw(BoundsError(Z))
@@ -248,6 +298,18 @@ function convert(::Type{Diagonal{T}}, E::Eye{V}) where {T,V}
     n,m = size(E)
     n ≠ m && throw(BoundsError(E))
     Diagonal(ones(T, n))
+end
+
+function convert(::Type{Diagonal}, E::EyeFill{T}) where T
+    n,m = size(E)
+    n ≠ m && throw(BoundsError(E))
+    Diagonal(fill(E.value, n))
+end
+
+function convert(::Type{Diagonal{T}}, E::EyeFill{V}) where {T,V}
+    n,m = size(E)
+    n ≠ m && throw(BoundsError(E))
+    Diagonal(fill(convert(T, E.value), n))
 end
 
 ## Sparse arrays
@@ -284,10 +346,24 @@ convert(::Type{AbstractSparseMatrix{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrix
 convert(::Type{AbstractSparseArray}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
 convert(::Type{AbstractSparseArray{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
 
+convert(::Type{SparseMatrixCSC}, Z::EyeFill{T}) where T = SparseMatrixCSC{T}(Z.value * I, size(Z)...)
+convert(::Type{SparseMatrixCSC{Tv}}, Z::EyeFill{T}) where {T,Tv} = SparseMatrixCSC{Tv}(Z.value * I, size(Z)...)
+convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::EyeFill{T}) where {T,Tv,Ti<:Integer} =
+    convert(SparseMatrixCSC{Tv,Ti}, SparseMatrixCSC{Tv}(Z.value * I, size(Z)...))
+
+convert(::Type{AbstractSparseMatrix}, Z::EyeFill{T}) where {T} = SparseMatrixCSC{T}(Z.value * I, size(Z)...)
+convert(::Type{AbstractSparseMatrix{Tv}}, Z::EyeFill{T}) where {T,Tv} = SparseMatrixCSC{Tv}(Z.value * I, size(Z)...)
+
+convert(::Type{AbstractSparseArray}, Z::EyeFill{T}) where T = SparseMatrixCSC{T}(Z.value * I, size(Z)...)
+convert(::Type{AbstractSparseArray{Tv}}, Z::EyeFill{T}) where {T,Tv} = SparseMatrixCSC{Tv}(Z.value * I, size(Z)...)
 
 convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
     convert(SparseMatrixCSC{Tv,Ti}, Z)
 convert(::Type{AbstractSparseArray{Tv,Ti,2}}, Z::Eye{T}) where {T,Tv,Ti} =
+    convert(SparseMatrixCSC{Tv,Ti}, Z)
+convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::EyeFill{T}) where {T,Tv,Ti} =
+    convert(SparseMatrixCSC{Tv,Ti}, Z)
+convert(::Type{AbstractSparseArray{Tv,Ti,2}}, Z::EyeFill{T}) where {T,Tv,Ti} =
     convert(SparseMatrixCSC{Tv,Ti}, Z)
 
 ## Algebraic identities

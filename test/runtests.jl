@@ -58,7 +58,7 @@ import FillArrays: AbstractFill
     @test_throws InexactError Matrix{Float64}(Fill(1.0+1.0im,10,10))
 
 
-    for T in (Int, Float64)
+    @testset "Fill{$T}" for T in (Int, Float64)
         F = Fill{T}(one(T), 5)
 
         @test eltype(F) == T
@@ -88,7 +88,7 @@ import FillArrays: AbstractFill
     @test Eye(5,5) == Eye(5) == Eye((5,5)) == Eye{Float64}(5) == Eye{Float64}(5, 5)
     @test eltype(Eye(5,5)) == Float64
 
-    for T in (Int, Float64)
+    @testset "Eye{$T}" for T in (Int, Float64)
         E = Eye{T}(5, 5)
         M = Matrix{T}(I, 5, 5)
 
@@ -107,6 +107,27 @@ import FillArrays: AbstractFill
 
         @test Eye{T}(ones(T, 5, 5)) == E
         @test Eye(ones(T, 5, 5)) == E
+    end
+
+    @testset "EyeFill{$T}" for T in (Int, Float64)
+        E = EyeFill{T}(3, 5, 5)
+        M = Matrix{T}(3I, 5, 5)
+
+        @test eltype(E) == T
+        @test Array(E) == M
+        @test Array{T}(E) == M
+        @test Array{T,2}(E) == M
+
+        @test convert(AbstractArray,E) === E
+        @test convert(AbstractArray{T},E) === E
+        @test convert(AbstractMatrix{T},E) === E
+
+
+        @test AbstractArray{Float32}(E) == EyeFill{Float32}(3f0, 5, 5)
+        @test AbstractArray{Float32,2}(E) == EyeFill{Float32}(3f0, 5, 5)
+
+        @test EyeFill{T}(3, ones(T, 5, 5)) == E
+        @test EyeFill(3, ones(T, 5, 5)) == E
     end
 
     @testset "Bool should change type" begin
