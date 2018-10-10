@@ -1,12 +1,10 @@
-
 using FillArrays, LinearAlgebra, SparseArrays, Random, Test
-
 import FillArrays: AbstractFill
 
 @testset "fill array constructors and convert" begin
     for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
         @eval begin
-            @test_throws BoundsError $Typ((-1,5))
+            @test $Typ((-1,5)) == $Typ((0,5))
             @test $Typ(5) isa AbstractVector{Float64}
             @test $Typ(5,5) isa AbstractMatrix{Float64}
             @test $Typ(5) == $Typ((5,))
@@ -49,7 +47,7 @@ import FillArrays: AbstractFill
         end
     end
 
-    @test_throws BoundsError Fill(1,(-1,5))
+    @test Fill(1,(-1,5)) ≡ Fill(1,(0,5))
     @test Fill(1.0,5) isa AbstractVector{Float64}
     @test Fill(1.0,5,5) isa AbstractMatrix{Float64}
     @test Fill(1,5) == Fill(1,(5,))
@@ -419,4 +417,19 @@ end
     @test A[[true false; true false]] ≡ Zeros{Int}(2)
     @test A[[true, false, true, false]] ≡ Zeros{Int}(2)
     @test_throws DimensionMismatch A[[true false false; true false false]]
+end
+
+
+@testset "Offset indexing" begin
+    A = Fill(3, (Base.Slice(-1:1),))
+    @test axes(A)  == (Base.Slice(-1:1),)
+    @test A[0] == 3
+    @test_throws BoundsError A[2]
+    @test_throws BoundsError A[-2]
+
+    A = Zeros((Base.Slice(-1:1),))
+    @test axes(A)  == (Base.Slice(-1:1),)
+    @test A[0] == 0
+    @test_throws BoundsError A[2]
+    @test_throws BoundsError A[-2]
 end

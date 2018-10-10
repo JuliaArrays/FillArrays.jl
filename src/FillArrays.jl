@@ -2,7 +2,8 @@ module FillArrays
 
 using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
-                +, -, *, /, \, sum, cumsum, maximum, minimum, sort, sort!
+                +, -, *, /, \, sum, cumsum, maximum, minimum, sort, sort!,
+                axes
 import LinearAlgebra: rank, svdvals!
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle
@@ -29,32 +30,38 @@ rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
 IndexStyle(::Type{<:AbstractFill}) = IndexLinear()
 
 
-struct Fill{T, N, SZ} <: AbstractFill{T, N}
+struct Fill{T, N, Axes} <: AbstractFill{T, N}
     value::T
-    size::SZ
+    axes::Axes
 
-    @inline function Fill{T,N,SZ}(x::T, sz::SZ) where SZ<:Tuple{Vararg{Integer,N}} where {T, N}
-        @boundscheck any(k -> k < 0, sz) && throw(BoundsError())
-        new{T,N,SZ}(x,sz)
-    end
-    @inline Fill{T, N}(x::T, sz::SZ) where SZ<:Tuple{Vararg{Integer,N}} where {T, N} = Fill{T,N,SZ}(x, sz)
-    @inline Fill{T, N}(x, sz::SZ) where SZ<:Tuple{Vararg{Integer,N}} where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
-    @inline Fill{T, N}(x, sz::Vararg{Integer, N}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
+    Fill{T,N,Axes}(x::T, sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
+        new{T,N,Axes}(x,sz)
 end
+
+@inline Fill{T, N}(x::T, sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
+    Fill{T,N,Axes}(x, sz)
+@inline Fill{T, N}(x, sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
+    Fill{T,N}(convert(T, x)::T, sz)
+
+@inline Fill{T, N}(x, sz::SZ) where SZ<:Tuple{Vararg{Integer,N}} where {T, N} =
+    Fill{T,N}(x, Base.OneTo.(sz))
+@inline Fill{T, N}(x, sz::Vararg{Integer, N}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
 
 
 @inline Fill{T}(x, sz::Vararg{<:Integer,N}) where {T, N} = Fill{T, N}(x, sz)
-@inline Fill{T}(x, sz::Tuple{Vararg{Integer,N}}) where {T, N} = Fill{T, N}(x, sz)
+@inline Fill{T}(x, sz::Tuple{Vararg{<:Any,N}}) where {T, N} = Fill{T, N}(x, sz)
 @inline Fill(x::T, sz::Vararg{<:Integer,N}) where {T, N}  = Fill{T, N}(x, sz)
-@inline Fill(x::T, sz::Tuple{Vararg{Integer,N}}) where {T, N}  = Fill{T, N}(x, sz)
+@inline Fill(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T, N}  = Fill{T, N}(x, sz)
 
-@inline size(F::Fill) = F.size
+@inline axes(F::Fill) = F.axes
+@inline size(F::Fill) = length.(F.axes)
+
 @inline getindex_value(F::Fill) = F.value
 
 AbstractArray{T}(F::Fill{T}) where T = F
 AbstractArray{T,N}(F::Fill{T,N}) where {T,N} = F
-AbstractArray{T}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.size)
-AbstractArray{T,N}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.size)
+AbstractArray{T}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
+AbstractArray{T,N}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 
 convert(::Type{AbstractArray{T}}, F::Fill{T}) where T = F
 convert(::Type{AbstractArray{T,N}}, F::Fill{T,N}) where {T,N} = F
@@ -112,31 +119,31 @@ end
 
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     @eval begin
-        struct $Typ{T, N, SZ} <: AbstractFill{T, N}
-            size::SZ
-            @inline function $Typ{T, N}(sz::SZ) where SZ<:Tuple{Vararg{Integer,N}} where {T, N}
-                @boundscheck any(k -> k < 0, sz) && throw(BoundsError())
-                new{T,N,SZ}(sz)
-            end
-            @inline $Typ{T, N}(sz::Vararg{<:Integer, N}) where {T, N} = $Typ(sz)
+        struct $Typ{T, N, Axes} <: AbstractFill{T, N}
+            axes::Axes
+            @inline $Typ{T, N}(sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
+                new{T,N,Axes}(sz)
         end
 
+        @inline $Typ{T, N}(sz::Tuple{Vararg{<:Integer, N}}) where {T, N} = $Typ{T,N}(Base.OneTo.(sz))
+        @inline $Typ{T, N}(sz::Vararg{<:Integer, N}) where {T, N} = $Typ{T,N}(sz)
         @inline $Typ{T}(sz::Vararg{Integer,N}) where {T, N} = $Typ{T, N}(sz)
-        @inline $Typ{T}(sz::SZ) where SZ<:Tuple{Vararg{Integer,N}} where {T, N} = $Typ{T, N}(sz)
-        @inline $Typ(sz::Vararg{Integer,N}) where N = $Typ{Float64,N}(sz)
-        @inline $Typ(sz::SZ) where SZ<:Tuple{Vararg{Integer,N}} where N = $Typ{Float64,N}(sz)
+        @inline $Typ{T}(sz::SZ) where SZ<:Tuple{Vararg{Any,N}} where {T, N} = $Typ{T, N}(sz)
+        @inline $Typ(sz::Vararg{Any,N}) where N = $Typ{Float64,N}(sz)
+        @inline $Typ(sz::SZ) where SZ<:Tuple{Vararg{Any,N}} where N = $Typ{Float64,N}(sz)
 
         @inline $Typ{T,N}(A::AbstractArray{V,N}) where{T,V,N} = $Typ{T,N}(size(A))
         @inline $Typ{T}(A::AbstractArray) where{T} = $Typ{T}(size(A))
         @inline $Typ(A::AbstractArray) = $Typ(size(A))
 
-        @inline size(Z::$Typ) = Z.size
+        @inline axes(Z::$Typ) = Z.axes
+        @inline size(Z::$Typ) = length.(Z.axes)
         @inline getindex_value(Z::$Typ{T}) where T = $func(T)
 
         AbstractArray{T}(F::$Typ{T}) where T = F
         AbstractArray{T,N}(F::$Typ{T,N}) where {T,N} = F
-        AbstractArray{T}(F::$Typ) where T = $Typ{T}(F.size)
-        AbstractArray{T,N}(F::$Typ{V,N}) where {T,V,N} = $Typ{T}(F.size)
+        AbstractArray{T}(F::$Typ) where T = $Typ{T}(F.axes)
+        AbstractArray{T,N}(F::$Typ{V,N}) where {T,V,N} = $Typ{T}(F.axes)
         convert(::Type{AbstractArray{T}}, F::$Typ{T}) where T = AbstractArray{T}(F)
         convert(::Type{AbstractArray{T,N}}, F::$Typ{T,N}) where {T,N} = AbstractArray{T,N}(F)
         convert(::Type{AbstractArray{T}}, F::$Typ) where T = AbstractArray{T}(F)
@@ -163,7 +170,7 @@ rank(F::Zeros) = 0
 rank(F::Ones) = 1
 
 
-const Eye{T, SZ} = Diagonal{T, Ones{T,1,SZ}}
+const Eye{T, Axes} = Diagonal{T, Ones{T,1,Axes}}
 
 Eye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
 Eye(n::Integer) = Diagonal(Ones(n))
