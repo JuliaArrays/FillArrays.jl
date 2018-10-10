@@ -12,7 +12,7 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle
 
 export Zeros, Ones, Fill, Eye
 
-abstract type AbstractFill{T, N} <: AbstractArray{T, N} end
+abstract type AbstractFill{T, N, Axes} <: AbstractArray{T, N} end
 
 
 @inline function getindex(F::AbstractFill, k::Integer)
@@ -26,11 +26,10 @@ end
 end
 
 rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
+IndexStyle(::Type{<:AbstractFill{<:Any,N,<:NTuple{N,Base.OneTo{Int}}}}) where N = IndexLinear()
 
-IndexStyle(::Type{<:AbstractFill}) = IndexLinear()
 
-
-struct Fill{T, N, Axes} <: AbstractFill{T, N}
+struct Fill{T, N, Axes} <: AbstractFill{T, N, Axes}
     value::T
     axes::Axes
 
@@ -95,8 +94,8 @@ svdvals!(a::AbstractFill{<:Any,2}) = [getindex_value(a)*sqrt(prod(size(a))); Zer
 
 # Fill +/- Fill
 function +(a::AbstractFill{T, N}, b::AbstractFill{V, N}) where {T, V, N}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return Fill(getindex_value(a) + getindex_value(b), size(a))
+    axes(a) ≠ axes(b) && throw(DimensionMismatch("dimensions must match."))
+    return Fill(getindex_value(a) + getindex_value(b), axes(a))
 end
 -(a::AbstractFill, b::AbstractFill) = a + (-b)
 
@@ -119,7 +118,7 @@ end
 
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     @eval begin
-        struct $Typ{T, N, Axes} <: AbstractFill{T, N}
+        struct $Typ{T, N, Axes} <: AbstractFill{T, N, Axes}
             axes::Axes
             @inline $Typ{T, N}(sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
                 new{T,N,Axes}(sz)
@@ -170,7 +169,7 @@ rank(F::Zeros) = 0
 rank(F::Ones) = 1
 
 
-const Eye{T, Axes} = Diagonal{T, Ones{T,1,Axes}}
+const Eye{T, Axes} = Diagonal{T, Ones{T,1,Tuple{Axes}}}
 
 Eye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
 Eye(n::Integer) = Diagonal(Ones(n))
