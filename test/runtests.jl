@@ -85,13 +85,12 @@ import FillArrays: AbstractFill
                 Fill{Float32}(one(Float32),5,5)
     end
 
-    @test_throws BoundsError Eye((-1,5))
-    @test Eye(5,5) isa AbstractMatrix{Float64}
-    @test Eye(5,5) == Eye(5) == Eye((5,5)) == Eye{Float64}(5) == Eye{Float64}(5, 5)
-    @test eltype(Eye(5,5)) == Float64
+    @test Eye(5) isa Diagonal{Float64}
+    @test Eye(5) == Eye{Float64}(5)
+    @test eltype(Eye(5)) == Float64
 
     for T in (Int, Float64)
-        E = Eye{T}(5, 5)
+        E = Eye{T}(5)
         M = Matrix{T}(I, 5, 5)
 
         @test eltype(E) == T
@@ -104,11 +103,7 @@ import FillArrays: AbstractFill
         @test convert(AbstractMatrix{T},E) === E
 
 
-        @test AbstractArray{Float32}(E) == Eye{Float32}(5,5)
-        @test AbstractArray{Float32,2}(E) == Eye{Float32}(5,5)
-
-        @test Eye{T}(ones(T, 5, 5)) == E
-        @test Eye(ones(T, 5, 5)) == E
+        @test AbstractArray{Float32}(E) == Eye{Float32}(5)
     end
 
     @testset "Bool should change type" begin
@@ -195,12 +190,8 @@ end
     @test_throws BoundsError convert(Diagonal{Int}, Zeros(8,5))
 
 
-    @test Diagonal(Eye(8,5)) == Diagonal(ones(5))
     @test convert(Diagonal, Eye(5)) == Diagonal(ones(5))
-    @test_throws BoundsError convert(Diagonal, Eye(8,5))
-
     @test convert(Diagonal{Int}, Eye(5)) == Diagonal(ones(Int,5))
-    @test_throws BoundsError convert(Diagonal{Int}, Eye(8,5))
 end
 
 @testset "Sparse vectors and matrices" begin
@@ -215,7 +206,7 @@ end
             spzeros(5)
 
     for (Mat, SMat) in ((Zeros(5,5), spzeros(5,5)), (Zeros(6,5), spzeros(6,5)),
-                        (Eye(5), sparse(I,5,5)), (Eye(6,5), sparse(I,6,5)))
+                        (Eye(5), sparse(I,5,5)))
         @test SparseMatrixCSC(Mat) ==
                 SparseMatrixCSC{Float64}(Mat) ==
                 SparseMatrixCSC{Float64,Int}(Mat) ==
@@ -234,7 +225,7 @@ end
     @test rank(Ones(5,4)) == 1
     @test rank(Fill(2,5,4)) == 1
     @test rank(Fill(0,5,4)) == 0
-    @test rank(Eye(2,5)) == rank(Eye(5,2)) == rank(Eye(2)) == 2
+    @test rank(Eye(2)) == 2
 end
 
 @testset "BigInt indices" begin
@@ -248,7 +239,7 @@ end
         @test axes(A) == tuple(Base.OneTo{BigInt}(BigInt(100)),Base.OneTo{BigInt}(BigInt(100)))
         @test size(A) isa Tuple{BigInt,BigInt}
     end
-    for A in (Zeros(BigInt(10), 10), Ones(BigInt(10), 10), Fill(2.0, (BigInt(10), 10)), Eye(BigInt(10), 10))
+    for A in (Zeros(BigInt(10), 10), Ones(BigInt(10), 10), Fill(2.0, (BigInt(10), 10)))
         @test size(A) isa Tuple{BigInt,Int}
     end
 
@@ -348,8 +339,11 @@ end
     @test Zeros(5) - (1:5) === -1.0:-1.0:-5.0
 end
 
-@testset "maximum/minimum" begin
+@testset "maximum/minimum/svd/sort" begin
     @test maximum(Fill(1, 1_000_000_000)) == minimum(Fill(1, 1_000_000_000)) == 1
+    @test svdvals(fill(2,5,6)) ≈ svdvals(Fill(2,5,6))
+    @test svdvals(Eye(5)) === Fill(1.0,5)
+    @test sort(Ones(5)) == sort!(Ones(5))
 end
 
 @testset "Cumsum" begin
