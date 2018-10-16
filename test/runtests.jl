@@ -433,3 +433,20 @@ end
     @test_throws BoundsError A[2]
     @test_throws BoundsError A[-2]
 end
+
+@testset "0-dimensional" begin
+    A = Fill{Int,0,Tuple{}}(3, ())
+
+    @test A[] ≡ A[1] ≡ 3
+    @test A ≡ Fill{Int,0}(3, ()) ≡ Fill(3, ()) ≡ Fill(3)
+    @test size(A) == ()
+    @test axes(A) == ()
+
+    A = Ones{Int,0,Tuple{}}(())
+    @test A[] ≡ A[1] ≡ 1
+    @test A ≡ Ones{Int,0}(()) ≡ Ones{Int}(()) ≡ Ones{Int}()
+
+    A = Zeros{Int,0,Tuple{}}(())
+    @test A[] ≡ A[1] ≡ 0
+    @test A ≡ Zeros{Int,0}(()) ≡ Zeros{Int}(()) ≡ Zeros{Int}()
+end

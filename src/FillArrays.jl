@@ -35,7 +35,10 @@ struct Fill{T, N, Axes} <: AbstractFill{T, N, Axes}
 
     Fill{T,N,Axes}(x::T, sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
         new{T,N,Axes}(x,sz)
+    Fill{T,0,Tuple{}}(x::T, sz::Tuple{}) where T = new{T,0,Tuple{}}(x,sz)
 end
+
+Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
 
 @inline Fill{T, N}(x::T, sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
     Fill{T,N,Axes}(x, sz)
@@ -70,6 +73,8 @@ convert(::Type{AbstractFill}, F::AbstractFill) = F
 convert(::Type{AbstractFill{T}}, F::AbstractFill) where T = convert(AbstractArray{T}, F)
 convert(::Type{AbstractFill{T,N}}, F::AbstractFill) where {T,N} = convert(AbstractArray{T,N}, F)
 
+
+getindex(F::Fill{<:Any,0}) = getindex_value(F)
 
 function getindex(F::Fill, kj::Vararg{AbstractVector{II},N}) where {II<:Integer,N}
     checkbounds(F, kj...)
@@ -122,8 +127,11 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
             axes::Axes
             @inline $Typ{T, N}(sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
                 new{T,N,Axes}(sz)
+            @inline $Typ{T,0,Tuple{}}(sz::Tuple{}) where T = new{T,0,Tuple{}}(sz)
         end
 
+
+        @inline $Typ{T, 0}(sz::Tuple{}) where {T} = $Typ{T,0,Tuple{}}(sz)
         @inline $Typ{T, N}(sz::Tuple{Vararg{<:Integer, N}}) where {T, N} = $Typ{T,N}(Base.OneTo.(sz))
         @inline $Typ{T, N}(sz::Vararg{<:Integer, N}) where {T, N} = $Typ{T,N}(sz)
         @inline $Typ{T}(sz::Vararg{Integer,N}) where {T, N} = $Typ{T, N}(sz)
@@ -148,6 +156,7 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         convert(::Type{AbstractArray{T}}, F::$Typ) where T = AbstractArray{T}(F)
         convert(::Type{AbstractArray{T,N}}, F::$Typ) where {T,N} = AbstractArray{T,N}(F)
 
+        getindex(F::$Typ{T,0}) where T = getindex_value(F)
         function getindex(F::$Typ{T}, kj::Vararg{AbstractVector{II},N}) where {T,II<:Integer,N}
             checkbounds(F, kj...)
             $Typ{T}(length.(kj))
