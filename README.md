@@ -23,43 +23,43 @@ julia> BandedMatrix(Zeros(5,5), (1, 2))
 
 Here are the matrix type4s:
 ```julia
-julia> Zeros(5, 5)
-5×5 FillArrays.Zeros{Float64,2}:
- 0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0
+julia> Zeros(5, 6)
+5×6 Zeros{Float64,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}:
+ 0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0
 
-julia> Zeros{Int}(5, 5)
-5×5 FillArrays.Zeros{Int64,2}:
- 0  0  0  0  0
- 0  0  0  0  0
- 0  0  0  0  0
- 0  0  0  0  0
- 0  0  0  0  0
+ julia> Zeros{Int}(5, 6)
+ 5×6 Zeros{Int64,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}:
+  0  0  0  0  0  0
+  0  0  0  0  0  0
+  0  0  0  0  0  0
+  0  0  0  0  0  0
+  0  0  0  0  0  0
 
 julia> Ones{Int}(5)
-5-element FillArrays.Ones{Int64,1}:
+5-element Ones{Int64,1,Tuple{Base.OneTo{Int64}}}:
  1
  1
  1
  1
  1
 
-julia> Eye{Int}(5,6)
-5×6 FillArrays.Eye{Int64}:
- 1  0  0  0  0  0
- 0  1  0  0  0  0
- 0  0  1  0  0  0
- 0  0  0  1  0  0
- 0  0  0  0  1  0
+ julia> Eye{Int}(5)
+ 5×5 Diagonal{Int64,Ones{Int64,1,Tuple{Base.OneTo{Int64}}}}:
+  1  ⋅  ⋅  ⋅  ⋅
+  ⋅  1  ⋅  ⋅  ⋅
+  ⋅  ⋅  1  ⋅  ⋅
+  ⋅  ⋅  ⋅  1  ⋅
+  ⋅  ⋅  ⋅  ⋅  1
 
-julia> Fill(5.0f0, 3)
-3-element FillArrays.Fill{Float32,1}:
- 5.0
- 5.0
- 5.0
+julia> Fill(5.0f0, 3, 2)
+3×2 Fill{Float32,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}:
+ 5.0  5.0
+ 5.0  5.0
+ 5.0  5.0
 ```
 
 They support conversion to other matrix types like `Array`, `SparseVector`, `SparseMatrix`, and `Diagonal`:
@@ -74,12 +74,16 @@ julia> Matrix(Zeros(5, 5))
 
 julia> SparseMatrixCSC(Zeros(5, 5))
 5×5 SparseMatrixCSC{Float64,Int64} with 0 stored entries
+```
 
-julia> Diagonal(Eye(5))
-5×5 Diagonal{Float64}:
- 1.0   ⋅    ⋅    ⋅    ⋅
-  ⋅   1.0   ⋅    ⋅    ⋅
-  ⋅    ⋅   1.0   ⋅    ⋅
-  ⋅    ⋅    ⋅   1.0   ⋅
-  ⋅    ⋅    ⋅    ⋅   1.0
+There is also support for offset index ranges:
+```julia
+julia> Ones((-3:2, 1:2))
+Ones{Float64,2,Tuple{UnitRange{Int64},UnitRange{Int64}}} with indices -3:2×1:2:
+ 1.0  1.0
+ 1.0  1.0
+ 1.0  1.0
+ 1.0  1.0
+ 1.0  1.0
+ 1.0  1.0
 ```
