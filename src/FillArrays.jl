@@ -415,4 +415,11 @@ cumsum(x::Ones{II}) where II<:Integer = Base.OneTo{II}(length(x))
 cumsum(x::Ones{Bool}) = Base.OneTo{Int}(length(x))
 cumsum(x::AbstractFill{Bool}) = cumsum(convert(AbstractFill{Int}, x))
 
+#########
+# unique
+#########
+
+unique(x::AbstractFill{T}) where T = isempty(x) ? T[] : T[getindex_value(x)]
+allunique(x::AbstractFill) = length(x) < 2
+           
 end # module
