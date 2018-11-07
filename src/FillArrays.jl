@@ -3,7 +3,7 @@ module FillArrays
 using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
                 +, -, *, /, \, sum, cumsum, maximum, minimum, sort, sort!,
-                axes
+                axes, unique, allunique
 import LinearAlgebra: rank, svdvals!
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle
