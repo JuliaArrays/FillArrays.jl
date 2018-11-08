@@ -35,7 +35,11 @@ import FillArrays: AbstractFill
                 @test convert(AbstractArray,Z) ≡ convert(AbstractFill,Z) ≡ Z
                 @test convert(AbstractArray{T},Z) ≡ convert(AbstractFill{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
                 @test convert(AbstractMatrix{T},Z) ≡ convert(AbstractFill{T,2},Z) ≡ AbstractMatrix{T}(Z) ≡ Z
-
+                
+                @test_throws Exception convert(Fill{Float64}, [1,1,2])
+                @test_throws Exception convert(Fill, [])
+                @test convert(Fill{Float64}, [1,1,1]) ≡ Fill(1.0, 3)
+                @test convert(Fill, Float64[1,1,1]) ≡ Fill(1.0, 3)
 
                 @test $Typ{T,2}(2ones(T,5,5)) == Z
                 @test $Typ{T}(2ones(T,5,5)) == Z
