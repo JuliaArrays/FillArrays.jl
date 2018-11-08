@@ -40,6 +40,7 @@ import FillArrays: AbstractFill
                 @test_throws Exception convert(Fill, [])
                 @test convert(Fill{Float64}, [1,1,1]) ≡ Fill(1.0, 3)
                 @test convert(Fill, Float64[1,1,1]) ≡ Fill(1.0, 3)
+                @test convert(Fill{Float64}, Fill(1.0,2)) ≡ Fill(1.0, 2) # was ambiguous
 
                 @test $Typ{T,2}(2ones(T,5,5)) == Z
                 @test $Typ{T}(2ones(T,5,5)) == Z

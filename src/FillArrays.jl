@@ -86,6 +86,7 @@ function unique_value(arr::AbstractArray)
 end
 convert(::Type{Fill}, arr::AbstractArray{T}) where T = Fill{T}(unique_value(arr), axes(arr))
 convert(::Type{Fill{T}}, arr::AbstractArray) where T = Fill{T}(unique_value(arr), axes(arr))
+convert(::Type{T}, F::T) where T<:Fill = F   # ambiguity fix
 
 
 
