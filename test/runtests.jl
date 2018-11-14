@@ -35,7 +35,13 @@ import FillArrays: AbstractFill
                 @test convert(AbstractArray,Z) ≡ convert(AbstractFill,Z) ≡ Z
                 @test convert(AbstractArray{T},Z) ≡ convert(AbstractFill{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
                 @test convert(AbstractMatrix{T},Z) ≡ convert(AbstractFill{T,2},Z) ≡ AbstractMatrix{T}(Z) ≡ Z
-
+                
+                @test_throws Exception convert(Fill{Float64}, [1,1,2])
+                @test_throws Exception convert(Fill, [])
+                @test convert(Fill{Float64}, [1,1,1]) ≡ Fill(1.0, 3)
+                @test convert(Fill, Float64[1,1,1]) ≡ Fill(1.0, 3)
+                @test convert(Fill{Float64}, Fill(1.0,2)) ≡ Fill(1.0, 2) # was ambiguous
+                @test convert(Fill{Int}, Ones(20)) ≡ Fill(1, 20)
 
                 @test $Typ{T,2}(2ones(T,5,5)) == Z
                 @test $Typ{T}(2ones(T,5,5)) == Z
@@ -419,7 +425,6 @@ end
     @test_throws DimensionMismatch A[[true false false; true false false]]
 end
 
-
 @testset "Offset indexing" begin
     A = Fill(3, (Base.Slice(-1:1),))
     @test axes(A)  == (Base.Slice(-1:1),)
@@ -457,4 +462,10 @@ end
     @test unique(Zeros(0)) isa Vector{Float64}
     @test !allunique(Fill("a", 2))
     @test allunique(Ones(0))
+end
+
+@testset "Zero .*" begin
+    @test (1:10) .* Zeros(10) ≡ Zeros(10) .* (1:10) ≡ Zeros(10) .* randn(10) ≡ Zeros(10)
+    @test (1:10) .* Zeros{Int}(10) ≡ Zeros{Int}(10)
+    @test_throws DimensionMismatch (1:11) .* Zeros(10)
 end
