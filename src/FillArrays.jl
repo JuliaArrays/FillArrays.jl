@@ -73,6 +73,23 @@ convert(::Type{AbstractFill}, F::AbstractFill) = F
 convert(::Type{AbstractFill{T}}, F::AbstractFill) where T = convert(AbstractArray{T}, F)
 convert(::Type{AbstractFill{T,N}}, F::AbstractFill) where {T,N} = convert(AbstractArray{T,N}, F)
 
+""" Throws an error if `arr` does not contain one and only one unique value. """
+function unique_value(arr::AbstractArray)
+    if isempty(arr) error("Cannot convert empty array to Fill") end
+    val = first(arr)
+    for x in arr
+        if x !== val
+            error("Input array contains both $x and $val. Cannot convert to Fill")
+        end
+    end
+    return val
+end
+unique_value(f::AbstractFill) = getindex_value(f)
+convert(::Type{Fill}, arr::AbstractArray{T}) where T = Fill{T}(unique_value(arr), axes(arr))
+convert(::Type{Fill{T}}, arr::AbstractArray) where T = Fill{T}(unique_value(arr), axes(arr))
+convert(::Type{T}, F::T) where T<:Fill = F   # ambiguity fix
+
+
 
 getindex(F::Fill{<:Any,0}) = getindex_value(F)
 
