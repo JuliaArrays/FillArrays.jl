@@ -419,7 +419,6 @@ end
     @test_throws DimensionMismatch A[[true false false; true false false]]
 end
 
-
 @testset "Offset indexing" begin
     A = Fill(3, (Base.Slice(-1:1),))
     @test axes(A)  == (Base.Slice(-1:1),)
@@ -449,4 +448,10 @@ end
     A = Zeros{Int,0,Tuple{}}(())
     @test A[] ≡ A[1] ≡ 0
     @test A ≡ Zeros{Int,0}(()) ≡ Zeros{Int}(()) ≡ Zeros{Int}()
+end
+
+@testset "Zero .*" begin
+    @test (1:10) .* Zeros(10) ≡ Zeros(10) .* (1:10) ≡ Zeros(10) .* randn(10) ≡ Zeros(10)
+    @test (1:10) .* Zeros{Int}(10) ≡ Zeros{Int}(10)
+    @test_throws DimensionMismatch (1:11) .* Zeros(10)
 end
