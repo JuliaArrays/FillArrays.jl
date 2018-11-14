@@ -3,7 +3,7 @@ module FillArrays
 using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
                 +, -, *, /, \, sum, cumsum, maximum, minimum, sort, sort!,
-                axes
+                axes, unique, allunique
 import LinearAlgebra: rank, svdvals!
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle
@@ -309,6 +309,14 @@ cumsum(x::Zeros{Bool}) = x
 cumsum(x::Ones{II}) where II<:Integer = Base.OneTo{II}(length(x))
 cumsum(x::Ones{Bool}) = Base.OneTo{Int}(length(x))
 cumsum(x::AbstractFill{Bool}) = cumsum(convert(AbstractFill{Int}, x))
+
+#########
+# unique
+#########
+
+unique(x::AbstractFill{T}) where T = isempty(x) ? T[] : T[getindex_value(x)]
+allunique(x::AbstractFill) = length(x) < 2
+           
 
 include("fillalgebra.jl")
 include("fillbroadcast.jl")

@@ -456,6 +456,14 @@ end
     @test A ≡ Zeros{Int,0}(()) ≡ Zeros{Int}(()) ≡ Zeros{Int}()
 end
 
+@testset "unique" begin
+    @test unique(Fill(12, 20)) == unique(fill(12, 20))
+    @test unique(Fill(1, 0)) == []
+    @test unique(Zeros(0)) isa Vector{Float64}
+    @test !allunique(Fill("a", 2))
+    @test allunique(Ones(0))
+end
+
 @testset "Zero .*" begin
     @test (1:10) .* Zeros(10) ≡ Zeros(10) .* (1:10) ≡ Zeros(10) .* randn(10) ≡ Zeros(10)
     @test (1:10) .* Zeros{Int}(10) ≡ Zeros{Int}(10)
