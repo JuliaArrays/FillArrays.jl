@@ -15,6 +15,10 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
 export Zeros, Ones, Fill, Eye
 
+if !isdefined(Base, :eye)
+    export eye
+end
+
 abstract type AbstractFill{T, N, Axes} <: AbstractArray{T, N} end
 
 
@@ -201,10 +205,16 @@ rank(F::Ones) = 1
 const Eye{T, Axes} = Diagonal{T, Ones{T,1,Tuple{Axes}}}
 const SubEye{T, EyeAxes, Axes<:NTuple{2, AbstractUnitRange}} = SubArray{T,2,Eye{T,EyeAxes},Axes,false}
 
-Eye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
-Eye(n::Integer) = Diagonal(Ones(n))
-Eye(n::Integer, m::Integer) = view(Eye(max(n,m)), Base.OneTo(n), Base.OneTo(m))
-Eye{T}(n::Integer, m::Integer) where T = view(Eye{T}(max(n,m)), Base.OneTo(n), Base.OneTo(m))
+@deprecate Eye{T}(n::Integer) where T eye(T, n)
+@deprecate Eye(n::Integer) eye(n)
+@deprecate Eye(n::Integer, m::Integer) eye(n, m)
+@deprecate Eye{T}(n::Integer, m::Integer) where T eye(T, n, m)
+
+@deprecate Eye{T}(sz::Tuple{Vararg{Integer,2}}) where T eye(T, sz...)
+@deprecate Eye(sz::Tuple{Vararg{Integer,2}}) eye(Float64, sz...)
+
+@deprecate Eye{T}(A::AbstractMatrix) where T eye(T, A)
+@deprecate Eye(A::AbstractMatrix) eye(A)
 
 function iterate(iter::Eye, istate = (1, 1))
     (i::Int, j::Int) = istate
@@ -220,12 +230,14 @@ for f in (:permutedims, :triu, :triu!, :tril, :tril!, :inv)
     @eval ($f)(IM::Eye) = IM
 end
 
-@deprecate Eye{T}(sz::Tuple{Vararg{Integer,2}}) where T Eye{T}(sz...)
-@deprecate Eye(sz::Tuple{Vararg{Integer,2}}) Eye{Float64}(sz...)
 
-@inline Eye{T}(A::AbstractMatrix) where T = Eye{T}(size(A))
-@inline Eye(A::AbstractMatrix) = Eye{eltype(A)}(size(A))
+eye(n::Integer) = Diagonal(Ones(n))
+eye(::Type{T}, n::Integer) where T = Diagonal(Ones{T}(n))
+eye(n::Integer, m::Integer) = view(eye(max(n,m)), Base.OneTo(n), Base.OneTo(m))
+eye(::Type{T}, n::Integer, m::Integer) where T = view(eye(T,max(n,m)), Base.OneTo(n), Base.OneTo(m))
 
+@inline eye(A::AbstractMatrix) = eye(eltype(A), A)
+@inline eye(::Type{T}, A::AbstractMatrix) where T = eye(T, size(A, 1), size(A, 2))
 
 #########
 #  Special matrix types

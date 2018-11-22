@@ -1,4 +1,5 @@
 using FillArrays, LinearAlgebra, SparseArrays, Random, Test
+using FillArrays: eye
 import FillArrays: AbstractFill
 
 @testset "fill array constructors and convert" begin
@@ -89,14 +90,14 @@ import FillArrays: AbstractFill
                 Fill{Float32}(one(Float32),5,5)
     end
 
-    @test Eye(5) isa Diagonal{Float64}
-    @test Eye(5) == Eye{Float64}(5)
-    @test Eye(5,6) == Eye{Float64}(5,6)
-    @test eltype(Eye(5)) == Float64
-    @test eltype(Eye(5,6)) == Float64
+    @test eye(5) isa Diagonal{Float64}
+    @test eye(5) == eye(Float64,5)
+    @test eye(5,6) == eye(Float64,5,6)
+    @test eltype(eye(5)) == Float64
+    @test eltype(eye(5,6)) == Float64
 
     for T in (Int, Float64)
-        E = Eye{T}(5)
+        E = eye(T, 5)
         M = Matrix{T}(I, 5, 5)
 
         @test eltype(E) == T
@@ -109,8 +110,8 @@ import FillArrays: AbstractFill
         @test convert(AbstractMatrix{T},E) === E
 
 
-        @test AbstractArray{Float32}(E) == Eye{Float32}(5)
-        @test AbstractArray{Float32}(E) == Eye{Float32}(5,5)
+        @test AbstractArray{Float32}(E) == eye(Float32, 5)
+        @test AbstractArray{Float32}(E) == eye(Float32, 5,5)
     end
 
     @testset "Bool should change type" begin
@@ -197,9 +198,9 @@ end
     @test_throws BoundsError convert(Diagonal{Int}, Zeros(8,5))
 
 
-    @test Diagonal(Eye(8,5)) == Diagonal(ones(5))
-    @test convert(Diagonal, Eye(5)) == Diagonal(ones(5))
-    @test convert(Diagonal{Int}, Eye(5)) == Diagonal(ones(Int,5))
+    @test Diagonal(eye(8,5)) == Diagonal(ones(5))
+    @test convert(Diagonal, eye(5)) == Diagonal(ones(5))
+    @test convert(Diagonal{Int}, eye(5)) == Diagonal(ones(Int,5))
 end
 
 @testset "Sparse vectors and matrices" begin
@@ -214,7 +215,7 @@ end
             spzeros(5)
 
     for (Mat, SMat) in ((Zeros(5,5), spzeros(5,5)), (Zeros(6,5), spzeros(6,5)),
-                        (Eye(5), sparse(I,5,5)), (Eye(6,5), sparse(I,6,5)))
+                        (eye(5), sparse(I,5,5)), (eye(6,5), sparse(I,6,5)))
         @test SparseMatrixCSC(Mat) ==
                 SparseMatrixCSC{Float64}(Mat) ==
                 SparseMatrixCSC{Float64,Int}(Mat) ==
@@ -233,7 +234,7 @@ end
     @test rank(Ones(5,4)) == 1
     @test rank(Fill(2,5,4)) == 1
     @test rank(Fill(0,5,4)) == 0
-    @test rank(Eye(2)) == 2
+    @test rank(eye(2)) == 2
 end
 
 @testset "BigInt indices" begin
@@ -242,14 +243,14 @@ end
         @test axes(A) == tuple(Base.OneTo{BigInt}(BigInt(100)))
         @test size(A) isa Tuple{BigInt}
     end
-    let A = Eye(BigInt(100))
+    let A = eye(BigInt(100))
         @test length(A) isa BigInt
         @test axes(A) == tuple(Base.OneTo{BigInt}(BigInt(100)),Base.OneTo{BigInt}(BigInt(100)))
         @test size(A) isa Tuple{BigInt,BigInt}
     end
     # the following broken tests are due to bad support for BigInt dimensions in base Julia
     # these may be fixed in the future
-    let A = Eye(BigInt(100), BigInt(100))
+    let A = eye(BigInt(100), BigInt(100))
         @test_broken length(A) isa BigInt
         @test axes(A) == tuple(Base.OneTo{BigInt}(BigInt(100)),Base.OneTo{BigInt}(BigInt(100)))
         @test_broken size(A) isa Tuple{BigInt,BigInt}
@@ -257,7 +258,7 @@ end
     for A in (Zeros(BigInt(10), 10), Ones(BigInt(10), 10), Fill(2.0, (BigInt(10), 10)))
         @test size(A) isa Tuple{BigInt,Int}
     end
-    @test_broken size(Eye(BigInt(10), 8)) isa Tuple{BigInt,Int}
+    @test_broken size(eye(BigInt(10), 8)) isa Tuple{BigInt,Int}
 end
 
 
@@ -357,7 +358,7 @@ end
 @testset "maximum/minimum/svd/sort" begin
     @test maximum(Fill(1, 1_000_000_000)) == minimum(Fill(1, 1_000_000_000)) == 1
     @test svdvals(fill(2,5,6)) ≈ svdvals(Fill(2,5,6))
-    @test svdvals(Eye(5)) === Fill(1.0,5)
+    @test svdvals(eye(5)) === Fill(1.0,5)
     @test sort(Ones(5)) == sort!(Ones(5))
 end
 
