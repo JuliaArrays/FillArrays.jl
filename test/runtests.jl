@@ -91,7 +91,9 @@ import FillArrays: AbstractFill
 
     @test Eye(5) isa Diagonal{Float64}
     @test Eye(5) == Eye{Float64}(5)
+    @test Eye(5,6) == Eye{Float64}(5,6)
     @test eltype(Eye(5)) == Float64
+    @test eltype(Eye(5,6)) == Float64
 
     for T in (Int, Float64)
         E = Eye{T}(5)
@@ -108,6 +110,7 @@ import FillArrays: AbstractFill
 
 
         @test AbstractArray{Float32}(E) == Eye{Float32}(5)
+        @test AbstractArray{Float32}(E) == Eye{Float32}(5,5)
     end
 
     @testset "Bool should change type" begin
@@ -194,6 +197,7 @@ end
     @test_throws BoundsError convert(Diagonal{Int}, Zeros(8,5))
 
 
+    @test Diagonal(Eye(8,5)) == Diagonal(ones(5))
     @test convert(Diagonal, Eye(5)) == Diagonal(ones(5))
     @test convert(Diagonal{Int}, Eye(5)) == Diagonal(ones(Int,5))
 end
@@ -210,7 +214,7 @@ end
             spzeros(5)
 
     for (Mat, SMat) in ((Zeros(5,5), spzeros(5,5)), (Zeros(6,5), spzeros(6,5)),
-                        (Eye(5), sparse(I,5,5)))
+                        (Eye(5), sparse(I,5,5)), (Eye(6,5), sparse(I,6,5)))
         @test SparseMatrixCSC(Mat) ==
                 SparseMatrixCSC{Float64}(Mat) ==
                 SparseMatrixCSC{Float64,Int}(Mat) ==
@@ -243,10 +247,17 @@ end
         @test axes(A) == tuple(Base.OneTo{BigInt}(BigInt(100)),Base.OneTo{BigInt}(BigInt(100)))
         @test size(A) isa Tuple{BigInt,BigInt}
     end
+    # the following broken tests are due to bad support for BigInt dimensions in base Julia
+    # these may be fixed in the future
+    let A = Eye(BigInt(100), BigInt(100))
+        @test_broken length(A) isa BigInt
+        @test axes(A) == tuple(Base.OneTo{BigInt}(BigInt(100)),Base.OneTo{BigInt}(BigInt(100)))
+        @test_broken size(A) isa Tuple{BigInt,BigInt}
+    end
     for A in (Zeros(BigInt(10), 10), Ones(BigInt(10), 10), Fill(2.0, (BigInt(10), 10)))
         @test size(A) isa Tuple{BigInt,Int}
     end
-
+    @test_broken size(Eye(BigInt(10), 8)) isa Tuple{BigInt,Int}
 end
 
 

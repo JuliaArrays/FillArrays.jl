@@ -199,9 +199,12 @@ rank(F::Ones) = 1
 
 
 const Eye{T, Axes} = Diagonal{T, Ones{T,1,Tuple{Axes}}}
+const SubEye{T, EyeAxes, Axes<:NTuple{2, AbstractUnitRange}} = SubArray{T,2,Eye{T,EyeAxes},Axes,false}
 
 Eye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
 Eye(n::Integer) = Diagonal(Ones(n))
+Eye(n::Integer, m::Integer) = view(Eye(max(n,m)), Base.OneTo(n), Base.OneTo(m))
+Eye{T}(n::Integer, m::Integer) where T = view(Eye{T}(max(n,m)), Base.OneTo(n), Base.OneTo(m))
 
 function iterate(iter::Eye, istate = (1, 1))
     (i::Int, j::Int) = istate
@@ -217,8 +220,6 @@ for f in (:permutedims, :triu, :triu!, :tril, :tril!, :inv)
     @eval ($f)(IM::Eye) = IM
 end
 
-@deprecate Eye(n::Integer, m::Integer) view(Eye(max(n,m)), 1:n, 1:m)
-@deprecate Eye{T}(n::Integer, m::Integer) where T view(Eye{T}(max(n,m)), 1:n, 1:m)
 @deprecate Eye{T}(sz::Tuple{Vararg{Integer,2}}) where T Eye{T}(sz...)
 @deprecate Eye(sz::Tuple{Vararg{Integer,2}}) Eye{Float64}(sz...)
 
@@ -281,23 +282,25 @@ convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Zeros{T}) where {T,Tv,Ti} = spzer
 convert(::Type{AbstractSparseArray{Tv,Ti,N}}, Z::Zeros{T,N}) where {T,Tv,Ti,N} = spzeros(Tv, Ti, size(Z)...)
 
 
-convert(::Type{SparseMatrixCSC}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
-convert(::Type{SparseMatrixCSC{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
-# works around missing `speye`:
-convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti<:Integer} =
-    convert(SparseMatrixCSC{Tv,Ti}, SparseMatrixCSC{Tv}(I, size(Z)...))
+for EyeType in (:Eye, :SubEye)
+    @eval convert(::Type{SparseMatrixCSC}, Z::$EyeType{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
+    @eval convert(::Type{SparseMatrixCSC{Tv}}, Z::$EyeType{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
+    # works around missing `speye`:
+    @eval convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::$EyeType{T}) where {T,Tv,Ti<:Integer} =
+        convert(SparseMatrixCSC{Tv,Ti}, SparseMatrixCSC{Tv}(I, size(Z)...))
 
-convert(::Type{AbstractSparseMatrix}, Z::Eye{T}) where {T} = SparseMatrixCSC{T}(I, size(Z)...)
-convert(::Type{AbstractSparseMatrix{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
+    @eval convert(::Type{AbstractSparseMatrix}, Z::$EyeType{T}) where {T} = SparseMatrixCSC{T}(I, size(Z)...)
+    @eval convert(::Type{AbstractSparseMatrix{Tv}}, Z::$EyeType{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
 
-convert(::Type{AbstractSparseArray}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
-convert(::Type{AbstractSparseArray{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
+    @eval convert(::Type{AbstractSparseArray}, Z::$EyeType{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
+    @eval convert(::Type{AbstractSparseArray{Tv}}, Z::$EyeType{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
 
 
-convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
-    convert(SparseMatrixCSC{Tv,Ti}, Z)
-convert(::Type{AbstractSparseArray{Tv,Ti,2}}, Z::Eye{T}) where {T,Tv,Ti} =
-    convert(SparseMatrixCSC{Tv,Ti}, Z)
+    @eval convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::$EyeType{T}) where {T,Tv,Ti} =
+        convert(SparseMatrixCSC{Tv,Ti}, Z)
+    @eval convert(::Type{AbstractSparseArray{Tv,Ti,2}}, Z::$EyeType{T}) where {T,Tv,Ti} =
+        convert(SparseMatrixCSC{Tv,Ti}, Z)
+end
 
 
 #########
