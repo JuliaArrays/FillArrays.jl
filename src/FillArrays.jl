@@ -13,7 +13,7 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
 
 
-export Zeros, Ones, Fill, Eye
+export Zeros, Ones, Fill, Eye, SubEye
 
 if !isdefined(Base, :eye)
     export eye
@@ -203,7 +203,6 @@ rank(F::Ones) = 1
 
 
 const Eye{T, Axes} = Diagonal{T, Ones{T,1,Tuple{Axes}}}
-const SubEye{T, EyeAxes, Axes<:NTuple{2, AbstractUnitRange}} = SubArray{T,2,Eye{T,EyeAxes},Axes,false}
 
 @deprecate Eye{T}(n::Integer) where T eye(T, n)
 @deprecate Eye(n::Integer) eye(n)
@@ -231,13 +230,38 @@ for f in (:permutedims, :triu, :triu!, :tril, :tril!, :inv)
 end
 
 
+struct SubEye{T, Axes<:Tuple{Vararg{Any,2}}} <: AbstractMatrix{T}
+    axes::Axes
+end
+
+SubEye{T}(ax::Axes) where {T, Axes<:Tuple{Vararg{Any,2}}} = SubEye{T,Axes}(ax)
+SubEye{T}(n::Integer, m::Integer) where T = SubEye{T}((Base.OneTo(n), Base.OneTo(m)))
+SubEye(n::Integer, m::Integer) = SubEye{Float64}(n, m)
+SubEye{T}(n::Integer) where T = SubEye{T}(n, n)
+SubEye(n::Integer) = SubEye{Float64}(n)
+SubEye{T}(sz::Vararg{Any,2}) where T = SubEye{T}(sz)
+SubEye(sz::Vararg{Any,2}) = SubEye{Float64}(sz)
+
+axes(se::SubEye) = se.axes
+size(se::SubEye) = length.(se.axes)
+
+@inline function getindex(se::SubEye{T}, i::Integer, j::Integer) where T
+    @boundscheck checkbounds(se, i, j)
+    i == j ? one(T) : zero(T)
+end
+
+
 eye(n::Integer) = Diagonal(Ones(n))
 eye(::Type{T}, n::Integer) where T = Diagonal(Ones{T}(n))
-eye(n::Integer, m::Integer) = view(eye(max(n,m)), Base.OneTo(n), Base.OneTo(m))
-eye(::Type{T}, n::Integer, m::Integer) where T = view(eye(T,max(n,m)), Base.OneTo(n), Base.OneTo(m))
+eye(n::Integer, m::Integer) = SubEye(n, m)
+eye(::Type{T}, n::Integer, m::Integer) where T = SubEye{T}(n, m)
 
 @inline eye(A::AbstractMatrix) = eye(eltype(A), A)
 @inline eye(::Type{T}, A::AbstractMatrix) where T = eye(T, size(A, 1), size(A, 2))
+
+
+rank(A::Eye) = size(A, 1)
+rank(A::SubEye) = (sz = size(A); min(sz[1], sz[2]))
 
 #########
 #  Special matrix types
@@ -374,6 +398,20 @@ function all(f::Function, IM::Eye{T}) where T
     d > 1 && return f(zero(T)) && f(one(T))
     d == 1 && return f(one(T))
     return false
+end
+
+function any(f::Function, IM::SubEye{T}) where T
+    d1, d2 = size(IM)
+    (d1 < 1 || d2 < 1) && return false
+    (d1 > 1 || d2 > 1) && return f(zero(T)) || f(one(T))
+    return f(one(T))
+end
+
+function all(f::Function, IM::SubEye{T}) where T
+    d1, d2 = size(IM)
+    (d1 < 1 || d2 < 1) && return false
+    (d1 > 1 || d2 > 1) && return f(zero(T)) && f(one(T))
+    return f(one(T))
 end
 
 # In particular, these make iszero(Eye(n))  efficient.

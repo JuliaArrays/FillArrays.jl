@@ -251,14 +251,14 @@ end
     # the following broken tests are due to bad support for BigInt dimensions in base Julia
     # these may be fixed in the future
     let A = eye(BigInt(100), BigInt(100))
-        @test_broken length(A) isa BigInt
+        @test length(A) isa BigInt
         @test axes(A) == tuple(Base.OneTo{BigInt}(BigInt(100)),Base.OneTo{BigInt}(BigInt(100)))
-        @test_broken size(A) isa Tuple{BigInt,BigInt}
+        @test size(A) isa Tuple{BigInt,BigInt}
     end
     for A in (Zeros(BigInt(10), 10), Ones(BigInt(10), 10), Fill(2.0, (BigInt(10), 10)))
         @test size(A) isa Tuple{BigInt,Int}
     end
-    @test_broken size(eye(BigInt(10), 8)) isa Tuple{BigInt,Int}
+    @test size(eye(BigInt(10), 8)) isa Tuple{BigInt,Int}
 end
 
 
@@ -511,18 +511,22 @@ end
 @testset "any all iszero isone" begin
     for T in (Int, Float64, ComplexF64)
         for d in (0, )
-            m = Eye{T}(d)
-            @test ! any(isone, m)
-            @test ! any(iszero, m)
-            @test ! all(iszero, m)
-            @test ! all(isone, m)
+            for E in (Eye, SubEye)
+                m = E{T}(d)
+                @test ! any(isone, m)
+                @test ! any(iszero, m)
+                @test ! all(iszero, m)
+                @test ! all(isone, m)
+            end
         end
         for d in (1, )
-            m = Eye{T}(d)
-            @test ! any(iszero, m)
-            @test ! all(iszero, m)
-            @test any(isone, m)
-            @test all(isone, m)
+            for E in (Eye, SubEye)
+                m = E{T}(d)
+                @test ! any(iszero, m)
+                @test ! all(iszero, m)
+                @test any(isone, m)
+                @test all(isone, m)
+            end
 
             onem = Ones{T}(d, d)
             @test isone(onem)
@@ -545,11 +549,13 @@ end
             @test ! iszero(fillm2)
         end
         for d in (2, 3)
-            m = Eye{T}(d)
-            @test any(iszero, m)
-            @test ! all(iszero, m)
-            @test any(isone, m)
-            @test ! all(isone, m)
+            for E in (Eye, SubEye)
+                m = E{T}(d)
+                @test any(iszero, m)
+                @test ! all(iszero, m)
+                @test any(isone, m)
+                @test ! all(isone, m)
+            end
 
             m1 = Ones{T}(d, d)
             @test ! isone(m1)
