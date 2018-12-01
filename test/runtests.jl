@@ -35,7 +35,7 @@ import FillArrays: AbstractFill
                 @test convert(AbstractArray,Z) ≡ convert(AbstractFill,Z) ≡ Z
                 @test convert(AbstractArray{T},Z) ≡ convert(AbstractFill{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
                 @test convert(AbstractMatrix{T},Z) ≡ convert(AbstractFill{T,2},Z) ≡ AbstractMatrix{T}(Z) ≡ Z
-                
+
                 @test_throws Exception convert(Fill{Float64}, [1,1,2])
                 @test_throws Exception convert(Fill, [])
                 @test convert(Fill{Float64}, [1,1,1]) ≡ Fill(1.0, 3)
@@ -468,4 +468,11 @@ end
     @test (1:10) .* Zeros(10) ≡ Zeros(10) .* (1:10) ≡ Zeros(10) .* randn(10) ≡ Zeros(10)
     @test (1:10) .* Zeros{Int}(10) ≡ Zeros{Int}(10)
     @test_throws DimensionMismatch (1:11) .* Zeros(10)
+end
+
+@testset "iterate" begin
+    for d in (0, 1, 2, 100)
+        m = Eye(d)
+        @test [x for x in m] == m
+    end
 end
