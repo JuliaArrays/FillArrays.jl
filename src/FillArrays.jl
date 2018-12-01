@@ -200,7 +200,13 @@ const Eye{T, Axes} = Diagonal{T, Ones{T,1,Tuple{Axes}}}
 Eye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
 Eye(n::Integer) = Diagonal(Ones(n))
 
-
+function Base.iterate(iter::Eye{T}, istate = (1, 1)) where T
+    (i::Int, j::Int) = istate
+    m = size(iter, 1)
+    return i > m ? nothing :
+        ((@inbounds getindex(iter, i, j)),
+         j == m ? (i + 1, 1) : (i, j + 1))
+end
 
 @deprecate Eye(n::Integer, m::Integer) view(Eye(max(n,m)), 1:n, 1:m)
 @deprecate Eye{T}(n::Integer, m::Integer) where T view(Eye{T}(max(n,m)), 1:n, 1:m)
