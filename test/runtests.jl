@@ -476,3 +476,9 @@ end
         @test [x for x in m] == m
     end
 end
+
+@testset "properties" begin
+    for d in (0, 1, 2, 100)
+        @test isone(Eye(d))
+    end
+end

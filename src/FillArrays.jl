@@ -208,6 +208,8 @@ function Base.iterate(iter::Eye{T}, istate = (1, 1)) where T
          j == m ? (i + 1, 1) : (i, j + 1))
 end
 
+Base.isone(::Eye) = true
+
 @deprecate Eye(n::Integer, m::Integer) view(Eye(max(n,m)), 1:n, 1:m)
 @deprecate Eye{T}(n::Integer, m::Integer) where T view(Eye{T}(max(n,m)), 1:n, 1:m)
 @deprecate Eye{T}(sz::Tuple{Vararg{Integer,2}}) where T Eye{T}(sz...)
