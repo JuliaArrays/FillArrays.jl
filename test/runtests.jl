@@ -472,8 +472,12 @@ end
 
 @testset "iterate" begin
     for d in (0, 1, 2, 100)
-        m = Eye(d)
-        @test [x for x in m] == m
+        for T in (Float64, Int)
+            m = Eye(d)
+            mcp = [x for x in m]
+            @test mcp == m
+            @test eltype(mcp) == eltype(m)
+        end
     end
 end
 
