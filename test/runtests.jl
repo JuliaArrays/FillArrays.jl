@@ -486,3 +486,72 @@ end
         @test isone(Eye(d))
     end
 end
+
+@testset "any all iszero isone" begin
+    for T in (Int, Float64, ComplexF64)
+        for d in (0, )
+            m = Eye{T}(d)
+            @test ! any(isone, m)
+            @test ! any(iszero, m)
+            @test ! all(iszero, m)
+            @test ! all(isone, m)
+        end
+        for d in (1, )
+            m = Eye{T}(d)
+            @test ! any(iszero, m)
+            @test ! all(iszero, m)
+            @test any(isone, m)
+            @test all(isone, m)
+
+            onem = Ones{T}(d, d)
+            @test isone(onem)
+            @test ! iszero(onem)
+
+            zerom = Zeros{T}(d, d)
+            @test ! isone(zerom)
+            @test  iszero(zerom)
+
+            fillm0 = Fill(T(0), d, d)
+            @test ! isone(fillm0)
+            @test   iszero(fillm0)
+
+            fillm1 = Fill(T(1), d, d)
+            @test isone(fillm1)
+            @test ! iszero(fillm1)
+
+            fillm2 = Fill(T(2), d, d)
+            @test ! isone(fillm2)
+            @test ! iszero(fillm2)
+        end
+        for d in (2, 3)
+            m = Eye{T}(d)
+            @test any(iszero, m)
+            @test ! all(iszero, m)
+            @test any(isone, m)
+            @test ! all(isone, m)
+
+            m1 = Ones{T}(d, d)
+            @test ! isone(m1)
+            @test ! iszero(m1)
+            @test all(isone, m1)
+            @test ! all(iszero, m1)
+
+            m2 = Zeros{T}(d, d)
+            @test ! isone(m2)
+            @test iszero(m2)
+            @test ! all(isone, m2)
+            @test  all(iszero, m2)
+
+            m3 = Fill(T(2), d, d)
+            @test ! isone(m3)
+            @test ! iszero(m3)
+            @test ! all(isone, m3)
+            @test ! all(iszero, m3)
+            @test ! any(iszero, m3)
+
+            m4 = Fill(T(1), d, d)
+            @test ! isone(m4)
+            @test ! iszero(m4)
+        end
+    end
+end

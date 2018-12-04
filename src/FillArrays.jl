@@ -3,7 +3,8 @@ module FillArrays
 using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
                 +, -, *, /, \, sum, cumsum, maximum, minimum, sort, sort!,
-                axes, unique, allunique
+                any, all, axes, isone, iterate, unique, allunique
+
 import LinearAlgebra: rank, svdvals!
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle
@@ -200,7 +201,7 @@ const Eye{T, Axes} = Diagonal{T, Ones{T,1,Tuple{Axes}}}
 Eye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
 Eye(n::Integer) = Diagonal(Ones(n))
 
-function Base.iterate(iter::Eye, istate = (1, 1))
+function iterate(iter::Eye, istate = (1, 1))
     (i::Int, j::Int) = istate
     m = size(iter, 1)
     return i > m ? nothing :
@@ -208,7 +209,7 @@ function Base.iterate(iter::Eye, istate = (1, 1))
          j == m ? (i + 1, 1) : (i, j + 1))
 end
 
-Base.isone(::Eye) = true
+isone(::Eye) = true
 
 @deprecate Eye(n::Integer, m::Integer) view(Eye(max(n,m)), 1:n, 1:m)
 @deprecate Eye{T}(n::Integer, m::Integer) where T view(Eye{T}(max(n,m)), 1:n, 1:m)
@@ -324,7 +325,39 @@ cumsum(x::AbstractFill{Bool}) = cumsum(convert(AbstractFill{Int}, x))
 
 unique(x::AbstractFill{T}) where T = isempty(x) ? T[] : T[getindex_value(x)]
 allunique(x::AbstractFill) = length(x) < 2
-           
+
+
+#########
+# any/all/isone/iszero
+#########
+
+function isone(AF::AbstractFill{<:Any,2})
+    isone(getindex_value(AF)) || return false
+    (n,m) = size(AF)
+    n != m && return false
+    n == 1 && return true
+    return false
+end
+
+# all(isempty, []) and any(isempty, []) have non-generic behavior.
+# We do not follow it here for Eye(0).
+function any(f::Function, IM::Eye{T}) where T
+    d = size(IM, 1)
+    d > 1 && return f(zero(T)) || f(one(T))
+    d == 1 && return f(one(T))
+    return false
+end
+
+function all(f::Function, IM::Eye{T}) where T
+    d = size(IM, 1)
+    d > 1 && return f(zero(T)) && f(one(T))
+    d == 1 && return f(one(T))
+    return false
+end
+
+# In particular, these make iszero(Eye(n))  efficient.
+any(f::Function, x::AbstractFill) = f(getindex_value(x))
+all(f::Function, x::AbstractFill) = f(getindex_value(x))
 
 include("fillalgebra.jl")
 include("fillbroadcast.jl")
