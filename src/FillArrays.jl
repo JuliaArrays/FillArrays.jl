@@ -2,10 +2,12 @@ module FillArrays
 
 using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
-                +, -, *, /, \, sum, cumsum, maximum, minimum, sort, sort!,
-                any, all, axes, isone, iterate, unique, allunique
+    +, -, *, /, sum, cumsum, maximum, minimum, sort, sort!,
+    any, all, axes, isone, iterate, unique, allunique, permutedims, inv
 
-import LinearAlgebra: rank, svdvals!
+import Base.\
+
+import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle
 
@@ -210,6 +212,10 @@ function iterate(iter::Eye, istate = (1, 1))
 end
 
 isone(::Eye) = true
+
+for f in (:permutedims, :triu, :triu!, :tril, :tril!, :inv)
+    @eval ($f)(IM::Eye) = IM
+end
 
 @deprecate Eye(n::Integer, m::Integer) view(Eye(max(n,m)), 1:n, 1:m)
 @deprecate Eye{T}(n::Integer, m::Integer) where T view(Eye{T}(max(n,m)), 1:n, 1:m)

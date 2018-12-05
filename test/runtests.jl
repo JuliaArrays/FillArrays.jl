@@ -555,3 +555,10 @@ end
         end
     end
 end
+
+@testset "Eye identity ops" begin
+    m = Eye(10)
+    for op in (permutedims, inv, tril, triu, tril!, triu!)
+        @test op(m) === m
+    end
+end
