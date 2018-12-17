@@ -391,6 +391,12 @@ end
     @test y .* y ≡ y ./ y ≡ y .\ y ≡ y
 
     @test Zeros{Int}(5) .+ Zeros(5) isa Zeros{Float64}
+
+    for op in (+, -, *)
+        rnge = range(-5.0, step=1.0, length=10)
+        @test broadcast(op, Fill(5.0, 10), rnge) == broadcast(op, 5.0, rnge)
+        @test_throws DimensionMismatch broadcast(op, Fill(5.0, 11), rnge)
+    end
 end
 
 @testset "Sub-arrays" begin

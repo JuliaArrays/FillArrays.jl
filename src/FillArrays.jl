@@ -9,7 +9,7 @@ import Base.\
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!
 
-import Base.Broadcast: broadcasted, DefaultArrayStyle
+import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
 
 

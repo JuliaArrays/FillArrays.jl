@@ -1,7 +1,3 @@
-#########
-# broadcasting
-#########
-
 for op in (:+, :-)
     @eval broadcasted(::DefaultArrayStyle{N}, ::typeof($op), r1::AbstractFill{T,N}, r2::AbstractFill{V,N}) where {T,V,N} =
             $op(r1, r2)
@@ -20,6 +16,24 @@ end
 function broadcasted(::DefaultArrayStyle{N}, ::typeof(*), a::Zeros{T,N}, b::AbstractArray{V,N}) where {T,V,N}
     axes(a) ≠ axes(b) && throw(DimensionMismatch("dimensions must match."))
     Zeros{promote_type(T,V)}(axes(a))
+end
+
+function broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::AbstractRange)
+    return Zeros{promote_type(eltype(a), eltype(b))}(broadcast_shape(size(a), size(b)))
+end
+
+function broadcasted(::DefaultArrayStyle, ::typeof(*), a::AbstractRange, b::Zeros)
+    return Zeros{promote_type(eltype(a), eltype(b))}(broadcast_shape(size(a), size(b)))
+end
+
+function broadcasted(::DefaultArrayStyle, ::typeof(*), a::AbstractFill, b::AbstractRange)
+    broadcast_shape(size(a), size(b)) # Check sizes are compatible.
+    return broadcasted(*, getindex_value(a), b)
+end
+
+function broadcasted(::DefaultArrayStyle, ::typeof(*), a::AbstractRange, b::AbstractFill)
+    broadcast_shape(size(a), size(b)) # Check sizes are compatible.
+    return broadcasted(*, a, getindex_value(b))
 end
 
 broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,N} = Fill(op(getindex_value(r)), size(r))
