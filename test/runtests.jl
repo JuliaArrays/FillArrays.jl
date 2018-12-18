@@ -391,6 +391,12 @@ end
     @test y .* y ≡ y ./ y ≡ y .\ y ≡ y
 
     @test Zeros{Int}(5) .+ Zeros(5) isa Zeros{Float64}
+
+    rnge = range(-5.0, step=1.0, length=10)
+    @test broadcast(*, Fill(5.0, 10), rnge) == broadcast(*, 5.0, rnge)
+    @test_throws DimensionMismatch broadcast(*, Fill(5.0, 11), rnge)
+    @test broadcast(*, rnge, Fill(5.0, 10)) == broadcast(*, rnge, 5.0)
+    @test_throws DimensionMismatch broadcast(*, rnge, Fill(5.0, 11))
 end
 
 @testset "Sub-arrays" begin
@@ -465,8 +471,11 @@ end
 end
 
 @testset "Zero .*" begin
-    @test (1:10) .* Zeros(10) ≡ Zeros(10) .* (1:10) ≡ Zeros(10) .* randn(10) ≡ Zeros(10)
-    @test (1:10) .* Zeros{Int}(10) ≡ Zeros{Int}(10)
+    @test Zeros{Int}(10) .* Zeros{Int}(10) ≡ Zeros{Int}(10)
+    @test randn(10) .* Zeros(10) ≡ Zeros(10)
+    @test Zeros(10) .* randn(10) ≡ Zeros(10)
+    @test (1:10) .* Zeros(10) ≡ Zeros(10)
+    @test Zeros(10) .* (1:10) ≡ Zeros(10)
     @test_throws DimensionMismatch (1:11) .* Zeros(10)
 end
 
