@@ -571,3 +571,8 @@ end
         @test op(m) === m
     end
 end
+
+@testset "Issue #31" begin
+    @test convert(SparseMatrixCSC{Float64,Int64}, Zeros{Float64}(3, 3)) == spzeros(3, 3)
+    @test sparse(Zeros(4, 2)) == spzeros(4, 2)
+end
