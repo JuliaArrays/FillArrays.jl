@@ -92,6 +92,7 @@ import FillArrays: AbstractFill, RectDiagonal
     @test Eye(5) isa Diagonal{Float64}
     @test Eye(5) == Eye{Float64}(5)
     @test Eye(5,6) == Eye{Float64}(5,6)
+    @test Eye(Ones(5,6)) == Eye{Float64}(5,6)
     @test eltype(Eye(5)) == Float64
     @test eltype(Eye(5,6)) == Float64
 
@@ -144,6 +145,9 @@ end
 
     @test expected == expected_matrix
     @test Matrix(expected) == expected_matrix
+    @test expected[:, 2] == expected_matrix[:, 2]
+    @test expected[2, :] == expected_matrix[2, :]
+    @test expected[5, :] == expected_matrix[5, :]
 
     for Typ in (RectDiagonal, RectDiagonal{Int}, RectDiagonal{Int, UnitRange{Int}})
         @test Typ(data) == expected[1:3, 1:3]
@@ -154,6 +158,15 @@ end
     end
 
     @test diag(expected) === expected.diag
+
+    mut = RectDiagonal(collect(data), expected_axes)
+    @test mut == expected
+    @test mut == expected_matrix
+    mut[1, 1] = 5
+    @test mut[1] == 5
+    @test diag(mut) == [5, 2, 3]
+    mut[2, 1] = 0
+    @test_throws ArgumentError mut[2, 1] = 9
 end
 
 # Check that all pair-wise combinations of + / - elements of As and Bs yield the correct
