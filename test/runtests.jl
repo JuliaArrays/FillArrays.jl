@@ -1,5 +1,5 @@
 using FillArrays, LinearAlgebra, SparseArrays, Random, Test
-import FillArrays: AbstractFill
+import FillArrays: AbstractFill, RectDiagonal
 
 @testset "fill array constructors and convert" begin
     for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
@@ -91,7 +91,10 @@ import FillArrays: AbstractFill
 
     @test Eye(5) isa Diagonal{Float64}
     @test Eye(5) == Eye{Float64}(5)
+    @test Eye(5,6) == Eye{Float64}(5,6)
+    @test Eye(Ones(5,6)) == Eye{Float64}(5,6)
     @test eltype(Eye(5)) == Float64
+    @test eltype(Eye(5,6)) == Float64
 
     for T in (Int, Float64)
         E = Eye{T}(5)
@@ -108,6 +111,7 @@ import FillArrays: AbstractFill
 
 
         @test AbstractArray{Float32}(E) == Eye{Float32}(5)
+        @test AbstractArray{Float32}(E) == Eye{Float32}(5, 5)
     end
 
     @testset "Bool should change type" begin
@@ -125,6 +129,44 @@ import FillArrays: AbstractFill
         @test Zeros{Bool}(5) + x ≡ x
         @test -x ≡ Fill(-1,5)
     end
+end
+
+@testset "RectDiagonal" begin
+    data = 1:3
+    expected_size = (5, 3)
+    expected_axes = Base.OneTo.(expected_size)
+    expected_matrix = [1 0 0; 0 2 0; 0 0 3; 0 0 0; 0 0 0]
+    expected = RectDiagonal{Int, UnitRange{Int}}(data, expected_axes)
+
+    @test axes(expected) == expected_axes
+    @test size(expected) == expected_size
+    @test (axes(expected, 1), axes(expected, 2)) == expected_axes
+    @test (size(expected, 1), size(expected, 2)) == expected_size
+
+    @test expected == expected_matrix
+    @test Matrix(expected) == expected_matrix
+    @test expected[:, 2] == expected_matrix[:, 2]
+    @test expected[2, :] == expected_matrix[2, :]
+    @test expected[5, :] == expected_matrix[5, :]
+
+    for Typ in (RectDiagonal, RectDiagonal{Int}, RectDiagonal{Int, UnitRange{Int}})
+        @test Typ(data) == expected[1:3, 1:3]
+        @test Typ(data, expected_axes) == expected
+        @test Typ(data, expected_axes...) == expected
+        @test Typ(data, expected_size) == expected
+        @test Typ(data, expected_size...) == expected
+    end
+
+    @test diag(expected) === expected.diag
+
+    mut = RectDiagonal(collect(data), expected_axes)
+    @test mut == expected
+    @test mut == expected_matrix
+    mut[1, 1] = 5
+    @test mut[1] == 5
+    @test diag(mut) == [5, 2, 3]
+    mut[2, 1] = 0
+    @test_throws ArgumentError mut[2, 1] = 9
 end
 
 # Check that all pair-wise combinations of + / - elements of As and Bs yield the correct
@@ -194,6 +236,7 @@ end
     @test_throws BoundsError convert(Diagonal{Int}, Zeros(8,5))
 
 
+    @test Diagonal(Eye(8,5)) == Diagonal(ones(5))
     @test convert(Diagonal, Eye(5)) == Diagonal(ones(5))
     @test convert(Diagonal{Int}, Eye(5)) == Diagonal(ones(Int,5))
 end
@@ -210,7 +253,7 @@ end
             spzeros(5)
 
     for (Mat, SMat) in ((Zeros(5,5), spzeros(5,5)), (Zeros(6,5), spzeros(6,5)),
-                        (Eye(5), sparse(I,5,5)))
+                        (Eye(5), sparse(I,5,5)), (Eye(6,5), sparse(I,6,5)))
         @test SparseMatrixCSC(Mat) ==
                 SparseMatrixCSC{Float64}(Mat) ==
                 SparseMatrixCSC{Float64,Int}(Mat) ==
@@ -238,12 +281,12 @@ end
         @test axes(A) == tuple(Base.OneTo{BigInt}(BigInt(100)))
         @test size(A) isa Tuple{BigInt}
     end
-    let A = Eye(BigInt(100))
+    for A in (Eye(BigInt(100)), Eye(BigInt(100), BigInt(100)))
         @test length(A) isa BigInt
         @test axes(A) == tuple(Base.OneTo{BigInt}(BigInt(100)),Base.OneTo{BigInt}(BigInt(100)))
         @test size(A) isa Tuple{BigInt,BigInt}
     end
-    for A in (Zeros(BigInt(10), 10), Ones(BigInt(10), 10), Fill(2.0, (BigInt(10), 10)))
+    for A in (Zeros(BigInt(10), 10), Ones(BigInt(10), 10), Fill(2.0, (BigInt(10), 10)), Eye(BigInt(10), 8))
         @test size(A) isa Tuple{BigInt,Int}
     end
 
@@ -498,19 +541,26 @@ end
 
 @testset "any all iszero isone" begin
     for T in (Int, Float64, ComplexF64)
-        for d in (0, )
-            m = Eye{T}(d)
+        for m in (Eye{T}(0), Eye{T}(0, 0), Eye{T}(0, 1), Eye{T}(1, 0))
             @test ! any(isone, m)
             @test ! any(iszero, m)
             @test ! all(iszero, m)
             @test ! all(isone, m)
         end
         for d in (1, )
-            m = Eye{T}(d)
-            @test ! any(iszero, m)
-            @test ! all(iszero, m)
-            @test any(isone, m)
-            @test all(isone, m)
+            for m in (Eye{T}(d), Eye{T}(d, d))
+                @test ! any(iszero, m)
+                @test ! all(iszero, m)
+                @test any(isone, m)
+                @test all(isone, m)
+            end
+
+            for m in (Eye{T}(d, d + 1), Eye{T}(d + 1, d))
+                @test any(iszero, m)
+                @test ! all(iszero, m)
+                @test any(isone, m)
+                @test ! all(isone, m)
+            end
 
             onem = Ones{T}(d, d)
             @test isone(onem)
@@ -533,11 +583,12 @@ end
             @test ! iszero(fillm2)
         end
         for d in (2, 3)
-            m = Eye{T}(d)
-            @test any(iszero, m)
-            @test ! all(iszero, m)
-            @test any(isone, m)
-            @test ! all(isone, m)
+            for m in (Eye{T}(d), Eye{T}(d, d), Eye{T}(d, d + 2), Eye{T}(d + 2, d))
+                @test any(iszero, m)
+                @test ! all(iszero, m)
+                @test any(isone, m)
+                @test ! all(isone, m)
+            end
 
             m1 = Ones{T}(d, d)
             @test ! isone(m1)
@@ -567,8 +618,14 @@ end
 
 @testset "Eye identity ops" begin
     m = Eye(10)
-    for op in (permutedims, inv, tril, triu, tril!, triu!)
+    for op in (permutedims, inv)
         @test op(m) === m
+    end
+
+    for m in (Eye(10), Eye(10, 10), Eye(10, 8), Eye(8, 10))
+        for op in (tril, triu, tril!, triu!)
+            @test op(m) === m
+        end
     end
 end
 

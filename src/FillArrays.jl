@@ -7,7 +7,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
 
 import Base.\
 
-import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!
+import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
@@ -198,7 +198,59 @@ rank(F::Zeros) = 0
 rank(F::Ones) = 1
 
 
-const Eye{T, Axes} = Diagonal{T, Ones{T,1,Tuple{Axes}}}
+struct RectDiagonal{T,V<:AbstractVector{T},Axes<:Tuple{Vararg{AbstractUnitRange,2}}} <: AbstractMatrix{T}
+    diag::V
+    axes::Axes
+
+    @inline function RectDiagonal{T,V}(A::V, axes::Axes) where {T,V<:AbstractVector{T},Axes<:Tuple{Vararg{AbstractUnitRange,2}}}
+        @assert !Base.has_offset_axes(A)
+        @assert any(length(ax) == length(A) for ax in axes)
+        rd = new{T,V,Axes}(A, axes)
+        @assert !Base.has_offset_axes(rd)
+        return rd
+    end
+end
+
+@inline RectDiagonal{T,V}(A::V, sz::Tuple{Vararg{Integer, 2}}) where {T,V} = RectDiagonal{T,V}(A, Base.OneTo.(sz))
+@inline RectDiagonal{T,V}(A::V, axes::Vararg{Any, 2}) where {T,V} = RectDiagonal{T,V}(A, axes)
+@inline RectDiagonal{T,V}(A::V, sz::Vararg{Integer, 2}) where {T,V} = RectDiagonal{T,V}(A, sz)
+@inline RectDiagonal{T,V}(A::V) where {T,V} = RectDiagonal{T,V}(A, (axes(A, 1), axes(A, 1)))
+@inline RectDiagonal{T}(A::V, args...) where {T,V} = RectDiagonal{T,V}(A, args...)
+@inline RectDiagonal(A::V, args...) where {V} = RectDiagonal{eltype(V),V}(A, args...)
+
+axes(rd::RectDiagonal) = rd.axes
+size(rd::RectDiagonal) = length.(rd.axes)
+
+@inline function getindex(rd::RectDiagonal{T}, i::Integer, j::Integer) where T
+    @boundscheck checkbounds(rd, i, j)
+    if i == j
+        @inbounds r = rd.diag[i]
+    else
+        r = zero(T)
+    end
+    return r
+end
+
+function setindex!(rd::RectDiagonal, v, i::Integer, j::Integer)
+    @boundscheck checkbounds(rd, i, j)
+    if i == j
+        @inbounds rd.diag[i] = v
+    elseif !iszero(v)
+        throw(ArgumentError("cannot set off-diagonal entry ($i, $j) to a nonzero value ($v)"))
+    end
+    return v
+end
+
+diag(rd::RectDiagonal) = rd.diag
+
+for f in (:triu, :triu!, :tril, :tril!)
+    @eval ($f)(M::RectDiagonal) = M
+end
+
+
+const RectOrDiagonal{T,V,Axes} = Union{RectDiagonal{T,V,Axes}, Diagonal{T,V}}
+const SquareEye{T,Axes} = Diagonal{T,Ones{T,1,Tuple{Axes}}}
+const Eye{T,Axes} = RectOrDiagonal{T,Ones{T,1,Tuple{Axes}}}
 
 Eye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
 Eye(n::Integer) = Diagonal(Ones(n))
@@ -211,19 +263,19 @@ function iterate(iter::Eye, istate = (1, 1))
          j == m ? (i + 1, 1) : (i, j + 1))
 end
 
-isone(::Eye) = true
+isone(::SquareEye) = true
 
-for f in (:permutedims, :triu, :triu!, :tril, :tril!, :inv)
-    @eval ($f)(IM::Eye) = IM
+for f in (:permutedims, :inv, :triu, :triu!, :tril, :tril!)
+    @eval ($f)(IM::SquareEye) = IM
 end
 
-@deprecate Eye(n::Integer, m::Integer) view(Eye(max(n,m)), 1:n, 1:m)
-@deprecate Eye{T}(n::Integer, m::Integer) where T view(Eye{T}(max(n,m)), 1:n, 1:m)
+Eye(n::Integer, m::Integer) = RectDiagonal(Ones(min(n,m)), n, m)
+Eye{T}(n::Integer, m::Integer) where T = RectDiagonal{T}(Ones{T}(min(n,m)), n, m)
 @deprecate Eye{T}(sz::Tuple{Vararg{Integer,2}}) where T Eye{T}(sz...)
 @deprecate Eye(sz::Tuple{Vararg{Integer,2}}) Eye{Float64}(sz...)
 
-@inline Eye{T}(A::AbstractMatrix) where T = Eye{T}(size(A))
-@inline Eye(A::AbstractMatrix) = Eye{eltype(A)}(size(A))
+@inline Eye{T}(A::AbstractMatrix) where T = Eye{T}(size(A)...)
+@inline Eye(A::AbstractMatrix) = Eye{eltype(A)}(size(A)...)
 
 
 #########
@@ -350,17 +402,17 @@ end
 # all(isempty, []) and any(isempty, []) have non-generic behavior.
 # We do not follow it here for Eye(0).
 function any(f::Function, IM::Eye{T}) where T
-    d = size(IM, 1)
-    d > 1 && return f(zero(T)) || f(one(T))
-    d == 1 && return f(one(T))
-    return false
+    d1, d2 = size(IM)
+    (d1 < 1 || d2 < 1) && return false
+    (d1 > 1 || d2 > 1) && return f(zero(T)) || f(one(T))
+    return f(one(T))
 end
 
 function all(f::Function, IM::Eye{T}) where T
-    d = size(IM, 1)
-    d > 1 && return f(zero(T)) && f(one(T))
-    d == 1 && return f(one(T))
-    return false
+    d1, d2 = size(IM)
+    (d1 < 1 || d2 < 1) && return false
+    (d1 > 1 || d2 > 1) && return f(zero(T)) && f(one(T))
+    return f(one(T))
 end
 
 # In particular, these make iszero(Eye(n))  efficient.
