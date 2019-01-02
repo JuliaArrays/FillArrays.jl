@@ -391,6 +391,11 @@ end
     @test y .* y ≡ y ./ y ≡ y .\ y ≡ y
 
     @test Zeros{Int}(5) .+ Zeros(5) isa Zeros{Float64}
+
+    @test Zeros(5) .* Ones(5) == Zeros(5)
+    @test Zeros(5) .* Fill(5.0, 5) == Zeros(5)
+    @test Ones(5) .* Zeros(5) == Zeros(5)
+    @test Fill(5.0, 5) .* Zeros(5) == Zeros(5)
 end
 
 @testset "Sub-arrays" begin

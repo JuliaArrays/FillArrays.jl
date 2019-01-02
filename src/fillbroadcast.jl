@@ -12,14 +12,26 @@ function broadcasted(::DefaultArrayStyle{N}, ::typeof(*), a::Zeros{T,N}, b::Zero
     Zeros{promote_type(T,V)}(axes(a))
 end
 
-function broadcasted(::DefaultArrayStyle{N}, ::typeof(*), a::AbstractArray{T,N}, b::Zeros{V,N}) where {T,V,N}
+function _broadcasted_mul(a::AbstractArray{T}, b::Zeros{V}) where {T,V}
     axes(a) ≠ axes(b) && throw(DimensionMismatch("dimensions must match."))
     Zeros{promote_type(T,V)}(axes(a))
 end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(*), a::AbstractArray{T,N}, b::Zeros{V,N}) where {T,V,N}
+    return _broadcasted_mul(a, b)
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(*), a::AbstractFill{T,N}, b::Zeros{V,N}) where {T,V,N}
+    return _broadcasted_mul(a, b)
+end
 
-function broadcasted(::DefaultArrayStyle{N}, ::typeof(*), a::Zeros{T,N}, b::AbstractArray{V,N}) where {T,V,N}
+function _broadcasted_mul(a::Zeros{T}, b::AbstractArray{V}) where {T,V}
     axes(a) ≠ axes(b) && throw(DimensionMismatch("dimensions must match."))
     Zeros{promote_type(T,V)}(axes(a))
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(*), a::Zeros{T,N}, b::AbstractArray{V,N}) where {T,V,N}
+    _broadcasted_mul(a, b)
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(*), a::Zeros{T,N}, b::AbstractFill{V,N}) where {T,V,N}
+    _broadcasted_mul(a, b)
 end
 
 broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,N} = Fill(op(getindex_value(r)), size(r))
