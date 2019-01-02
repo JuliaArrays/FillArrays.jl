@@ -440,6 +440,11 @@ end
     @test_throws DimensionMismatch broadcast(*, Fill(5.0, 11), rnge)
     @test broadcast(*, rnge, Fill(5.0, 10)) == broadcast(*, rnge, 5.0)
     @test_throws DimensionMismatch broadcast(*, rnge, Fill(5.0, 11))
+
+    @test Zeros(5) .* Ones(5) == Zeros(5)
+    @test Zeros(5) .* Fill(5.0, 5) == Zeros(5)
+    @test Ones(5) .* Zeros(5) == Zeros(5)
+    @test Fill(5.0, 5) .* Zeros(5) == Zeros(5)
 end
 
 @testset "Sub-arrays" begin
