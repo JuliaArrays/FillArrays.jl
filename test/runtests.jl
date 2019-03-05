@@ -393,7 +393,7 @@ end
     @test sort(Ones(5)) == sort!(Ones(5))
 end
 
-@testset "Cumsum" begin
+@testset "Cumsum and diff" begin
     @test sum(Fill(3,10)) ≡ 30
     @test cumsum(Fill(3,10)) ≡ 3:3:30
 
@@ -412,6 +412,9 @@ end
     @test cumsum(Zeros{Bool}(10)) ≡ Zeros{Bool}(10)
     @test cumsum(Ones{Bool}(10)) ≡ Base.OneTo{Int}(10)
     @test cumsum(Fill(true,10)) ≡ 1:1:10
+
+    @test diff(Fill(1,10)) ≡ Zeros{Int}(9)
+    @test diff(Ones{Float64}(10)) ≡ Zeros{Float64}(9)
 end
 
 @testset "Broadcast" begin

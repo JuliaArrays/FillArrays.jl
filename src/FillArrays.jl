@@ -2,10 +2,8 @@ module FillArrays
 
 using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
-    +, -, *, /, sum, cumsum, maximum, minimum, sort, sort!,
+    +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv
-
-import Base.\
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag
 
@@ -378,6 +376,13 @@ cumsum(x::Zeros{Bool}) = x
 cumsum(x::Ones{II}) where II<:Integer = Base.OneTo{II}(length(x))
 cumsum(x::Ones{Bool}) = Base.OneTo{Int}(length(x))
 cumsum(x::AbstractFill{Bool}) = cumsum(convert(AbstractFill{Int}, x))
+
+
+#########
+# Diff
+#########
+
+diff(x::AbstractFill{T,1}) where T = Zeros{T}(length(x)-1)
 
 #########
 # unique
