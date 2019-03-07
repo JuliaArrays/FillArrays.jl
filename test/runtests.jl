@@ -448,6 +448,11 @@ end
     @test Zeros(5) .* Fill(5.0, 5) == Zeros(5)
     @test Ones(5) .* Zeros(5) == Zeros(5)
     @test Fill(5.0, 5) .* Zeros(5) == Zeros(5)
+
+    # support Ref
+    @test Fill(1,10) .- 1 ≡ Fill(1,10) .- Ref(1) ≡ Fill(1,10) .- Ref(1I)
+    @test Fill([1 2; 3 4],10) .- Ref(1I) == Fill([0 2; 3 3],10)
+    @test Ref(1I) .+ Fill([1 2; 3 4],10) == Fill([2 2; 3 5],10)
 end
 
 @testset "Sub-arrays" begin
