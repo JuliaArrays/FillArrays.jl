@@ -3,7 +3,8 @@ module FillArrays
 using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
-    any, all, axes, isone, iterate, unique, allunique, permutedims, inv
+    any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
+    copy
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag
 
@@ -73,6 +74,8 @@ convert(::Type{AbstractArray{T,N}}, F::Fill) where {T,N} = AbstractArray{T,N}(F)
 convert(::Type{AbstractFill}, F::AbstractFill) = F
 convert(::Type{AbstractFill{T}}, F::AbstractFill) where T = convert(AbstractArray{T}, F)
 convert(::Type{AbstractFill{T,N}}, F::AbstractFill) where {T,N} = convert(AbstractArray{T,N}, F)
+
+copy(F::Fill) = Fill(copy(F.value), F.axes)
 
 """ Throws an error if `arr` does not contain one and only one unique value. """
 function unique_value(arr::AbstractArray)
@@ -173,6 +176,8 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         convert(::Type{AbstractArray{T,N}}, F::$Typ{T,N}) where {T,N} = AbstractArray{T,N}(F)
         convert(::Type{AbstractArray{T}}, F::$Typ) where T = AbstractArray{T}(F)
         convert(::Type{AbstractArray{T,N}}, F::$Typ) where {T,N} = AbstractArray{T,N}(F)
+
+        copy(F::$Typ) = F
 
         getindex(F::$Typ{T,0}) where T = getindex_value(F)
         function getindex(F::$Typ{T}, kj::Vararg{AbstractVector{II},N}) where {T,II<:Integer,N}

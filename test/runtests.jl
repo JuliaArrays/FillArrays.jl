@@ -129,6 +129,17 @@ import FillArrays: AbstractFill, RectDiagonal
         @test Zeros{Bool}(5) + x ≡ x
         @test -x ≡ Fill(-1,5)
     end
+
+    @testset "copy should return Fill" begin
+        x = Fill(1.0,10)
+        @test copy(x) ≡ x
+        x = Zeros(10)
+        @test copy(x) ≡ x
+        x = Fill([1.,2.],10)
+        @test copy(x) == x
+        @test copy(x) !== x
+        @test copy(x) isa Fill
+    end
 end
 
 @testset "RectDiagonal" begin
