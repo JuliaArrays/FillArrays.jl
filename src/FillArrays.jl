@@ -373,14 +373,14 @@ end
 sum(x::AbstractFill) = getindex_value(x)*length(x)
 sum(x::Zeros) = getindex_value(x)
 
-cumsum(x::AbstractFill) = range(getindex_value(x); step=getindex_value(x),
+cumsum(x::AbstractFill{<:Any,1}) = range(getindex_value(x); step=getindex_value(x),
                                                     length=length(x))
 
-cumsum(x::Zeros) = x
-cumsum(x::Zeros{Bool}) = x
-cumsum(x::Ones{II}) where II<:Integer = Base.OneTo{II}(length(x))
-cumsum(x::Ones{Bool}) = Base.OneTo{Int}(length(x))
-cumsum(x::AbstractFill{Bool}) = cumsum(convert(AbstractFill{Int}, x))
+cumsum(x::Zeros{<:Any,1}) = x
+cumsum(x::Zeros{Bool,1}) = x
+cumsum(x::Ones{II,1}) where II<:Integer = Base.OneTo{II}(length(x))
+cumsum(x::Ones{Bool,1}) = Base.OneTo{Int}(length(x))
+cumsum(x::AbstractFill{Bool,1}) = cumsum(convert(AbstractFill{Int}, x))
 
 
 #########

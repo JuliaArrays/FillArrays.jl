@@ -426,6 +426,8 @@ end
 
     @test diff(Fill(1,10)) ≡ Zeros{Int}(9)
     @test diff(Ones{Float64}(10)) ≡ Zeros{Float64}(9)
+
+    @test_throws UndefKeywordError cumsum(Fill(1,1,5))
 end
 
 @testset "Broadcast" begin
