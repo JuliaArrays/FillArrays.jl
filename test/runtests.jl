@@ -140,7 +140,14 @@ import FillArrays: AbstractFill, RectDiagonal
         @test copy(x) !== x
         @test copy(x) isa Fill
     end
+
+    @testset "vec" begin
+        @test vec(Ones{Int}(5,10)) ≡ Ones{Int}(50)
+        @test vec(Zeros{Int}(5,10)) ≡ Zeros{Int}(50)
+        @test vec(Zeros{Int}(5,10,20)) ≡ Zeros{Int}(1000)
+        @test vec(Fill(1,5,10)) ≡ Fill(1,50)
 end
+
 
 @testset "RectDiagonal" begin
     data = 1:3
@@ -179,6 +186,7 @@ end
     mut[2, 1] = 0
     @test_throws ArgumentError mut[2, 1] = 9
 end
+
 
 # Check that all pair-wise combinations of + / - elements of As and Bs yield the correct
 # type, and produce numerically correct results.

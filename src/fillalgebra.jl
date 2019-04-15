@@ -1,3 +1,9 @@
+## vec
+
+vec(a::Ones{T}) where T = Ones{T}(length(a))
+vec(a::Zeros{T}) where T = Zeros{T}(length(a))
+vec(a::Fill{T}) where T = Fill{T}(a.value,length(a))
+
 ## Transpose/Adjoint
 
 transpose(a::Ones{T,2}) where T = Ones{T}(reverse(a.axes))
