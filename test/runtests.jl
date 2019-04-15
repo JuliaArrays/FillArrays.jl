@@ -146,7 +146,7 @@ import FillArrays: AbstractFill, RectDiagonal
         @test vec(Zeros{Int}(5,10)) ≡ Zeros{Int}(50)
         @test vec(Zeros{Int}(5,10,20)) ≡ Zeros{Int}(1000)
         @test vec(Fill(1,5,10)) ≡ Fill(1,50)
-end
+    end
 end
 
 
@@ -435,8 +435,9 @@ end
 
     @test diff(Fill(1,10)) ≡ Zeros{Int}(9)
     @test diff(Ones{Float64}(10)) ≡ Zeros{Float64}(9)
-
-    @test_throws UndefKeywordError cumsum(Fill(1,1,5))
+    if VERSION ≥ v"1.0"
+        @test_throws UndefKeywordError cumsum(Fill(1,1,5))
+    end
 end
 
 @testset "Broadcast" begin
