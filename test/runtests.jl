@@ -140,7 +140,15 @@ import FillArrays: AbstractFill, RectDiagonal
         @test copy(x) !== x
         @test copy(x) isa Fill
     end
+
+    @testset "vec" begin
+        @test vec(Ones{Int}(5,10)) ≡ Ones{Int}(50)
+        @test vec(Zeros{Int}(5,10)) ≡ Zeros{Int}(50)
+        @test vec(Zeros{Int}(5,10,20)) ≡ Zeros{Int}(1000)
+        @test vec(Fill(1,5,10)) ≡ Fill(1,50)
+    end
 end
+
 
 @testset "RectDiagonal" begin
     data = 1:3
@@ -179,6 +187,7 @@ end
     mut[2, 1] = 0
     @test_throws ArgumentError mut[2, 1] = 9
 end
+
 
 # Check that all pair-wise combinations of + / - elements of As and Bs yield the correct
 # type, and produce numerically correct results.
@@ -426,6 +435,9 @@ end
 
     @test diff(Fill(1,10)) ≡ Zeros{Int}(9)
     @test diff(Ones{Float64}(10)) ≡ Zeros{Float64}(9)
+    if VERSION ≥ v"1.0"
+        @test_throws UndefKeywordError cumsum(Fill(1,1,5))
+    end
 end
 
 @testset "Broadcast" begin
@@ -656,4 +668,14 @@ end
 @testset "Issue #31" begin
     @test convert(SparseMatrixCSC{Float64,Int64}, Zeros{Float64}(3, 3)) == spzeros(3, 3)
     @test sparse(Zeros(4, 2)) == spzeros(4, 2)
+end
+
+@testset "Adjoint/Transpose" begin
+    @test Ones{ComplexF64}(5,6)' ≡ transpose(Ones{ComplexF64}(5,6)) ≡ Ones{ComplexF64}(6,5)
+    @test Zeros{ComplexF64}(5,6)' ≡ transpose(Zeros{ComplexF64}(5,6)) ≡ Zeros{ComplexF64}(6,5)
+    @test Fill(1+im, 5, 6)' ≡ Fill(1-im, 6,5)
+    @test transpose(Fill(1+im, 5, 6)) ≡ Fill(1+im, 6,5)
+    @test Ones(5)' isa Adjoint # Vectors still need special dot product
+    @test Fill([1+im 2; 3 4; 5 6], 2,3)' == Fill([1+im 2; 3 4; 5 6]', 3,2)
+    @test transpose(Fill([1+im 2; 3 4; 5 6], 2,3)) == Fill(transpose([1+im 2; 3 4; 5 6]), 3,2)
 end
