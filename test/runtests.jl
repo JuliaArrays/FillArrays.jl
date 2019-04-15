@@ -147,6 +147,7 @@ import FillArrays: AbstractFill, RectDiagonal
         @test vec(Zeros{Int}(5,10,20)) ≡ Zeros{Int}(1000)
         @test vec(Fill(1,5,10)) ≡ Fill(1,50)
 end
+end
 
 
 @testset "RectDiagonal" begin
