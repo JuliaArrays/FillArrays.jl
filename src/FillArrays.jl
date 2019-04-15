@@ -6,7 +6,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
     copy
 
-import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag
+import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 

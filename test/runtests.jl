@@ -657,3 +657,13 @@ end
     @test convert(SparseMatrixCSC{Float64,Int64}, Zeros{Float64}(3, 3)) == spzeros(3, 3)
     @test sparse(Zeros(4, 2)) == spzeros(4, 2)
 end
+
+@testset "Adjoint/Transpose" begin
+    @test Ones{ComplexF64}(5,6)' ≡ transpose(Ones{ComplexF64}(5,6)) ≡ Ones{ComplexF64}(6,5)
+    @test Zeros{ComplexF64}(5,6)' ≡ transpose(Zeros{ComplexF64}(5,6)) ≡ Zeros{ComplexF64}(6,5)
+    @test Fill(1+im, 5, 6)' ≡ Fill(1-im, 6,5)
+    @test transpose(Fill(1+im, 5, 6)) ≡ Fill(1+im, 6,5)
+    @test Ones(5)' isa Adjoint # Vectors still need special dot product
+    @test Fill([1+im 2; 3 4; 5 6], 2,3)' == Fill([1+im 2; 3 4; 5 6]', 3,2)
+    @test transpose(Fill([1+im 2; 3 4; 5 6], 2,3)) == Fill(transpose([1+im 2; 3 4; 5 6]), 3,2)
+end

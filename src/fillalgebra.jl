@@ -1,3 +1,12 @@
+## Transpose/Adjoint
+
+transpose(a::Ones{T,2}) where T = Ones{T}(reverse(a.axes))
+adjoint(a::Ones{T,2}) where T = Ones{T}(reverse(a.axes))
+transpose(a::Zeros{T,2}) where T = Zeros{T}(reverse(a.axes))
+adjoint(a::Zeros{T,2}) where T = Zeros{T}(reverse(a.axes))
+transpose(a::Fill{T,2}) where T = Fill{T}(transpose(a.value), reverse(a.axes))
+adjoint(a::Fill{T,2}) where T = Fill{T}(adjoint(a.value), reverse(a.axes))
+
 ## Algebraic identities
 
 function mult_zeros(a, b::AbstractMatrix)
