@@ -426,8 +426,11 @@ function all(f::Function, IM::Eye{T}) where T
 end
 
 # In particular, these make iszero(Eye(n))  efficient.
-any(f::Function, x::AbstractFill) = f(getindex_value(x))
-all(f::Function, x::AbstractFill) = f(getindex_value(x))
+# use any/all on scalar to get Boolean error message
+any(f::Function, x::AbstractFill) = any(f, getindex_value(x))
+all(f::Function, x::AbstractFill) = all(f, getindex_value(x))
+any(x::AbstractFill) = any(getindex_value(x))
+all(x::AbstractFill) = all(getindex_value(x))
 
 include("fillalgebra.jl")
 include("fillbroadcast.jl")
