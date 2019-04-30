@@ -137,8 +137,9 @@ import FillArrays: AbstractFill, RectDiagonal
         @test copy(x) ≡ x
         x = Fill([1.,2.],10)
         @test copy(x) == x
-        @test copy(x) !== x
+        @test copy(x) === x   # because isbits(x)
         @test copy(x) isa Fill
+        @test copy(Fill(:a, 4)) == fill(:a, 4)    # FillArrays#63
     end
 
     @testset "vec" begin
