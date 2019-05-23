@@ -460,6 +460,32 @@ end
     @test y .+ y ≡ Fill(2.0,5,5)
     @test y .* y ≡ y ./ y ≡ y .\ y ≡ y
 
+    rng = MersenneTwister(123456)
+    sizes = [(5, 4), (5, 1), (1, 4), (1, 1), (5,)]
+    for sx in sizes, sy in sizes
+        x, y = Fill(randn(rng), sx), Fill(randn(rng), sy)
+        x_one, y_one = Ones(sx), Ones(sy)
+        x_zero, y_zero = Zeros(sx), Zeros(sy)
+        x_dense, y_dense = randn(rng, sx), randn(rng, sy)
+
+        for x in [x, x_one, x_zero, x_dense], y in [y, y_one, y_zero, y_dense]
+            @test x .+ y == collect(x) .+ collect(y)
+        end
+        @test x_zero .+ y_zero isa Zeros
+        @test x_zero .+ y_one isa Ones
+        @test x_one .+ y_zero isa Ones
+
+        for x in [x, x_one, x_zero, x_dense], y in [y, y_one, y_zero, y_dense]
+            @test x .* y == collect(x) .* collect(y)
+        end
+        for x in [x, x_one, x_zero, x_dense]
+            @test x .* y_zero isa Zeros
+        end
+        for y in [y, y_one, y_zero, y_dense]
+            @test x_zero .* y isa Zeros
+        end
+    end
+
     @test Zeros{Int}(5) .+ Zeros(5) isa Zeros{Float64}
 
     rnge = range(-5.0, step=1.0, length=10)
