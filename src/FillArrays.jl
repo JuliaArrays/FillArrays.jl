@@ -258,13 +258,13 @@ const Eye{T,Axes} = RectOrDiagonal{T,Ones{T,1,Tuple{Axes}}}
 Eye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
 Eye(n::Integer) = Diagonal(Ones(n))
 
-function iterate(iter::Eye, istate = (1, 1))
-    (i::Int, j::Int) = istate
-    m = size(iter, 1)
-    return i > m ? nothing :
-        ((@inbounds getindex(iter, i, j)),
-         j == m ? (i + 1, 1) : (i, j + 1))
-end
+# function iterate(iter::Eye, istate = (1, 1))
+#     (i::Int, j::Int) = istate
+#     m = size(iter, 1)
+#     return i > m ? nothing :
+#         ((@inbounds getindex(iter, i, j)),
+#          j == m ? (i + 1, 1) : (i, j + 1))
+# end
 
 isone(::SquareEye) = true
 
