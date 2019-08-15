@@ -728,6 +728,7 @@ end
     @test (F[1] = 1) == 1
     @test_throws BoundsError (F[11] = 1)
     @test_throws ArgumentError (F[10] = 2)
+    
 
     F = Fill(1,10,5)
     @test (F[1] = 1) == 1
@@ -739,4 +740,7 @@ end
 
     @test (F[:,1] .= 1) == fill(1,10)
     @test_throws ArgumentError (F[:,1] .= 2)
+
+    @test fill!(F,1) == F
+    @test_throws ArgumentError fill!(F,2)
 end
