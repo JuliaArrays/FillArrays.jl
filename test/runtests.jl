@@ -722,3 +722,21 @@ end
     @test Fill([1+im 2; 3 4; 5 6], 2,3)' == Fill([1+im 2; 3 4; 5 6]', 3,2)
     @test transpose(Fill([1+im 2; 3 4; 5 6], 2,3)) == Fill(transpose([1+im 2; 3 4; 5 6]), 3,2)
 end
+
+@testset "setindex!/fill!" begin
+    F = Fill(1,10)
+    @test (F[1] = 1) == 1
+    @test_throws BoundsError (F[11] = 1)
+    @test_throws ArgumentError (F[10] = 2)
+
+    F = Fill(1,10,5)
+    @test (F[1] = 1) == 1
+    @test (F[3,3] = 1) == 1
+    @test_throws BoundsError (F[51] = 1)
+    @test_throws BoundsError (F[1,6] = 1)
+    @test_throws ArgumentError (F[10] = 2)
+    @test_throws ArgumentError (F[10,1] = 2)
+
+    @test (F[:,1] .= 1) == fill(1,10)
+    @test_throws ArgumentError (F[:,1] .= 2)
+end
