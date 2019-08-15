@@ -4,9 +4,9 @@ using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
-    copy, vec
+    copy, vec, setindex!
 
-import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint
+import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
@@ -25,6 +25,23 @@ end
 @inline function getindex(F::AbstractFill{T, N}, kj::Vararg{<:Integer, N}) where {T, N}
     @boundscheck checkbounds(F, kj...)
     getindex_value(F)
+end
+
+@inline function setindex!(F::AbstractFill, v, k::Integer)
+    @boundscheck checkbounds(F, k)
+    v == getindex_value(F) || throw(ArgumentError("Cannot setindex! to $v for an AbstractFill with value $(getindex_value(F))."))
+    F
+end
+
+@inline function setindex!(F::AbstractFill{T, N}, v, kj::Vararg{<:Integer, N}) where {T, N}
+    @boundscheck checkbounds(F, kj...)
+    v == getindex_value(F) || throw(ArgumentError("Cannot setindex! to $v for an AbstractFill with value $(getindex_value(F))."))
+    F
+end
+
+@inline function fill!(F::AbstractFill, v)
+    v == getindex_value(F) || throw(ArgumentError("Cannot fill! with $v an AbstractFill with value $(getindex_value(F))."))
+    F
 end
 
 rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
