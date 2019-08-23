@@ -15,23 +15,72 @@ adjoint(a::Fill{T,2}) where T = Fill{T}(adjoint(a.value), reverse(a.axes))
 
 ## Algebraic identities
 
-function mult_zeros(a, b::AbstractMatrix)
-    size(a, 2) ≠ size(b, 1) &&
+
+function mult_fill(a::AbstractFill, b::AbstractFill{<:Any,2})
+    axes(a, 2) ≠ axes(b, 1) &&
         throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
-    return Zeros{promote_type(eltype(a), eltype(b))}(size(a, 1), size(b, 2))
-end
-function mult_zeros(a, b::AbstractVector)
-    size(a, 2) ≠ size(b, 1) &&
-        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
-    return Zeros{promote_type(eltype(a), eltype(b))}(size(a, 1))
+    return Fill(getindex_value(a)*getindex_value(b), (axes(a, 1), axes(b, 2)))
 end
 
-const ZerosVecOrMat{T} = Union{Zeros{T,1}, Zeros{T,2}}
-*(a::ZerosVecOrMat, b::AbstractMatrix) = mult_zeros(a, b)
-*(a::AbstractMatrix, b::ZerosVecOrMat) = mult_zeros(a, b)
-*(a::ZerosVecOrMat, b::AbstractVector) = mult_zeros(a, b)
-*(a::AbstractVector, b::ZerosVecOrMat) = mult_zeros(a, b)
-*(a::ZerosVecOrMat, b::ZerosVecOrMat) = mult_zeros(a, b)
+function mult_fill(a::AbstractFill, b::AbstractFill{<:Any,1})
+    axes(a, 2) ≠ axes(b, 1) &&
+        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
+    return Fill(getindex_value(a)*getindex_value(b), (axes(a, 1),))
+end
+
+function mult_ones(a, b::AbstractMatrix)
+    axes(a, 2) ≠ axes(b, 1) &&
+        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
+    return Ones{promote_type(eltype(a), eltype(b))}((axes(a, 1), axes(b, 2)))
+end
+function mult_ones(a, b::AbstractVector)
+    axes(a, 2) ≠ axes(b, 1) &&
+        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
+    return Ones{promote_type(eltype(a), eltype(b))}((axes(a, 1),))
+end
+
+function mult_zeros(a, b::AbstractMatrix)
+    axes(a, 2) ≠ axes(b, 1) &&
+        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
+    return Zeros{promote_type(eltype(a), eltype(b))}((axes(a, 1), axes(b, 2)))
+end
+function mult_zeros(a, b::AbstractVector)
+    axes(a, 2) ≠ axes(b, 1) &&
+        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
+    return Zeros{promote_type(eltype(a), eltype(b))}((axes(a, 1),))
+end
+
+*(a::AbstractFill{<:Any,1}, b::AbstractFill{<:Any,2}) = mult_fill(a,b)
+*(a::AbstractFill{<:Any,2}, b::AbstractFill{<:Any,2}) = mult_fill(a,b)
+*(a::AbstractFill{<:Any,2}, b::AbstractFill{<:Any,1}) = mult_fill(a,b)
+
+*(a::Ones{<:Any,1}, b::Ones{<:Any,2}) = mult_ones(a, b)
+*(a::Ones{<:Any,2}, b::Ones{<:Any,2}) = mult_ones(a, b)
+*(a::Ones{<:Any,2}, b::Ones{<:Any,1}) = mult_ones(a, b)
+
+*(a::Zeros{<:Any,1}, b::Zeros{<:Any,2}) = mult_zeros(a, b)
+*(a::Zeros{<:Any,2}, b::Zeros{<:Any,2}) = mult_zeros(a, b)
+*(a::Zeros{<:Any,2}, b::Zeros{<:Any,1}) = mult_zeros(a, b)
+
+*(a::Zeros{<:Any,1}, b::AbstractFill{<:Any,2}) = mult_zeros(a, b)
+*(a::Zeros{<:Any,2}, b::AbstractFill{<:Any,2}) = mult_zeros(a, b)
+*(a::Zeros{<:Any,2}, b::AbstractFill{<:Any,1}) = mult_zeros(a, b)
+*(a::AbstractFill{<:Any,1}, b::Zeros{<:Any,2}) = mult_zeros(a,b)
+*(a::AbstractFill{<:Any,2}, b::Zeros{<:Any,2}) = mult_zeros(a,b)
+*(a::AbstractFill{<:Any,2}, b::Zeros{<:Any,1}) = mult_zeros(a,b)
+
+*(a::Zeros{<:Any,1}, b::AbstractMatrix) = mult_zeros(a, b)
+*(a::Zeros{<:Any,2}, b::AbstractMatrix) = mult_zeros(a, b)
+*(a::AbstractMatrix, b::Zeros{<:Any,1}) = mult_zeros(a, b)
+*(a::AbstractMatrix, b::Zeros{<:Any,2}) = mult_zeros(a, b)
+*(a::Zeros{<:Any,1}, b::AbstractVector) = mult_zeros(a, b)
+*(a::Zeros{<:Any,2}, b::AbstractVector) = mult_zeros(a, b)
+*(a::AbstractVector, b::Zeros{<:Any,2}) = mult_zeros(a, b)
+
+*(a::Zeros{<:Any,1}, b::Diagonal) = mult_zeros(a, b)
+*(a::Zeros{<:Any,2}, b::Diagonal) = mult_zeros(a, b)
+*(a::Diagonal, b::Zeros{<:Any,1}) = mult_zeros(a, b)
+*(a::Diagonal, b::Zeros{<:Any,2}) = mult_zeros(a, b)
 
 
 function *(a::Adjoint{T, <:AbstractVector{T}}, b::Zeros{S, 1}) where {T, S}

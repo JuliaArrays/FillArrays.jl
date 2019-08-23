@@ -150,7 +150,6 @@ import FillArrays: AbstractFill, RectDiagonal
     end
 end
 
-
 @testset "RectDiagonal" begin
     data = 1:3
     expected_size = (5, 3)
@@ -188,7 +187,6 @@ end
     mut[2, 1] = 0
     @test_throws ArgumentError mut[2, 1] = 9
 end
-
 
 # Check that all pair-wise combinations of + / - elements of As and Bs yield the correct
 # type, and produce numerically correct results.
@@ -313,7 +311,6 @@ end
 
 end
 
-
 @testset "IndexStyle" begin
     @test IndexStyle(Zeros(5,5)) == IndexStyle(typeof(Zeros(5,5))) == IndexLinear()
 end
@@ -326,9 +323,9 @@ end
     @test Zeros(3, 4) * randn(4) == Zeros(3, 4) * Zeros(4) == Zeros(3)
     @test Zeros(3, 4) * Zeros(4, 5) === Zeros(3, 5)
 
-    @test [1,2,3]*Zeros(1) ≡ Zeros(3)
+    @test_throws MethodError [1,2,3]*Zeros(1) # Not defined for [1,2,3]*[0] either
     @test [1,2,3]*Zeros(1,3) ≡ Zeros(3,3)
-    @test_throws DimensionMismatch [1,2,3]*Zeros(3)
+    @test_throws MethodError [1,2,3]*Zeros(3) # Not defined for [1,2,3]*[0,0,0] either
 
     # Check multiplication by Adjoint vectors works as expected.
     @test randn(4, 3)' * Zeros(4) === Zeros(3)
@@ -744,3 +741,65 @@ end
     @test fill!(F,1) == F
     @test_throws ArgumentError fill!(F,2)
 end
+
+@testset "mult" begin
+    @test Fill(2,10)*Fill(3,1,12) == Vector(Fill(2,10))*Matrix(Fill(3,1,12))
+    @test Fill(2,10)*Fill(3,1,12) ≡ Fill(6,10,12)
+    @test Fill(2,3,10)*Fill(3,10,12) ≡ Fill(6,3,12)
+    @test Fill(2,3,10)*Fill(3,10) ≡ Fill(6,3)
+    @test_throws DimensionMismatch Fill(2,10)*Fill(3,2,12)
+    @test_throws DimensionMismatch Fill(2,3,10)*Fill(3,2,12)
+
+    @test Ones(10)*Fill(3,1,12) ≡ Fill(3.0,10,12)
+    @test Ones(10,3)*Fill(3,3,12) ≡ Fill(3.0,10,12)
+    @test Ones(10,3)*Fill(3,3) ≡ Fill(3.0,10)
+
+    @test Fill(2,10)*Ones(1,12) ≡ Fill(2.0,10,12)
+    @test Fill(2,3,10)*Ones(10,12) ≡ Fill(2.0,3,12)
+    @test Fill(2,3,10)*Ones(10) ≡ Fill(2.0,3)
+
+    @test Ones(10)*Ones(1,12) ≡ Ones(10,12)
+    @test Ones(3,10)*Ones(10,12) ≡ Ones(3,12)
+    @test Ones(3,10)*Ones(10) ≡ Ones(3)
+
+    @test Zeros(10)*Fill(3,1,12) ≡   Zeros(10,12)
+    @test Zeros(10,3)*Fill(3,3,12) ≡ Zeros(10,12)
+    @test Zeros(10,3)*Fill(3,3) ≡    Zeros(10)
+
+    @test Fill(2,10)*  Zeros(1,12) ≡  Zeros(10,12)
+    @test Fill(2,3,10)*Zeros(10,12) ≡ Zeros(3,12)
+    @test Fill(2,3,10)*Zeros(10) ≡    Zeros(3)
+
+    @test Zeros(10)*Zeros(1,12) ≡ Zeros(10,12)
+    @test Zeros(3,10)*Zeros(10,12) ≡ Zeros(3,12)
+    @test Zeros(3,10)*Zeros(10) ≡ Zeros(3)
+
+    a = randn(3)
+    A = randn(1,4)
+
+    @test Fill(2,3)*A == Vector(Fill(2,3))*A
+    @test Fill(2,3,1)*A == Matrix(Fill(2,3,1))*A
+    @test Fill(2,3,3)*a == Matrix(Fill(2,3,3))*a
+    @test Ones(3)*A ==   Vector(Ones(3))*A
+    @test Ones(3,1)*A == Matrix(Ones(3,1))*A
+    @test Ones(3,3)*a == Matrix(Ones(3,3))*a
+    @test Zeros(3)*A  ≡ Zeros(3,4)
+    @test Zeros(3,1)*A == Zeros(3,4)
+    @test Zeros(3,3)*a == Zeros(3)
+
+    @test A*Fill(2,4) == A*Vector(Fill(2,4))
+    @test A*Fill(2,4,1) == A*Matrix(Fill(2,4,1))
+    @test a*Fill(2,1,3) == a*Matrix(Fill(2,1,3))
+    @test A*Ones(4) ==   A*Vector(Ones(4))
+    @test A*Ones(4,1) == A*Matrix(Ones(4,1))
+    @test a*Ones(1,3) == a*Matrix(Ones(1,3))
+    @test A*Zeros(4)  ≡ Zeros(1)
+    @test A*Zeros(4,1) ≡ Zeros(1,1)
+    @test a*Zeros(1,3) ≡ Zeros(3,3)
+
+    D = Diagonal(randn(1))
+    @test Zeros(1,1)*D ≡ Zeros(1,1)
+    @test Zeros(1)*D ≡ Zeros(1,1)
+    @test D*Zeros(1,1) ≡ Zeros(1,1)
+    @test D*Zeros(1) ≡ Zeros(1)
+end   
