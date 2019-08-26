@@ -500,6 +500,17 @@ end
     @test Fill(1,10) .- 1 ≡ Fill(1,10) .- Ref(1) ≡ Fill(1,10) .- Ref(1I)
     @test Fill([1 2; 3 4],10) .- Ref(1I) == Fill([0 2; 3 3],10)
     @test Ref(1I) .+ Fill([1 2; 3 4],10) == Fill([2 2; 3 5],10)
+
+    @testset "Special Ones" begin
+        @test Ones{Int}(5) .* (1:5) ≡ (1:5) .* Ones{Int}(5) ≡ 1:5 
+        @test Ones(5) .* (1:5) ≡ (1:5) .* Ones(5) ≡ 1.0:5 
+        @test Ones{Int}(5) .* Ones{Int}(5) ≡ Ones{Int}(5) 
+        @test Ones{Int}(5,2) .* (1:5) == Array(Ones{Int}(5,2)) .* Array(1:5)
+        @test (1:5) .* Ones{Int}(5,2)  == Array(1:5) .* Array(Ones{Int}(5,2)) 
+        @test_throws DimensionMismatch Ones{Int}(6) .* (1:5)
+        @test_throws DimensionMismatch (1:5) .* Ones{Int}(6)
+        @test_throws DimensionMismatch Ones{Int}(5) .* Ones{Int}(6)
+    end
 end
 
 @testset "Sub-arrays" begin
