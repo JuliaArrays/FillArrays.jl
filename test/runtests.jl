@@ -802,4 +802,9 @@ end
     @test Zeros(1)*D ≡ Zeros(1,1)
     @test D*Zeros(1,1) ≡ Zeros(1,1)
     @test D*Zeros(1) ≡ Zeros(1)
+
+    E = Eye(5)
+    @test E*(1:5) ≡ 1.0:5.0
+    @test (1:5)'E == (1.0:5)'
+    @test E*E ≡ E
 end   
