@@ -28,34 +28,49 @@ broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::Zeros) = _broadcasted
 
 broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::Ones) = _broadcasted_zeros(a, b)
 broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::Fill) = _broadcasted_zeros(a, b)
-function broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::AbstractRange)
+broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::AbstractRange) =
     return _broadcasted_zeros(a, b)
-end
-function broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::AbstractArray)
+broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::AbstractArray) =
     return _broadcasted_zeros(a, b)
-end
 
 broadcasted(::DefaultArrayStyle, ::typeof(*), a::Ones, b::Zeros) = _broadcasted_zeros(a, b)
 broadcasted(::DefaultArrayStyle, ::typeof(*), a::Fill, b::Zeros) = _broadcasted_zeros(a, b)
-function broadcasted(::DefaultArrayStyle, ::typeof(*), a::AbstractRange, b::Zeros)
+broadcasted(::DefaultArrayStyle, ::typeof(*), a::AbstractRange, b::Zeros) =
     return _broadcasted_zeros(a, b)
-end
-function broadcasted(::DefaultArrayStyle, ::typeof(*), a::AbstractArray, b::Zeros)
+broadcasted(::DefaultArrayStyle, ::typeof(*), a::AbstractArray, b::Zeros) =
     return _broadcasted_zeros(a, b)
-end
+broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::Zeros, b::AbstractRange) =
+    return _broadcasted_zeros(a, b)
+broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::Zeros) =
+    return _broadcasted_zeros(a, b)
+
 
 broadcasted(::DefaultArrayStyle, ::typeof(*), a::Ones, b::Ones) = _broadcasted_ones(a, b)
 broadcasted(::DefaultArrayStyle, ::typeof(/), a::Ones, b::Ones) = _broadcasted_ones(a, b)
 broadcasted(::DefaultArrayStyle, ::typeof(\), a::Ones, b::Ones) = _broadcasted_ones(a, b)
 
+# special case due to missing converts for ranges
+_range_convert(::Type{AbstractVector{T}}, a::AbstractRange{T}) where T = a
+_range_convert(::Type{AbstractVector{T}}, a::AbstractUnitRange) where T = convert(T,first(a)):convert(T,last(a))
+_range_convert(::Type{AbstractVector{T}}, a::AbstractRange) where T = convert(T,first(a)):step(a):convert(T,last(a))
+
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::Ones{T}, b::AbstractRange{V}) where {T,V}
+    broadcast_shape(size(a), size(b)) # Check sizes are compatible.
+    return _range_convert(AbstractVector{promote_type(T,V)}, b)
+end
+
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b::Ones{T}) where {T,V}
+    broadcast_shape(size(a), size(b)) # Check sizes are compatible.
+    return _range_convert(AbstractVector{promote_type(T,V)}, a)
+end
 
 
-function broadcasted(::DefaultArrayStyle, ::typeof(*), a::AbstractFill, b::AbstractRange)
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractFill, b::AbstractRange)
     broadcast_shape(size(a), size(b)) # Check sizes are compatible.
     return broadcasted(*, getindex_value(a), b)
 end
 
-function broadcasted(::DefaultArrayStyle, ::typeof(*), a::AbstractRange, b::AbstractFill)
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractFill)
     broadcast_shape(size(a), size(b)) # Check sizes are compatible.
     return broadcasted(*, a, getindex_value(b))
 end
