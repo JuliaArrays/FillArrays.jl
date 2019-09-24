@@ -721,7 +721,7 @@ end
     @test sparse(Zeros(4, 2)) == spzeros(4, 2)
 end
 
-@testset "Adjoint/Transpose" begin
+@testset "Adjoint/Transpose/permutedims" begin
     @test Ones{ComplexF64}(5,6)' ≡ transpose(Ones{ComplexF64}(5,6)) ≡ Ones{ComplexF64}(6,5)
     @test Zeros{ComplexF64}(5,6)' ≡ transpose(Zeros{ComplexF64}(5,6)) ≡ Zeros{ComplexF64}(6,5)
     @test Fill(1+im, 5, 6)' ≡ Fill(1-im, 6,5)
@@ -729,6 +729,18 @@ end
     @test Ones(5)' isa Adjoint # Vectors still need special dot product
     @test Fill([1+im 2; 3 4; 5 6], 2,3)' == Fill([1+im 2; 3 4; 5 6]', 3,2)
     @test transpose(Fill([1+im 2; 3 4; 5 6], 2,3)) == Fill(transpose([1+im 2; 3 4; 5 6]), 3,2)
+
+    @test permutedims(Ones(10)) ≡ Ones(1,10)
+    @test permutedims(Zeros(10)) ≡ Zeros(1,10)
+    @test permutedims(Fill(2.0,10)) ≡ Fill(2.0,1,10)
+    @test permutedims(Ones(10,3)) ≡ Ones(3,10)
+    @test permutedims(Zeros(10,3)) ≡ Zeros(3,10)
+    @test permutedims(Fill(2.0,10,3)) ≡ Fill(2.0,3,10)
+
+    @test permutedims(Ones(2,4,5), [3,2,1]) == permutedims(Array(Ones(2,4,5)), [3,2,1])
+    @test permutedims(Ones(2,4,5), [3,2,1]) ≡ Ones(5,4,2)
+    @test permutedims(Zeros(2,4,5), [3,2,1]) ≡ Zeros(5,4,2)
+    @test permutedims(Fill(2.0,2,4,5), [3,2,1]) ≡ Fill(2.0,5,4,2)
 end
 
 @testset "setindex!/fill!" begin
