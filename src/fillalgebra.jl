@@ -181,10 +181,10 @@ end
 ####
 
 for op in (:norm1, :norm2, :normInf, :normMinusInf)
-    @eval $op(a::Zero) = norm(getindex_value(a))
+    @eval $op(a::Zeros) = norm(getindex_value(a))
 end
 
-normp(a::Zero, p) = norm(getindex_value(a))
+normp(a::Zeros, p) = norm(getindex_value(a))
 
 norm1(a::AbstractFill) = length(a)*norm(getindex_value(a))
 norm2(a::AbstractFill) = sqrt(length(a))*norm(getindex_value(a))
