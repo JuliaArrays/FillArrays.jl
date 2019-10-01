@@ -286,6 +286,12 @@ end
     end
 end
 
+@testset "==" begin
+    @test Zeros(5,4) == Fill(0,5,4)
+    @test Zeros(5,4) ≠ Zeros(3)
+    @test Ones(5,4) == Fill(1,5,4)
+end
+
 @testset "Rank" begin
     @test rank(Zeros(5,4)) == 0
     @test rank(Ones(5,4)) == 1
