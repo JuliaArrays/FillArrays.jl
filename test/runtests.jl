@@ -842,7 +842,7 @@ end
 @testset "norm" begin
     for a in (Zeros{Int}(5), Zeros(5,3), Zeros(2,3,3),
                 Ones{Int}(5), Ones(5,3), Ones(2,3,3),
-                Fill(2.3,5), Fill([2.3,4.2],5)),
+                Fill(2.3,5), Fill([2.3,4.2],5), Fill(4)),
         p in (-Inf, 0, 0.1, 1, 2, 3, Inf)
         @test norm(a,p) ≈ norm(Array(a),p)
     end
