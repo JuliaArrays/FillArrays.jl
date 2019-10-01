@@ -173,3 +173,21 @@ function -(a::Zeros{T, 1}, b::AbstractRange{V}) where {T, V}
     return -b + a
 end
 -(a::AbstractRange{T}, b::Zeros{V, 1}) where {T, V} = a + b
+
+
+
+####
+# norm
+####
+
+for op in (:norm1, :norm2, :normInf, :normMinusInf)
+    @eval $op(a::Zeros) = norm(getindex_value(a))
+end
+
+normp(a::Zeros, p) = norm(getindex_value(a))
+
+norm1(a::AbstractFill) = length(a)*norm(getindex_value(a))
+norm2(a::AbstractFill) = sqrt(length(a))*norm(getindex_value(a))
+normp(a::AbstractFill, p) = (length(a))^(1/p)*norm(getindex_value(a))
+normInf(a::AbstractFill) = norm(getindex_value(a))
+normMinusInf(a::AbstractFill) = norm(getindex_value(a))

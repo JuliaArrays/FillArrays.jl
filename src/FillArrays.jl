@@ -4,9 +4,10 @@ using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
-    copy, vec, setindex!
+    copy, vec, setindex!, count
 
-import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!
+import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!, 
+    norm2, norm1, normInf, normMinusInf, normp
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
@@ -448,6 +449,10 @@ any(f::Function, x::AbstractFill) = any(f, getindex_value(x))
 all(f::Function, x::AbstractFill) = all(f, getindex_value(x))
 any(x::AbstractFill) = any(getindex_value(x))
 all(x::AbstractFill) = all(getindex_value(x))
+
+count(x::Ones{Bool}) = length(x)
+count(x::Zeros{Bool}) = 0
+count(f, x::AbstractFill) = f(getindex_value(x)) ? length(x) : 0
 
 include("fillalgebra.jl")
 include("fillbroadcast.jl")

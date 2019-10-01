@@ -830,4 +830,20 @@ end
     @test E*(1:5) ≡ 1.0:5.0
     @test (1:5)'E == (1.0:5)'
     @test E*E ≡ E
-end   
+end  
+
+@testset "count" begin
+    @test count(Ones{Bool}(10)) == count(Fill(true,10)) == 10
+    @test count(Zeros{Bool}(10)) == count(Fill(false,10)) == 0
+    @test count(x -> 1 ≤ x < 2, Fill(1.3,10)) == 10
+    @test count(x -> 1 ≤ x < 2, Fill(2.0,10)) == 0
+end
+
+@testset "norm" begin
+    for a in (Zeros{Int}(5), Zeros(5,3), Zeros(2,3,3),
+                Ones{Int}(5), Ones(5,3), Ones(2,3,3),
+                Fill(2.3,5), Fill([2.3,4.2],5), Fill(4)),
+        p in (-Inf, 0, 0.1, 1, 2, 3, Inf)
+        @test norm(a,p) ≈ norm(Array(a),p)
+    end
+end
