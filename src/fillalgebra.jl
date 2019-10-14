@@ -99,7 +99,27 @@ end
 *(a::Diagonal, b::Zeros{<:Any,1}) = mult_zeros(a, b)
 *(a::Diagonal, b::Zeros{<:Any,2}) = mult_zeros(a, b)
 
+*(a::Adjoint{T, <:StridedMatrix{T}},   b::Fill{T, 1}) where T = reshape(sum(conj.(parent(a)); dims=1) .* b.value, size(parent(a), 2))
+*(a::Transpose{T, <:StridedMatrix{T}}, b::Fill{T, 1}) where T = reshape(sum(parent(a); dims=1) .* b.value, size(parent(a), 2))
+*(a::StridedMatrix{T}, b::Fill{T, 1}) where T         = reshape(sum(a; dims=2) .* b.value, size(a, 1))
 
+function *(a::Adjoint{T, <:StridedMatrix{T}}, b::Fill{T, 2}) where T
+    fB = similar(parent(a), size(b, 1), size(b, 2))
+    fill!(fB, b.value)
+    return a*fB
+end
+
+function *(a::Transpose{T, <:StridedMatrix{T}}, b::Fill{T, 2}) where T
+    fB = similar(parent(a), size(b, 1), size(b, 2))
+    fill!(fB, b.value)
+    return a*fB
+end
+
+function *(a::StridedMatrix{T}, b::Fill{T, 2}) where T
+    fB = similar(a, size(b, 1), size(b, 2))
+    fill!(fB, b.value)
+    return a*fB
+end
 function *(a::Adjoint{T, <:AbstractVector{T}}, b::Zeros{S, 1}) where {T, S}
     la, lb = length(a), length(b)
     if la ≠ lb

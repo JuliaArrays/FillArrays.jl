@@ -847,3 +847,20 @@ end
         @test norm(a,p) ≈ norm(Array(a),p)
     end
 end
+
+@testset "multiplication" begin
+    fv = ComplexF64(1.6, 1.3)
+    n  = 10
+    k  = 12
+    m  = 15
+    fillvec = Fill(fv, k)
+    fillmat = Fill(fv, k, m)
+    A  = rand(ComplexF64, n, k)
+    @test A*fillvec ≈ A*Array(fillvec)
+    @test A*fillmat ≈ A*Array(fillmat)
+    A  = rand(ComplexF64, k, n)
+    @test transpose(A)*fillvec ≈ transpose(A)*Array(fillvec)
+    @test transpose(A)*fillmat ≈ transpose(A)*Array(fillmat)
+    @test adjoint(A)*fillvec ≈ adjoint(A)*Array(fillvec)
+    @test adjoint(A)*fillmat ≈ adjoint(A)*Array(fillmat)
+end
