@@ -4,7 +4,7 @@ using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
-    copy, vec, setindex!, count
+    copy, vec, setindex!, count, ==
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!, 
     norm2, norm1, normInf, normMinusInf, normp
@@ -17,6 +17,7 @@ export Zeros, Ones, Fill, Eye
 
 abstract type AbstractFill{T, N, Axes} <: AbstractArray{T, N} end
 
+==(a::AbstractFill, b::AbstractFill) = axes(a) == axes(b) && getindex_value(a) == getindex_value(b)
 
 @inline function getindex(F::AbstractFill, k::Integer)
     @boundscheck checkbounds(F, k)
