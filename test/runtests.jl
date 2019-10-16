@@ -493,6 +493,8 @@ end
 
     rnge = range(-5.0, step=1.0, length=10)
     @test broadcast(*, Fill(5.0, 10), rnge) == broadcast(*, 5.0, rnge)
+    @test broadcast(*, Zeros(10, 10), rnge) == zeros(10, 10) 
+    @test broadcast(*, rnge, Zeros(10, 10)) == zeros(10, 10)
     @test_throws DimensionMismatch broadcast(*, Fill(5.0, 11), rnge)
     @test broadcast(*, rnge, Fill(5.0, 10)) == broadcast(*, rnge, 5.0)
     @test_throws DimensionMismatch broadcast(*, rnge, Fill(5.0, 11))
