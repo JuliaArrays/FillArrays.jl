@@ -458,4 +458,10 @@ count(f, x::AbstractFill) = f(getindex_value(x)) ? length(x) : 0
 include("fillalgebra.jl")
 include("fillbroadcast.jl")
 
+##
+# print
+##
+Base.replace_in_print_matrix(::Zeros, ::Integer, ::Integer, s::AbstractString) = 
+    Base.replace_with_centered_mark(s)
+
 end # module
