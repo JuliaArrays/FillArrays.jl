@@ -876,5 +876,5 @@ end
 end
 
 @testset "print" begin
-    @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64,1,Tuple{Base.OneTo{Int64}}}:\n  ⋅ \n  ⋅ \n  ⋅ "
+    @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64,1,Tuple{Base.OneTo{$Int}}}:\n  ⋅ \n  ⋅ \n  ⋅ "
 end
