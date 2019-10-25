@@ -1,4 +1,4 @@
-using FillArrays, LinearAlgebra, SparseArrays, Random, Test
+using FillArrays, LinearAlgebra, SparseArrays, Random, Base64, Test
 import FillArrays: AbstractFill, RectDiagonal
 
 @testset "fill array constructors and convert" begin
@@ -873,4 +873,8 @@ end
         @test adjoint(A)*fillvec ≈ adjoint(A)*Array(fillvec)
         @test adjoint(A)*fillmat ≈ adjoint(A)*Array(fillmat)
     end
+end
+
+@testset "print" begin
+    @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64,1,Tuple{Base.OneTo{$Int}}}:\n  ⋅ \n  ⋅ \n  ⋅ "
 end
