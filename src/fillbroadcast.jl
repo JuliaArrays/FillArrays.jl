@@ -26,23 +26,27 @@ broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::Ones) = _broadcasted_
 
 broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::Zeros) = _broadcasted_zeros(a, b)
 
-broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::Ones) = _broadcasted_zeros(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::Fill) = _broadcasted_zeros(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::AbstractRange) =
-    return _broadcasted_zeros(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::AbstractArray) =
-    return _broadcasted_zeros(a, b)
+for op in (:*, :/)
+    @eval begin
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Ones) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Fill) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Number) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::AbstractRange) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::AbstractArray) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::Zeros, b::AbstractRange) = _broadcasted_zeros(a, b)
+    end
+end
 
-broadcasted(::DefaultArrayStyle, ::typeof(*), a::Ones, b::Zeros) = _broadcasted_zeros(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(*), a::Fill, b::Zeros) = _broadcasted_zeros(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(*), a::AbstractRange, b::Zeros) =
-    return _broadcasted_zeros(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(*), a::AbstractArray, b::Zeros) =
-    return _broadcasted_zeros(a, b)
-broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::Zeros, b::AbstractRange) =
-    return _broadcasted_zeros(a, b)
-broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::Zeros) =
-    return _broadcasted_zeros(a, b)
+for op in (:*, :\)
+    @eval begin
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Ones, b::Zeros) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Fill, b::Zeros) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Number, b::Zeros) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractRange, b::Zeros) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractArray, b::Zeros) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractRange, b::Zeros) = _broadcasted_zeros(a, b)
+    end
+end
 
 
 broadcasted(::DefaultArrayStyle, ::typeof(*), a::Ones, b::Ones) = _broadcasted_ones(a, b)
