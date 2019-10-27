@@ -7,7 +7,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     copy, vec, setindex!, count, ==
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!, 
-    norm2, norm1, normInf, normMinusInf, normp
+    norm2, norm1, normInf, normMinusInf, normp, to_indices
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
@@ -28,6 +28,8 @@ end
     @boundscheck checkbounds(F, kj...)
     getindex_value(F)
 end
+
+@inline getindex(F::AbstractFill, I...) = _getindex_slice(F, I...)
 
 @inline function setindex!(F::AbstractFill, v, k::Integer)
     @boundscheck checkbounds(F, k)
@@ -130,6 +132,18 @@ function getindex(A::Fill, kr::AbstractArray{Bool})
    Fill(getindex_value(A), count(kr))
 end
 
+function _getindex_slice(F::Fill, I...)
+    @boundscheck checkbounds(F, I...)
+    size_slice = Tuple(x for i in to_indices(F, I) for x in _to_size(i))
+    size_slice = size_slice[collect(!(x isa Integer) for y in I for x in _to_tuple(y))]
+    size_slice == () ? getindex_value(F) : Fill(getindex_value(F), size_slice)
+end
+_to_size(i) = length(i)
+_to_size(i::CartesianIndices) = size(i)
+_to_tuple(i) = (i,)
+_to_tuple(i::CartesianIndex) = i.I
+_to_tuple(i::CartesianIndices) = i.indices
+
 sort(a::AbstractFill; kwds...) = a
 sort!(a::AbstractFill; kwds...) = a
 svdvals!(a::AbstractFill{<:Any,2}) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(min(size(a)...)-1)]
@@ -210,6 +224,13 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         function getindex(A::$Typ{T}, kr::AbstractArray{Bool}) where T
             size(A) == size(kr) || throw(DimensionMismatch())
             $Typ{T}(count(kr))
+        end
+
+        function _getindex_slice(F::$Typ{T}, I...) where T
+            @boundscheck checkbounds(F, I...)
+            size_slice = Tuple(x for i in to_indices(F, I) for x in _to_size(i))
+            size_slice = size_slice[collect(!(x isa Integer) for y in I for x in _to_tuple(y))]
+            size_slice == () ? $func(T) : $Typ{T}(size_slice)
         end
     end
 end
