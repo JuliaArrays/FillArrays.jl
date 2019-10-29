@@ -499,15 +499,23 @@ end
     @test broadcast(*, rnge, Fill(5.0, 10)) == broadcast(*, rnge, 5.0)
     @test_throws DimensionMismatch broadcast(*, rnge, Fill(5.0, 11))
 
-    @test Zeros(5) .* Ones(5) == Zeros(5)
-    @test Zeros(5) .* Fill(5.0, 5) == Zeros(5)
-    @test Ones(5) .* Zeros(5) == Zeros(5)
-    @test Fill(5.0, 5) .* Zeros(5) == Zeros(5)
+    @testset "Special zeros" begin
+        @test Zeros(5) .* Ones(5) ≡ Zeros(5) .* 1 ≡ Zeros(5)
+        @test Zeros(5) .* Fill(5.0, 5) ≡ Zeros(5) .* 5.0 ≡ Zeros(5)
+        @test Ones(5) .* Zeros(5) ≡ 1 .* Zeros(5) ≡ Zeros(5)
+        @test Fill(5.0, 5) .* Zeros(5) ≡ 5.0 .* Zeros(5) ≡ Zeros(5)
 
-    # support Ref
-    @test Fill(1,10) .- 1 ≡ Fill(1,10) .- Ref(1) ≡ Fill(1,10) .- Ref(1I)
-    @test Fill([1 2; 3 4],10) .- Ref(1I) == Fill([0 2; 3 3],10)
-    @test Ref(1I) .+ Fill([1 2; 3 4],10) == Fill([2 2; 3 5],10)
+        @test Zeros(5) ./ Ones(5) ≡ Zeros(5) ./ 1 ≡ Zeros(5)
+        @test Zeros(5) ./ Fill(5.0, 5) ≡ Zeros(5) ./ 5.0 ≡ Zeros(5)
+        @test Ones(5) .\ Zeros(5) ≡ 1 .\ Zeros(5) ≡ Zeros(5)
+        @test Fill(5.0, 5) .\ Zeros(5) ≡ 5.0 .\ Zeros(5) ≡ Zeros(5)
+    end
+
+    @testset "support Ref" begin
+        @test Fill(1,10) .- 1 ≡ Fill(1,10) .- Ref(1) ≡ Fill(1,10) .- Ref(1I)
+        @test Fill([1 2; 3 4],10) .- Ref(1I) == Fill([0 2; 3 3],10)
+        @test Ref(1I) .+ Fill([1 2; 3 4],10) == Fill([2 2; 3 5],10)
+    end
 
     @testset "Special Ones" begin
         @test Ones{Int}(5) .* (1:5) ≡ (1:5) .* Ones{Int}(5) ≡ 1:5 
@@ -877,4 +885,12 @@ end
 
 @testset "print" begin
     @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64,1,Tuple{Base.OneTo{$Int}}}:\n  ⋅ \n  ⋅ \n  ⋅ "
+end
+
+@testset "reshape" begin
+    @test reshape(Fill(2,6),2,3) ≡ Fill(2,2,3)
+    @test reshape(Fill(2,6),big(2),3) == Fill(2,big(2),3)
+    @test_throws DimensionMismatch reshape(Fill(2,6),2,4)
+    @test reshape(Zeros(6),2,3) ≡ Zeros(2,3)
+    @test reshape(Zeros(6),big(2),3) == Zeros(big(2),3)
 end
