@@ -886,3 +886,11 @@ end
 @testset "print" begin
     @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64,1,Tuple{Base.OneTo{$Int}}}:\n  ⋅ \n  ⋅ \n  ⋅ "
 end
+
+@testset "reshape" begin
+    @test reshape(Fill(2,6),2,3) ≡ Fill(2,2,3)
+    @test reshape(Fill(2,6),big(2),3) == Fill(2,big(2),3)
+    @test_throws DimensionMismatch reshape(Fill(2,6),2,4)
+    @test reshape(Zeros(6),2,3) ≡ Zeros(2,3)
+    @test reshape(Zeros(6),big(2),3) == Zeros(big(2),3)
+end
