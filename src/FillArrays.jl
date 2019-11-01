@@ -4,7 +4,7 @@ using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
-    copy, vec, setindex!, count, ==
+    copy, vec, setindex!, count, ==, reshape, _throw_dmrs
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!, 
     norm2, norm1, normInf, normMinusInf, normp, to_indices
@@ -173,7 +173,14 @@ end
 -(a::AbstractFill, b::AbstractRange) = a + (-b)
 -(a::AbstractRange, b::AbstractFill) = a + (-b)
 
+function fill_reshape(parent, dims::Integer...)
+    n = length(parent)
+    prod(dims) == n || _throw_dmrs(n, "size", dims)
+    Fill(getindex_value(parent), dims...)
+end
 
+reshape(parent::AbstractFill, dims::Integer...) = fill_reshape(parent, dims...)
+reshape(parent::AbstractFill, dims::Int...) = fill_reshape(parent, dims...)
 
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     @eval begin
@@ -231,6 +238,12 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
             size_slice = Tuple(x for i in to_indices(F, I) for x in _to_size(i))
             size_slice = size_slice[collect(!(x isa Integer) for y in I for x in _to_tuple(y))]
             size_slice == () ? $func(T) : $Typ{T}(size_slice)
+        end
+
+        function fill_reshape(parent::$Typ{T}, dims::Integer...) where T
+            n = length(parent)
+            prod(dims) == n || _throw_dmrs(n, "size", dims)
+            $Typ{T}(dims...)
         end
     end
 end
@@ -484,5 +497,6 @@ include("fillbroadcast.jl")
 ##
 Base.replace_in_print_matrix(::Zeros, ::Integer, ::Integer, s::AbstractString) = 
     Base.replace_with_centered_mark(s)
+
 
 end # module
