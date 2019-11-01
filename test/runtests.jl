@@ -523,6 +523,7 @@ end
 
 @testset "Sub-arrays" begin
     A = Fill(3.0,5)
+    B = Fill(3.0,5,5,5,5,5)
     @test A[1:3] ≡ Fill(3.0,3)
     @test A[1:3,1:1] ≡ Fill(3.0,3,1)
     @test_broken A[1:3,2] ≡ Zeros{Int}(3)
@@ -531,8 +532,13 @@ end
     A = Fill(3.0, 2, 2)
     @test A[[true true; true false]] ≡ Fill(3.0, 3)
     @test_throws DimensionMismatch A[[true, false]]
+    @test B[1,2,3,2:4,2:5] ≡ Fill(3.0,3,4)
+    @test B[:,1,:,2,:] ≡ Fill(3.0,5,5,5)
+    @test B[[true,false,true,false,true],CartesianIndex(1,2),4,3:-1:2] ≡ Fill(3.0,3,2)
+    @test B[CartesianIndices((3:4,1:1)),CartesianIndex(1,2),:] ≡ Fill(3.0,2,1,5)
 
     A = Ones{Int}(5,5)
+    B = Ones{Int}(5,5,5,5,5)
     @test A[1:3] ≡ Ones{Int}(3)
     @test A[1:3,1:2] ≡ Ones{Int}(3,2)
     @test A[1:3,2] ≡ Ones{Int}(3)
@@ -541,8 +547,13 @@ end
     @test A[[true false; true false]] ≡ Ones{Int}(2)
     @test A[[true, false, true, false]] ≡ Ones{Int}(2)
     @test_throws DimensionMismatch A[[true false false; true false false]]
+    @test B[1,2,3,2:4,2:5] ≡ Ones{Int}(3,4)
+    @test B[:,1,:,2,:] ≡ Ones{Int}(5,5,5)
+    @test B[[true,false,true,false,true],CartesianIndex(1,2),4,3:-1:2] ≡ Ones{Int}(3,2)
+    @test B[CartesianIndices((3:4,1:1)),CartesianIndex(1,2),:] ≡ Ones{Int}(2,1,5)
 
     A = Zeros{Int}(5,5)
+    B = Zeros{Int}(5,5,5,5,5)
     @test A[1:3] ≡ Zeros{Int}(3)
     @test A[1:3,1:2] ≡ Zeros{Int}(3,2)
     @test A[1:3,2] ≡ Zeros{Int}(3)
@@ -551,6 +562,10 @@ end
     @test A[[true false; true false]] ≡ Zeros{Int}(2)
     @test A[[true, false, true, false]] ≡ Zeros{Int}(2)
     @test_throws DimensionMismatch A[[true false false; true false false]]
+    @test B[1,2,3,2:4,2:5] ≡ Zeros{Int}(3,4)
+    @test B[:,1,:,2,:] ≡ Zeros{Int}(5,5,5)
+    @test B[[true,false,true,false,true],CartesianIndex(1,2),4,3:-1:2] ≡ Zeros{Int}(3,2)
+    @test B[CartesianIndices((3:4,1:1)),CartesianIndex(1,2),:] ≡ Zeros{Int}(2,1,5)
 end
 
 @testset "Offset indexing" begin
