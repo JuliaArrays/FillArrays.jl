@@ -527,6 +527,12 @@ end
         @test_throws DimensionMismatch (1:5) .* Ones{Int}(6)
         @test_throws DimensionMismatch Ones{Int}(5) .* Ones{Int}(6)
     end
+
+    @testset "Zeros -" begin
+        @test Zeros(10) - Zeros(10) ≡ Zeros(10)
+        @test Ones(10) - Zeros(10) ≡ Ones(10)
+        @test Fill(1,10) - Zeros(10) ≡ Fill(1.0,10)
+    end
 end
 
 @testset "Sub-arrays" begin
