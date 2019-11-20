@@ -1,5 +1,5 @@
 using FillArrays, LinearAlgebra, SparseArrays, Random, Base64, Test
-import FillArrays: AbstractFill, RectDiagonal
+import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 @testset "fill array constructors and convert" begin
     for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
@@ -90,7 +90,8 @@ import FillArrays: AbstractFill, RectDiagonal
     end
 
     @test Eye(5) isa Diagonal{Float64}
-    @test Eye(5) == Eye{Float64}(5)
+    @test SquareEye(5) isa Diagonal{Float64}
+    @test Eye(5) == Eye{Float64}(5) == SquareEye(5) == SquareEye{Float64}(5)
     @test Eye(5,6) == Eye{Float64}(5,6)
     @test Eye(Ones(5,6)) == Eye{Float64}(5,6)
     @test eltype(Eye(5)) == Float64
