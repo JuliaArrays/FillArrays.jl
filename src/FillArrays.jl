@@ -185,6 +185,9 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         @inline $Typ{T}(sz::SZ) where SZ<:Tuple{Vararg{Any,N}} where {T, N} = $Typ{T, N}(sz)
         @inline $Typ(sz::Vararg{Any,N}) where N = $Typ{Float64,N}(sz)
         @inline $Typ(sz::SZ) where SZ<:Tuple{Vararg{Any,N}} where N = $Typ{Float64,N}(sz)
+        @inline $Typ{T}(n::Integer) where T = $Typ{T,1}(n)
+        @inline $Typ(n::Integer) = $Typ{Float64,1}(n)
+
 
         @inline $Typ{T,N}(A::AbstractArray{V,N}) where{T,V,N} = $Typ{T,N}(size(A))
         @inline $Typ{T}(A::AbstractArray) where{T} = $Typ{T}(size(A))
@@ -287,8 +290,11 @@ const RectOrDiagonal{T,V,Axes} = Union{RectDiagonal{T,V,Axes}, Diagonal{T,V}}
 const SquareEye{T,Axes} = Diagonal{T,Ones{T,1,Tuple{Axes}}}
 const Eye{T,Axes} = RectOrDiagonal{T,Ones{T,1,Tuple{Axes}}}
 
-Eye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
-Eye(n::Integer) = Diagonal(Ones(n))
+@inline SquareEye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
+@inline SquareEye(n::Integer) = Diagonal(Ones(n))
+
+@inline Eye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
+@inline Eye(n::Integer) = Diagonal(Ones(n))
 
 # function iterate(iter::Eye, istate = (1, 1))
 #     (i::Int, j::Int) = istate
