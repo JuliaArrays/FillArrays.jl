@@ -8,7 +8,7 @@ as well as identity matrices.  This package exports the following types: `Eye`,
 `Fill`, `Ones`, and `Zeros`.
 
 
-The primary purpose of this package is to precent a unified way of constructing
+The primary purpose of this package is to present a unified way of constructing
 matrices. For example, to construct a 5-by-5 `CLArray` of all zeros, one would use
 ```julia
 julia> CLArray(Zeros(5,5))
