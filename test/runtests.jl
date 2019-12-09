@@ -712,6 +712,8 @@ end
     @testset "all/any" begin
         @test any(Ones{Bool}(10)) === all(Ones{Bool}(10)) === any(Fill(true,10)) === all(Fill(true,10)) === true
         @test any(Zeros{Bool}(10)) === all(Zeros{Bool}(10)) === any(Fill(false,10)) === all(Fill(false,10)) === false
+        @test all(b -> ndims(b) ==  1, Fill([1,2],10))
+        @test any(b -> ndims(b) ==  1, Fill([1,2],10))
     end
 
     @testset "Error" begin
