@@ -719,12 +719,16 @@ end
     @testset "Error" begin
         @test_throws TypeError any(exp, Fill(1,5))
         @test_throws TypeError all(exp, Fill(1,5))
+        @test_throws TypeError any(exp, Eye(5))
+        @test_throws TypeError all(exp, Eye(5))
         @test_throws TypeError any(Fill(1,5))
         @test_throws TypeError all(Fill(1,5))
         @test_throws TypeError any(Zeros(5))
         @test_throws TypeError all(Zeros(5))
         @test_throws TypeError any(Ones(5))
         @test_throws TypeError all(Ones(5))
+        @test_throws TypeError any(Eye(5))
+        @test_throws TypeError all(Eye(5))        
     end
 end
 
