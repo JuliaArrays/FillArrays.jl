@@ -453,20 +453,20 @@ function any(f::Function, IM::Eye{T}) where T
     d1, d2 = size(IM)
     (d1 < 1 || d2 < 1) && return false
     (d1 > 1 || d2 > 1) && return f(zero(T)) || f(one(T))
-    return f(one(T))
+    return any(f(one(T)))
 end
 
 function all(f::Function, IM::Eye{T}) where T
     d1, d2 = size(IM)
     (d1 < 1 || d2 < 1) && return false
     (d1 > 1 || d2 > 1) && return f(zero(T)) && f(one(T))
-    return f(one(T))
+    return all(f(one(T)))
 end
 
 # In particular, these make iszero(Eye(n))  efficient.
 # use any/all on scalar to get Boolean error message
-any(f::Function, x::AbstractFill) = any(f, getindex_value(x))
-all(f::Function, x::AbstractFill) = all(f, getindex_value(x))
+any(f::Function, x::AbstractFill) = any(f(getindex_value(x)))
+all(f::Function, x::AbstractFill) = all(f(getindex_value(x)))
 any(x::AbstractFill) = any(getindex_value(x))
 all(x::AbstractFill) = all(getindex_value(x))
 

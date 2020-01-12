@@ -712,17 +712,23 @@ end
     @testset "all/any" begin
         @test any(Ones{Bool}(10)) === all(Ones{Bool}(10)) === any(Fill(true,10)) === all(Fill(true,10)) === true
         @test any(Zeros{Bool}(10)) === all(Zeros{Bool}(10)) === any(Fill(false,10)) === all(Fill(false,10)) === false
+        @test all(b -> ndims(b) ==  1, Fill([1,2],10))
+        @test any(b -> ndims(b) ==  1, Fill([1,2],10))
     end
 
     @testset "Error" begin
         @test_throws TypeError any(exp, Fill(1,5))
         @test_throws TypeError all(exp, Fill(1,5))
+        @test_throws TypeError any(exp, Eye(5))
+        @test_throws TypeError all(exp, Eye(5))
         @test_throws TypeError any(Fill(1,5))
         @test_throws TypeError all(Fill(1,5))
         @test_throws TypeError any(Zeros(5))
         @test_throws TypeError all(Zeros(5))
         @test_throws TypeError any(Ones(5))
         @test_throws TypeError all(Ones(5))
+        @test_throws TypeError any(Eye(5))
+        @test_throws TypeError all(Eye(5))        
     end
 end
 
