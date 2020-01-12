@@ -1,3 +1,7 @@
+### map
+
+map(f::Function, r::AbstractFill) = Fill(f(getindex_value(r)), axes(r))
+
 
 ### Unary broadcasting
 
