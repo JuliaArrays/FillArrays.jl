@@ -536,6 +536,18 @@ end
     end
 end
 
+@testset "map" begin
+    x = Ones(5)
+    @test map(exp,x) === Fill(exp(1.0),5)
+    @test map(isone,x) === Fill(true,5)
+
+    x = Zeros(5)
+    @test map(exp,x) === exp.(x)
+
+    x = Fill(2,5,3)
+    @test map(exp,x) === Fill(exp(2),5,3)
+end
+
 @testset "Sub-arrays" begin
     A = Fill(3.0,5)
     @test A[1:3] ≡ Fill(3.0,3)
