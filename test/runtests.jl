@@ -409,6 +409,11 @@ end
     @test (1:5) - Zeros{Int}(5) === (1:5)
     @test Zeros{Int}(5) - (1:5) === -1:-1:-5
     @test Zeros(5) - (1:5) === -1.0:-1.0:-5.0
+
+    # test Base.zero
+    @test zero(Zeros(10)) == Zeros(10)
+    @test zero(Ones(10,10)) == Zeros(10,10)
+    @test zero(Fill(0.5, 10, 10)) == Zeros(10,10)
 end
 
 @testset "maximum/minimum/svd/sort" begin
@@ -492,9 +497,31 @@ end
 
     @test Zeros{Int}(5) .+ Zeros(5) isa Zeros{Float64}
 
+    # Test for conj, real and imag with complex element types
+    @test conj(Zeros{ComplexF64}(10)) isa Zeros{ComplexF64}
+    @test conj(Zeros{ComplexF64}(10,10)) isa Zeros{ComplexF64}
+    @test conj(Ones{ComplexF64}(10)) isa Ones{ComplexF64}
+    @test conj(Ones{ComplexF64}(10,10)) isa Ones{ComplexF64}
+    @test real(Zeros{Float64}(10)) isa Zeros{Float64}
+    @test real(Zeros{Float64}(10,10)) isa Zeros{Float64}
+    @test real(Zeros{ComplexF64}(10)) isa Zeros{Float64}
+    @test real(Zeros{ComplexF64}(10,10)) isa Zeros{Float64}
+    @test real(Ones{Float64}(10)) isa Ones{Float64}
+    @test real(Ones{Float64}(10,10)) isa Ones{Float64}
+    @test real(Ones{ComplexF64}(10)) isa Ones{Float64}
+    @test real(Ones{ComplexF64}(10,10)) isa Ones{Float64}
+    @test imag(Zeros{Float64}(10)) isa Zeros{Float64}
+    @test imag(Zeros{Float64}(10,10)) isa Zeros{Float64}
+    @test imag(Zeros{ComplexF64}(10)) isa Zeros{Float64}
+    @test imag(Zeros{ComplexF64}(10,10)) isa Zeros{Float64}
+    @test imag(Ones{Float64}(10)) isa Zeros{Float64}
+    @test imag(Ones{Float64}(10,10)) isa Zeros{Float64}
+    @test imag(Ones{ComplexF64}(10)) isa Zeros{Float64}
+    @test imag(Ones{ComplexF64}(10,10)) isa Zeros{Float64}
+
     rnge = range(-5.0, step=1.0, length=10)
     @test broadcast(*, Fill(5.0, 10), rnge) == broadcast(*, 5.0, rnge)
-    @test broadcast(*, Zeros(10, 10), rnge) == zeros(10, 10) 
+    @test broadcast(*, Zeros(10, 10), rnge) == zeros(10, 10)
     @test broadcast(*, rnge, Zeros(10, 10)) == zeros(10, 10)
     @test_throws DimensionMismatch broadcast(*, Fill(5.0, 11), rnge)
     @test broadcast(*, rnge, Fill(5.0, 10)) == broadcast(*, rnge, 5.0)
@@ -519,11 +546,11 @@ end
     end
 
     @testset "Special Ones" begin
-        @test Ones{Int}(5) .* (1:5) ≡ (1:5) .* Ones{Int}(5) ≡ 1:5 
-        @test Ones(5) .* (1:5) ≡ (1:5) .* Ones(5) ≡ 1.0:5 
-        @test Ones{Int}(5) .* Ones{Int}(5) ≡ Ones{Int}(5) 
+        @test Ones{Int}(5) .* (1:5) ≡ (1:5) .* Ones{Int}(5) ≡ 1:5
+        @test Ones(5) .* (1:5) ≡ (1:5) .* Ones(5) ≡ 1.0:5
+        @test Ones{Int}(5) .* Ones{Int}(5) ≡ Ones{Int}(5)
         @test Ones{Int}(5,2) .* (1:5) == Array(Ones{Int}(5,2)) .* Array(1:5)
-        @test (1:5) .* Ones{Int}(5,2)  == Array(1:5) .* Array(Ones{Int}(5,2)) 
+        @test (1:5) .* Ones{Int}(5,2)  == Array(1:5) .* Array(Ones{Int}(5,2))
         @test_throws DimensionMismatch Ones{Int}(6) .* (1:5)
         @test_throws DimensionMismatch (1:5) .* Ones{Int}(6)
         @test_throws DimensionMismatch Ones{Int}(5) .* Ones{Int}(6)
@@ -740,7 +767,7 @@ end
         @test_throws TypeError any(Ones(5))
         @test_throws TypeError all(Ones(5))
         @test_throws TypeError any(Eye(5))
-        @test_throws TypeError all(Eye(5))        
+        @test_throws TypeError all(Eye(5))
     end
 end
 
@@ -789,7 +816,7 @@ end
     @test (F[1] = 1) == 1
     @test_throws BoundsError (F[11] = 1)
     @test_throws ArgumentError (F[10] = 2)
-    
+
 
     F = Fill(1,10,5)
     @test (F[1] = 1) == 1
@@ -871,7 +898,7 @@ end
     @test E*(1:5) ≡ 1.0:5.0
     @test (1:5)'E == (1.0:5)'
     @test E*E ≡ E
-end  
+end
 
 @testset "count" begin
     @test count(Ones{Bool}(10)) == count(Fill(true,10)) == 10

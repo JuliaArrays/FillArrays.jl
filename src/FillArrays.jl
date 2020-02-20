@@ -4,9 +4,9 @@ using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
-    copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map
+    copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero
 
-import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!, 
+import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     norm2, norm1, normInf, normMinusInf, normp
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
@@ -434,6 +434,13 @@ diff(x::AbstractFill{T,1}) where T = Zeros{T}(length(x)-1)
 unique(x::AbstractFill{T}) where T = isempty(x) ? T[] : T[getindex_value(x)]
 allunique(x::AbstractFill) = length(x) < 2
 
+#########
+# zero
+#########
+
+zero(r::Zeros{T,N}) where {T,N} = r
+zero(r::Ones{T,N}) where {T,N} = Zeros{T,N}(r.axes)
+zero(r::Fill{T,N}) where {T,N} = Zeros{T,N}(r.axes)
 
 #########
 # any/all/isone/iszero
@@ -480,7 +487,7 @@ include("fillbroadcast.jl")
 ##
 # print
 ##
-Base.replace_in_print_matrix(::Zeros, ::Integer, ::Integer, s::AbstractString) = 
+Base.replace_in_print_matrix(::Zeros, ::Integer, ::Integer, s::AbstractString) =
     Base.replace_with_centered_mark(s)
 
 
