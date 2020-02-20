@@ -456,6 +456,7 @@ end
     @test (.-)(x) ≡ -x
     @test exp.(x) ≡ Fill(exp(5),5)
     @test x .+ 1 ≡ Fill(6,5)
+    @test 1 .+ x ≡ Fill(6,5)
     @test x .+ x ≡ Fill(10,5)
     @test x .+ Ones(5) ≡ Fill(6.0,5)
     f = (x,y) -> cos(x*y)
@@ -551,6 +552,8 @@ end
         @test Ones{Int}(5) .* Ones{Int}(5) ≡ Ones{Int}(5)
         @test Ones{Int}(5,2) .* (1:5) == Array(Ones{Int}(5,2)) .* Array(1:5)
         @test (1:5) .* Ones{Int}(5,2)  == Array(1:5) .* Array(Ones{Int}(5,2))
+        @test (1:0.5:5) .* Ones{Int}(9,2)  == Array(1:0.5:5) .* Array(Ones{Int}(9,2))
+        @test Ones{Int}(9,2) .* (1:0.5:5)  == Array(Ones{Int}(9,2)) .* Array(1:0.5:5)
         @test_throws DimensionMismatch Ones{Int}(6) .* (1:5)
         @test_throws DimensionMismatch (1:5) .* Ones{Int}(6)
         @test_throws DimensionMismatch Ones{Int}(5) .* Ones{Int}(6)
