@@ -943,9 +943,11 @@ end
 end
 
 @testset "reshape" begin
-    @test reshape(Fill(2,6),2,3) ≡ Fill(2,2,3)
-    @test reshape(Fill(2,6),big(2),3) == Fill(2,big(2),3)
+    @test reshape(Fill(2,6),2,3) ≡ reshape(Fill(2,6),(2,3)) ≡ reshape(Fill(2,6),:,3) ≡ reshape(Fill(2,6),2,:) ≡ Fill(2,2,3)
+    @test reshape(Fill(2,6),big(2),3) == reshape(Fill(2,6), (big(2),3)) == reshape(Fill(2,6), big(2),:) == Fill(2,big(2),3)
     @test_throws DimensionMismatch reshape(Fill(2,6),2,4)
+    @test reshape(Ones(6),2,3) ≡ reshape(Ones(6),(2,3)) ≡ reshape(Ones(6),:,3) ≡ reshape(Ones(6),2,:) ≡ Ones(2,3)
     @test reshape(Zeros(6),2,3) ≡ Zeros(2,3)
     @test reshape(Zeros(6),big(2),3) == Zeros(big(2),3)
+    @test reshape(Fill(2,2,3),Val(1)) ≡ Fill(2,6)
 end
