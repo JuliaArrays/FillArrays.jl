@@ -180,7 +180,8 @@ reshape(parent::AbstractFill, dims::Tuple{Integer, Vararg{Integer}})        = Ba
 Base._reshape(parent::AbstractFill, dims::Dims) = fill_reshape(parent, dims...)
 Base._reshape(parent::AbstractFill, dims::Tuple{Integer,Vararg{Integer}}) = fill_reshape(parent, dims...)
 # Resolves ambiguity error with `_reshape(v::AbstractArray{T, 1}, dims::Tuple{I})` where `I` is the byte-size on the system
-Base._reshape(parent::AbstractFill{T, 1, Axes}, dims::Tuple{I}) where {T, Axes, I<:Union{Int32, Int64}} = fill_reshape(parent, dims...)
+Base._reshape(parent::AbstractFill{T, 1, Axes}, dims::Tuple{Int64}) where {T, Axes} = fill_reshape(parent, dims...)
+Base._reshape(parent::AbstractFill{T, 1, Axes}, dims::Tuple{Int32}) where {T, Axes} = fill_reshape(parent, dims...)
 
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     @eval begin
