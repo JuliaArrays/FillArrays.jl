@@ -211,3 +211,20 @@ norm2(a::AbstractFill) = sqrt(length(a))*norm(getindex_value(a))
 normp(a::AbstractFill, p) = (length(a))^(1/p)*norm(getindex_value(a))
 normInf(a::AbstractFill) = norm(getindex_value(a))
 normMinusInf(a::AbstractFill) = norm(getindex_value(a))
+
+
+###
+# lmul!/rmul!
+###
+
+function lmul!(x::Number, z::AbstractFill)
+    λ = getindex_value(z)
+    x*λ == λ || throw(ArgumentError("Cannot scale by $x"))
+    z
+end
+
+function rmul!(z::AbstractFill, x::Number)
+    λ = getindex_value(z)
+    λ*x == λ || throw(ArgumentError("Cannot scale by $x"))
+    z
+end
