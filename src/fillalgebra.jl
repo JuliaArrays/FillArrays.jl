@@ -219,12 +219,16 @@ normMinusInf(a::AbstractFill) = norm(getindex_value(a))
 
 function lmul!(x::Number, z::AbstractFill)
     λ = getindex_value(z)
+    # Following check ensures consistency w/ lmul!(x, Array(z))
+    # for, e.g., lmul!(NaN, z)
     x*λ == λ || throw(ArgumentError("Cannot scale by $x"))
     z
 end
 
 function rmul!(z::AbstractFill, x::Number)
     λ = getindex_value(z)
+	# Following check ensures consistency w/ lmul!(x, Array(z))
+    # for, e.g., lmul!(NaN, z)
     λ*x == λ || throw(ArgumentError("Cannot scale by $x"))
     z
 end
