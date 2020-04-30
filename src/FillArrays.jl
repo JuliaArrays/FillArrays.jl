@@ -7,7 +7,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
-    norm2, norm1, normInf, normMinusInf, normp
+    norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 

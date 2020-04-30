@@ -952,3 +952,17 @@ end
     @test reshape(Fill(2,2,3),Val(1)) ≡ Fill(2,6)
     @test reshape(Fill(2, 2), (2, )) ≡ Fill(2, 2)
 end
+
+@testset "lmul!/rmul!" begin
+    z = Zeros(1_000_000_000_000)
+    @test lmul!(2.0,z) === z
+    @test rmul!(z,2.0) === z
+    @test_throws ArgumentError lmul!(Inf,z)
+    @test_throws ArgumentError rmul!(z,Inf)
+
+    x = Fill([1,2],1_000_000_000_000)
+    @test lmul!(1.0,x) === x
+    @test rmul!(x,1.0) === x
+    @test_throws ArgumentError lmul!(2.0,x)
+    @test_throws ArgumentError rmul!(x,2.0)
+end
