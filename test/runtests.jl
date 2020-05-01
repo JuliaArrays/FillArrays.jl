@@ -564,6 +564,37 @@ end
         @test Ones(10) - Zeros(10) ≡ Ones(10)
         @test Fill(1,10) - Zeros(10) ≡ Fill(1.0,10)
     end
+
+    @testset "fast paths" begin
+        x = [1., 2.]
+        @test Ones() .* x === x
+        @test Ones(2) .* x === x
+        @test Zeros() .+ x === x
+        @test Zeros(2) .+ x === x
+        @test x .* Ones() === x
+        @test x .* Ones(2)  === x
+        @test x ./ Ones() === x
+        @test x ./ Ones(2)  === x
+        @test x .+ Zeros()  === x
+        @test x .+ Zeros(2)  === x
+        @test x .- Zeros()  === x
+        @test x .- Zeros(2)  === x
+
+        # no fast path if type promotion
+        x = [1, 2]
+        @test Ones() .* x !== x
+        @test Ones(2) .* x !== x
+        @test Zeros() .+ x !== x
+        @test Zeros(2) .+ x !== x
+        @test x .* Ones() !== x
+        @test x .* Ones(2)  !== x
+        @test x ./ Ones() !== x
+        @test x ./ Ones(2)  !== x
+        @test x .+ Zeros()  !== x
+        @test x .+ Zeros(2)  !== x
+        @test x .- Zeros()  !== x
+        @test x .- Zeros(2)  !== x
+    end
 end
 
 @testset "map" begin
