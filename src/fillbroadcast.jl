@@ -93,3 +93,64 @@ broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Number) where {
 broadcasted(::DefaultArrayStyle{N}, op, x::Number, r::AbstractFill{T,N}) where {T,N} = Fill(op(x, getindex_value(r)), size(r))
 broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Ref) where {T,N} = Fill(op(getindex_value(r),x[]), size(r))
 broadcasted(::DefaultArrayStyle{N}, op, x::Ref, r::AbstractFill{T,N}) where {T,N} = Fill(op(x[], getindex_value(r)), size(r))
+
+
+for op in (:+, :-)
+    @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), 
+                                a::AbstractArray, b::Zeros)
+        bs = broadcast_shape(size(a), size(b))
+        size(a) == bs && return a
+        c = similar(a, bs)
+        c .= a
+        return c
+    end
+
+    @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), 
+                                a::AbstractFill, b::Zeros)
+        bs = broadcast_shape(size(a), size(b))
+        Fill(getindex_value(a),  bs)
+    end
+end
+
+function broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::AbstractArray)
+    bs = broadcast_shape(size(a), size(b))
+    size(b) == bs && return b
+    c = similar(b, bs)
+    c .= b
+    return c
+end
+
+function broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::AbstractFill)
+    bs = broadcast_shape(size(a), size(b))
+    Fill(getindex_value(b),  bs)
+end
+
+for op in (:*, :/)
+    @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), 
+                                a::AbstractArray, b::Ones)
+        bs = broadcast_shape(size(a), size(b))
+        size(a) == bs && return a
+        c = similar(a, bs)
+        c .= a
+        return c
+    end
+
+    @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), 
+                                a::AbstractFill, b::Ones)
+        bs = broadcast_shape(size(a), size(b))
+        Fill(getindex_value(a),  bs)
+    end
+end
+
+function broadcasted(::DefaultArrayStyle, ::typeof(*), a::Ones, b::AbstractArray)
+    bs = broadcast_shape(size(a), size(b))
+    size(b) == bs && return b
+    c = similar(b, bs)
+    c .= b
+    return c
+end
+
+function broadcasted(::DefaultArrayStyle, ::typeof(*), a::Ones, b::AbstractFill)
+    bs = broadcast_shape(size(a), size(b))
+    Fill(getindex_value(b),  bs)
+end

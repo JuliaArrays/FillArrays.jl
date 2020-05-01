@@ -885,7 +885,7 @@ end
     @test A*Fill(2,4,1) == A*Matrix(Fill(2,4,1))
     @test a*Fill(2,1,3) == a*Matrix(Fill(2,1,3))
     @test A*Ones(4) ==   A*Vector(Ones(4))
-    @test A*Ones(4,1) == A*Matrix(Ones(4,1))
+    @test A*Ones(4,1) ≈ A*Matrix(Ones(4,1))
     @test a*Ones(1,3) == a*Matrix(Ones(1,3))
     @test A*Zeros(4)  ≡ Zeros(1)
     @test A*Zeros(4,1) ≡ Zeros(1,1)
