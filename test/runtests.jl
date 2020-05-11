@@ -966,3 +966,18 @@ end
     @test_throws ArgumentError lmul!(2.0,x)
     @test_throws ArgumentError rmul!(x,2.0)
 end
+
+@testset "Diagonal{<:Fill}" begin
+    D = Diagonal(Fill(Fill(0.5,2,2),10))
+    @test @inferred(D[1,1]) === Fill(0.5,2,2)
+    @test @inferred(D[1,2]) === Fill(0.0,2,2)
+    D = Diagonal(Fill(Zeros(2,2),10))
+    @test @inferred(D[1,1]) === Zeros(2,2)
+    @test @inferred(D[1,2]) === Zeros(2,2)
+
+    D = Diagonal([Zeros(1,1), Zeros(2,2)])
+    @test @inferred(D[1,1]) === Zeros(1,1)
+    @test @inferred(D[1,2]) === Zeros(1,2)
+
+    @test_throws ArgumentError Diagonal(Fill(Ones(2,2),10))[1,2]
+end
