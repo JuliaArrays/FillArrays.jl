@@ -232,3 +232,9 @@ function rmul!(z::AbstractFill, x::Number)
     λ*x == λ || throw(ArgumentError("Cannot scale by $x"))
     z
 end
+
+fillzero(::Type{Fill{T,N,AXIS}}, n, m) where {T,N,AXIS} = Fill{T,N,AXIS}(zero(T), (n, m))
+fillzero(::Type{Zeros{T,N,AXIS}}, n, m) where {T,N,AXIS} = Zeros{T,N,AXIS}((n, m))
+fillzero(::Type{F}, n, m) where F = throw(ArgumentError("Cannot create a zero array of type $F"))
+
+diagzero(D::Diagonal{F}, i, j) where F<:AbstractFill = fillzero(F, axes(D.diag[i], 1), axes(D.diag[j], 2))

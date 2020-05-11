@@ -7,7 +7,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
-    norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!
+    norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
@@ -186,7 +186,9 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     @eval begin
         struct $Typ{T, N, Axes} <: AbstractFill{T, N, Axes}
             axes::Axes
-            @inline $Typ{T, N}(sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
+            @inline $Typ{T,N,Axes}(sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
+                new{T,N,Axes}(sz)
+            @inline $Typ{T,N}(sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
                 new{T,N,Axes}(sz)
             @inline $Typ{T,0,Tuple{}}(sz::Tuple{}) where T = new{T,0,Tuple{}}(sz)
         end
