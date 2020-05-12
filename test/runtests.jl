@@ -566,34 +566,44 @@ end
     end
 
     @testset "fast paths" begin
-        x = [1., 2.]
-        @test Ones() .* x === x
-        @test Ones(2) .* x === x
-        @test Zeros() .+ x === x
-        @test Zeros(2) .+ x === x
-        @test x .* Ones() === x
-        @test x .* Ones(2)  === x
-        @test x ./ Ones() === x
-        @test x ./ Ones(2)  === x
-        @test x .+ Zeros()  === x
-        @test x .+ Zeros(2)  === x
-        @test x .- Zeros()  === x
-        @test x .- Zeros(2)  === x
+        for x in ([1., 2.], Ones(2), Zeros(2))
+            @test Ones() .* x === x
+            @test Ones(2) .* x === x
+            @test Zeros() .+ x === x
+            @test Zeros(2) .+ x === x
+            @test x .* Ones() === x
+            @test x .* Ones(2)  === x
+            @test x ./ Ones() === x
+            @test x ./ Ones(2)  === x
+            @test x .+ Zeros()  === x
+            @test x .+ Zeros(2)  === x
+            @test x .- Zeros()  === x
+            @test x .- Zeros(2)  === x
+        end
 
         # no fast path if type promotion
-        x = [1, 2]
-        @test Ones() .* x !== x
-        @test Ones(2) .* x !== x
-        @test Zeros() .+ x !== x
-        @test Zeros(2) .+ x !== x
-        @test x .* Ones() !== x
-        @test x .* Ones(2)  !== x
-        @test x ./ Ones() !== x
-        @test x ./ Ones(2)  !== x
-        @test x .+ Zeros()  !== x
-        @test x .+ Zeros(2)  !== x
-        @test x .- Zeros()  !== x
-        @test x .- Zeros(2)  !== x
+        for x = ([1, 2], Ones{Int}(2), Zeros{Int}(2))
+            @test Ones() .* x !== x
+            @test Ones(2) .* x !== x
+            @test Zeros() .+ x !== x
+            @test Zeros(2) .+ x !== x
+            @test x .* Ones() !== x
+            @test x .* Ones(2)  !== x
+            @test x ./ Ones() !== x
+            @test x ./ Ones(2)  !== x
+            @test x .+ Zeros()  !== x
+            @test x .+ Zeros(2)  !== x
+            @test x .- Zeros()  !== x
+            @test x .- Zeros(2)  !== x
+        end
+
+        # check combinations of ones and zeros + type promotion
+        @test Ones{Int}(2) .+ Zeros{Float64}(2)  isa Ones{Float64}
+        @test Zeros{Float64}(2) .+ Ones{Int}(2)   isa Ones{Float64}
+        @test Ones{Int}(2) .- Zeros{Float64}(2)  isa Ones{Float64}
+        @test Ones{Int}(2) .* Zeros{Float64}(2)  isa Zeros{Float64}
+        @test Zeros{Float64}(2) .* Ones{Int}(2)   isa Zeros{Float64}
+        @test Zeros{Float64}(2) ./ Ones{Int}(2)   isa Zeros{Float64}
     end
 end
 

@@ -30,15 +30,10 @@ function _broadcasted_ones(a, b)
     return Ones{promote_type(eltype(a), eltype(b))}(broadcast_shape(size(a), size(b)))
 end
 
-broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::Zeros) = _broadcasted_zeros(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(+), a::Ones, b::Zeros) = _broadcasted_ones(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::Ones) = _broadcasted_ones(a, b)
-
 broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::Zeros) = _broadcasted_zeros(a, b)
 
 for op in (:*, :/)
     @eval begin
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Ones) = _broadcasted_zeros(a, b)
         broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Fill) = _broadcasted_zeros(a, b)
         broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Number) = _broadcasted_zeros(a, b)
         broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::AbstractRange) = _broadcasted_zeros(a, b)
@@ -49,7 +44,6 @@ end
 
 for op in (:*, :\)
     @eval begin
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Ones, b::Zeros) = _broadcasted_zeros(a, b)
         broadcasted(::DefaultArrayStyle, ::typeof($op), a::Fill, b::Zeros) = _broadcasted_zeros(a, b)
         broadcasted(::DefaultArrayStyle, ::typeof($op), a::Number, b::Zeros) = _broadcasted_zeros(a, b)
         broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractRange, b::Zeros) = _broadcasted_zeros(a, b)
@@ -57,11 +51,6 @@ for op in (:*, :\)
         broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractRange, b::Zeros) = _broadcasted_zeros(a, b)
     end
 end
-
-
-broadcasted(::DefaultArrayStyle, ::typeof(*), a::Ones, b::Ones) = _broadcasted_ones(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(/), a::Ones, b::Ones) = _broadcasted_ones(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(\), a::Ones, b::Ones) = _broadcasted_ones(a, b)
 
 # special case due to missing converts for ranges
 _range_convert(::Type{AbstractVector{T}}, a::AbstractRange{T}) where T = a
@@ -95,9 +84,14 @@ broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Ref) where {T,N
 broadcasted(::DefaultArrayStyle{N}, op, x::Ref, r::AbstractFill{T,N}) where {T,N} = Fill(op(x[], getindex_value(r)), size(r))
 
 
-for op in (:+, :-)
+# Fast paths (no-op) when 2nd arg is Zeros or Ones
+for (op, B) in [(:+, Zeros), 
+                (:-, Zeros),
+                (:*, Ones),
+                (:/, Ones)]
+
     @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), 
-                                a::AbstractArray, b::Zeros)
+                            a::AbstractArray, b::$B)
         bs = broadcast_shape(size(a), size(b))
         Tout = promote_type(eltype(a), eltype(b))
         if size(a) == bs && eltype(a) == Tout
@@ -108,61 +102,65 @@ for op in (:+, :-)
         return c
     end
 
-    @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), 
-                                a::AbstractFill, b::Zeros)
-        bs = broadcast_shape(size(a), size(b))
-        Fill{promote_type(eltype(a), eltype(b))}(getindex_value(a),  bs)
+    for A in [Zeros, Ones]
+        @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), 
+                            a::$A, b::$B)
+            bs = broadcast_shape(size(a), size(b))
+            Tout = promote_type(eltype(a), eltype(b))
+            if size(a) == bs && eltype(a) == Tout
+                return a
+            end
+            return $A{Tout}(bs)
+        end
     end
-end
 
-function broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::AbstractArray)
-    bs = broadcast_shape(size(a), size(b))
-    Tout = promote_type(eltype(a), eltype(b))
-    if size(b) == bs && eltype(b) == Tout
-        return b
-    end
-    c = similar(b, Tout, bs)
-    c .= b
-    return c
-end
-
-function broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::AbstractFill)
-    bs = broadcast_shape(size(a), size(b))
-    Fill{promote_type(eltype(a), eltype(b))}(getindex_value(b),  bs)
-end
-
-for op in (:*, :/)
     @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), 
-                                a::AbstractArray, b::Ones)
+                            a::Fill, b::$B)
         bs = broadcast_shape(size(a), size(b))
         Tout = promote_type(eltype(a), eltype(b))
         if size(a) == bs && eltype(a) == Tout
             return a
         end
-        c = similar(a, Tout, bs)
-        c .= a
+        return Fill{Tout}(getindex_value(a), bs)
+    end
+end
+
+
+# Fast paths (no-op) when 1st arg is Zeros or Ones
+for (op, A) in [(:+, Zeros), 
+                (:*, Ones),
+                (:\, Ones)] 
+
+    @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), a::$A, b::AbstractArray)
+        bs = broadcast_shape(size(a), size(b))
+        Tout = promote_type(eltype(a), eltype(b))
+        if size(b) == bs && eltype(b) == Tout
+            return b
+        end
+        c = similar(b, Tout, bs)
+        c .= b
         return c
     end
 
-    @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), 
-                                a::AbstractFill, b::Ones)
+    for B in [Zeros, Ones]
+        if B != A  || op ∈ [:\]  # else defined when dealing with 2nd arg
+            @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), a::$A, b::$B)
+                bs = broadcast_shape(size(a), size(b))
+                Tout = promote_type(eltype(a), eltype(b))
+                if size(b) == bs && eltype(b) == Tout
+                    return b
+                end
+                return $B{Tout}(bs)
+            end
+        end
+    end
+
+    @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), a::$A, b::Fill)
         bs = broadcast_shape(size(a), size(b))
-        Fill{promote_type(eltype(a), eltype(b))}(getindex_value(a),  bs)
+        Tout = promote_type(eltype(a), eltype(b))
+        if size(b) == bs && eltype(b) == Tout
+            return b
+        end
+        return Fill{Tout}(getindex_value(b),  bs)
     end
-end
-
-function broadcasted(::DefaultArrayStyle, ::typeof(*), a::Ones, b::AbstractArray)
-    bs = broadcast_shape(size(a), size(b))
-    Tout = promote_type(eltype(a), eltype(b))
-    if size(b) == bs && eltype(b) == Tout
-        return b
-    end
-    c = similar(b, Tout, bs)
-    c .= b
-    return c
-end
-
-function broadcasted(::DefaultArrayStyle, ::typeof(*), a::Ones, b::AbstractFill)
-    bs = broadcast_shape(size(a), size(b))
-    Fill{promote_type(eltype(a), eltype(b))}(getindex_value(b),  bs)
 end
