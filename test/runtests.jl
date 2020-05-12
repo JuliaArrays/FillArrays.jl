@@ -597,6 +597,26 @@ end
             @test x .- Zeros(2)  !== x
         end
 
+        for F in [Ones, Zeros, Fill]
+            @test Zeros{Int}(5) .+ F{Float64}(1,5) isa F{Float64}
+            @test F{Int}(5) .+ Zeros{Float64}(1,5) isa F{Float64}            
+            @test F{Int}(5) .- Zeros{Float64}(1,5) isa F{Float64}            
+            @test Ones{Int}(5) .* F{Float64}(1,5) isa F{Float64}
+            @test Ones{Int}(5) .\ F{Float64}(1,5) isa F{Float64}
+            @test F{Int}(5) .* Ones{Float64}(1,5) isa F{Float64}
+            @test F{Int}(5) ./ Ones{Float64}(1,5) isa F{Float64}
+        end
+
+        for x in [ones(1,5), Ones(1,5), Fill(1, 1, 5)]
+            @test Ones(5) .* x == ones(5, 5)
+            @test Zeros(5) .+ x == ones(5, 5)
+            @test Ones(5) .\ x  == ones(5, 5)
+            @test x .+ Zeros(5)  == ones(5, 5)
+            @test x .- Zeros(5)  == ones(5, 5)
+            @test x ./ Ones(5)  == ones(5, 5)  
+            @test x .* Ones(5)  == ones(5, 5)
+        end
+
         # check combinations of ones and zeros + type promotion
         @test Ones{Int}(2) .+ Zeros{Float64}(2)  isa Ones{Float64}
         @test Zeros{Float64}(2) .+ Ones{Int}(2)   isa Ones{Float64}

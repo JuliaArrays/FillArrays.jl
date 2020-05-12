@@ -102,7 +102,7 @@ for (op, B) in [(:+, Zeros),
         return c
     end
 
-    for A in [Zeros, Ones]
+    for A in [Zeros, Ones, Fill]
         @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), 
                             a::$A, b::$B)
             bs = broadcast_shape(size(a), size(b))
@@ -110,18 +110,8 @@ for (op, B) in [(:+, Zeros),
             if size(a) == bs && eltype(a) == Tout
                 return a
             end
-            return $A{Tout}(bs)
+            return fillsimilar(a, Tout, bs)
         end
-    end
-
-    @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), 
-                            a::Fill, b::$B)
-        bs = broadcast_shape(size(a), size(b))
-        Tout = promote_type(eltype(a), eltype(b))
-        if size(a) == bs && eltype(a) == Tout
-            return a
-        end
-        return Fill{Tout}(getindex_value(a), bs)
     end
 end
 
@@ -142,7 +132,7 @@ for (op, A) in [(:+, Zeros),
         return c
     end
 
-    for B in [Zeros, Ones]
+    for B in [Zeros, Ones, Fill]
         if B != A  || op ∈ [:\]  # else defined when dealing with 2nd arg
             @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), a::$A, b::$B)
                 bs = broadcast_shape(size(a), size(b))
@@ -150,17 +140,8 @@ for (op, A) in [(:+, Zeros),
                 if size(b) == bs && eltype(b) == Tout
                     return b
                 end
-                return $B{Tout}(bs)
+                return fillsimilar(b, Tout, bs)
             end
         end
-    end
-
-    @eval function broadcasted(::DefaultArrayStyle, ::typeof($op), a::$A, b::Fill)
-        bs = broadcast_shape(size(a), size(b))
-        Tout = promote_type(eltype(a), eltype(b))
-        if size(b) == bs && eltype(b) == Tout
-            return b
-        end
-        return Fill{Tout}(getindex_value(b),  bs)
     end
 end
