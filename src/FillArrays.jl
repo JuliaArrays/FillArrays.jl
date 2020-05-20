@@ -7,7 +7,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
-    norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero
+    norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
@@ -275,6 +275,7 @@ end
 
 # patch missing overload from Base
 axes(rd::Diagonal{<:Any,<:AbstractFill}) = (axes(rd.diag,1),axes(rd.diag,1))
+axes(T::AbstractTriangular{<:Any,<:AbstractFill}) = axes(parent(T))
 
 axes(rd::RectDiagonal) = rd.axes
 size(rd::RectDiagonal) = length.(rd.axes)
@@ -537,7 +538,12 @@ axes_print_matrix_row(_, io, X, A, i, cols, sep) =
                 io, X, A, i, cols, sep)
 
 Base.print_matrix_row(io::IO,
-        X::Union{AbstractFill,Diagonal{<:Any,<:AbstractFill},RectDiagonal}, A::Vector,
+        X::Union{AbstractFill{<:Any,1},
+                 AbstractFill{<:Any,2},
+                 Diagonal{<:Any,<:AbstractFill{<:Any,1}},
+                 RectDiagonal,
+                 AbstractTriangular{<:Any,<:AbstractFill{<:Any,2}}
+                 }, A::Vector,
         i::Integer, cols::AbstractVector, sep::AbstractString) =
         axes_print_matrix_row(axes(X), io, X, A, i, cols, sep)
 
