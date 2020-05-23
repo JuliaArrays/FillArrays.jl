@@ -6,7 +6,7 @@ map(f::Function, r::AbstractFill) = Fill(f(getindex_value(r)), axes(r))
 ### Unary broadcasting
 
 function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,N}
-    return Fill(op(getindex_value(r)), size(r))
+    return Fill(op(getindex_value(r)), axes(r))
 end
 
 broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::Zeros{T,N}) where {T,N} = r

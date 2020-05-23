@@ -7,7 +7,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
-    norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero
+    norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
@@ -272,6 +272,11 @@ end
 @inline RectDiagonal{T}(A::V, args...) where {T,V} = RectDiagonal{T,V}(A, args...)
 @inline RectDiagonal(A::V, args...) where {V} = RectDiagonal{eltype(V),V}(A, args...)
 
+
+# patch missing overload from Base
+axes(rd::Diagonal{<:Any,<:AbstractFill}) = (axes(rd.diag,1),axes(rd.diag,1))
+axes(T::AbstractTriangular{<:Any,<:AbstractFill}) = axes(parent(T))
+
 axes(rd::RectDiagonal) = rd.axes
 size(rd::RectDiagonal) = length.(rd.axes)
 
@@ -302,15 +307,23 @@ for f in (:triu, :triu!, :tril, :tril!)
 end
 
 
+Base.replace_in_print_matrix(A::RectDiagonal, i::Integer, j::Integer, s::AbstractString) = 
+    i == j ? s : Base.replace_with_centered_mark(s)
+
+
 const RectOrDiagonal{T,V,Axes} = Union{RectDiagonal{T,V,Axes}, Diagonal{T,V}}
 const SquareEye{T,Axes} = Diagonal{T,Ones{T,1,Tuple{Axes}}}
 const Eye{T,Axes} = RectOrDiagonal{T,Ones{T,1,Tuple{Axes}}}
 
 @inline SquareEye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
 @inline SquareEye(n::Integer) = Diagonal(Ones(n))
+@inline SquareEye{T}(ax::Tuple{AbstractUnitRange{Int}}) where T = Diagonal(Ones{T}(ax))
+@inline SquareEye(ax::Tuple{AbstractUnitRange{Int}}) = Diagonal(Ones(ax))
 
-@inline Eye{T}(n::Integer) where T = Diagonal(Ones{T}(n))
-@inline Eye(n::Integer) = Diagonal(Ones(n))
+@inline Eye{T}(n::Integer) where T = SquareEye{T}(n)
+@inline Eye(n::Integer) = SquareEye(n)
+@inline Eye{T}(ax::Tuple{AbstractUnitRange{Int}}) where T = SquareEye{T}(ax)
+@inline Eye(ax::Tuple{AbstractUnitRange{Int}}) = SquareEye(ax)
 
 # function iterate(iter::Eye, istate = (1, 1))
 #     (i::Int, j::Int) = istate
@@ -328,8 +341,20 @@ end
 
 Eye(n::Integer, m::Integer) = RectDiagonal(Ones(min(n,m)), n, m)
 Eye{T}(n::Integer, m::Integer) where T = RectDiagonal{T}(Ones{T}(min(n,m)), n, m)
+function Eye{T}((a,b)::NTuple{2,AbstractUnitRange{Int}}) where T 
+    ab = length(a) ≤ length(b) ? a : b
+    RectDiagonal{T}(Ones{T}((ab,)), (a,b))
+end
+function Eye((a,b)::NTuple{2,AbstractUnitRange{Int}})
+    ab = length(a) ≤ length(b) ? a : b
+    RectDiagonal(Ones((ab,)), (a,b))
+end
+
+
 @deprecate Eye{T}(sz::Tuple{Vararg{Integer,2}}) where T Eye{T}(sz...)
 @deprecate Eye(sz::Tuple{Vararg{Integer,2}}) Eye{Float64}(sz...)
+
+
 
 @inline Eye{T}(A::AbstractMatrix) where T = Eye{T}(size(A)...)
 @inline Eye(A::AbstractMatrix) = Eye{eltype(A)}(size(A)...)
@@ -506,5 +531,20 @@ include("fillbroadcast.jl")
 Base.replace_in_print_matrix(::Zeros, ::Integer, ::Integer, s::AbstractString) =
     Base.replace_with_centered_mark(s)
 
+# following support blocked fill array printing via
+# BlockArrays.jl
+axes_print_matrix_row(_, io, X, A, i, cols, sep) =
+    Base.invoke(Base.print_matrix_row, Tuple{IO,AbstractVecOrMat,Vector,Integer,AbstractVector,AbstractString},
+                io, X, A, i, cols, sep)
+
+Base.print_matrix_row(io::IO,
+        X::Union{AbstractFill{<:Any,1},
+                 AbstractFill{<:Any,2},
+                 Diagonal{<:Any,<:AbstractFill{<:Any,1}},
+                 RectDiagonal,
+                 AbstractTriangular{<:Any,<:AbstractFill{<:Any,2}}
+                 }, A::Vector,
+        i::Integer, cols::AbstractVector, sep::AbstractString) =
+        axes_print_matrix_row(axes(X), io, X, A, i, cols, sep)
 
 end # module

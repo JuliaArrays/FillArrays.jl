@@ -97,6 +97,9 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
     @test eltype(Eye(5)) == Float64
     @test eltype(Eye(5,6)) == Float64
 
+    @test Eye((Base.OneTo(5),)) ≡ SquareEye((Base.OneTo(5),)) ≡ Eye(5)
+    @test Eye((Base.OneTo(5),Base.OneTo(6))) ≡ Eye(5,6)
+
     for T in (Int, Float64)
         E = Eye{T}(5)
         M = Matrix{T}(I, 5, 5)
@@ -113,6 +116,9 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
         @test AbstractArray{Float32}(E) == Eye{Float32}(5)
         @test AbstractArray{Float32}(E) == Eye{Float32}(5, 5)
+
+        @test Eye{T}(randn(4,5)) ≡ Eye{T}(4,5) ≡ Eye{T}((Base.OneTo(4),Base.OneTo(5)))
+        @test Eye{T}((Base.OneTo(5),)) ≡ SquareEye{T}((Base.OneTo(5),)) ≡ Eye{T}(5)
     end
 
     @testset "Bool should change type" begin
@@ -169,6 +175,7 @@ end
     @test expected[2, :] == expected_matrix[2, :]
     @test expected[5, :] == expected_matrix[5, :]
 
+
     for Typ in (RectDiagonal, RectDiagonal{Int}, RectDiagonal{Int, UnitRange{Int}})
         @test Typ(data) == expected[1:3, 1:3]
         @test Typ(data, expected_axes) == expected
@@ -187,6 +194,9 @@ end
     @test diag(mut) == [5, 2, 3]
     mut[2, 1] = 0
     @test_throws ArgumentError mut[2, 1] = 9
+
+    D = RectDiagonal([1.,2.], (Base.OneTo(3),Base.OneTo(2)))
+    @test stringmime("text/plain", D) == "3×2 RectDiagonal{Float64,Array{Float64,1},Tuple{Base.OneTo{$Int},Base.OneTo{$Int}}}:\n 1.0   ⋅ \n  ⋅   2.0\n  ⋅    ⋅ "
 end
 
 # Check that all pair-wise combinations of + / - elements of As and Bs yield the correct
@@ -538,6 +548,9 @@ end
         @test Zeros(5) ./ Fill(5.0, 5) ≡ Zeros(5) ./ 5.0 ≡ Zeros(5)
         @test Ones(5) .\ Zeros(5) ≡ 1 .\ Zeros(5) ≡ Zeros(5)
         @test Fill(5.0, 5) .\ Zeros(5) ≡ 5.0 .\ Zeros(5) ≡ Zeros(5)
+
+        @test conj.(Zeros(5)) ≡ Zeros(5)
+        @test conj.(Zeros{ComplexF64}(5)) ≡ Zeros{ComplexF64}(5)
     end
 
     @testset "support Ref" begin
@@ -563,6 +576,15 @@ end
         @test Zeros(10) - Zeros(10) ≡ Zeros(10)
         @test Ones(10) - Zeros(10) ≡ Ones(10)
         @test Fill(1,10) - Zeros(10) ≡ Fill(1.0,10)
+    end
+
+    @testset "Zero .*" begin
+        @test Zeros{Int}(10) .* Zeros{Int}(10) ≡ Zeros{Int}(10)
+        @test randn(10) .* Zeros(10) ≡ Zeros(10)
+        @test Zeros(10) .* randn(10) ≡ Zeros(10)
+        @test (1:10) .* Zeros(10) ≡ Zeros(10)
+        @test Zeros(10) .* (1:10) ≡ Zeros(10)
+        @test_throws DimensionMismatch (1:11) .* Zeros(10)
     end
 end
 
@@ -647,15 +669,6 @@ end
     @test unique(Zeros(0)) isa Vector{Float64}
     @test !allunique(Fill("a", 2))
     @test allunique(Ones(0))
-end
-
-@testset "Zero .*" begin
-    @test Zeros{Int}(10) .* Zeros{Int}(10) ≡ Zeros{Int}(10)
-    @test randn(10) .* Zeros(10) ≡ Zeros(10)
-    @test Zeros(10) .* randn(10) ≡ Zeros(10)
-    @test (1:10) .* Zeros(10) ≡ Zeros(10)
-    @test Zeros(10) .* (1:10) ≡ Zeros(10)
-    @test_throws DimensionMismatch (1:11) .* Zeros(10)
 end
 
 @testset "iterate" begin
@@ -967,17 +980,24 @@ end
     @test_throws ArgumentError rmul!(x,2.0)
 end
 
-@testset "Diagonal{<:Fill}" begin
-    D = Diagonal(Fill(Fill(0.5,2,2),10))
-    @test @inferred(D[1,1]) === Fill(0.5,2,2)
-    @test @inferred(D[1,2]) === Fill(0.0,2,2)
-    D = Diagonal(Fill(Zeros(2,2),10))
-    @test @inferred(D[1,1]) === Zeros(2,2)
-    @test @inferred(D[1,2]) === Zeros(2,2)
+@testset "Modified" begin
+    @testset "Diagonal{<:Fill}" begin
+        D = Diagonal(Fill(Fill(0.5,2,2),10))
+        @test @inferred(D[1,1]) === Fill(0.5,2,2)
+        @test @inferred(D[1,2]) === Fill(0.0,2,2)
+        @test axes(D) == (Base.OneTo(10),Base.OneTo(10))
+        D = Diagonal(Fill(Zeros(2,2),10))
+        @test @inferred(D[1,1]) === Zeros(2,2)
+        @test @inferred(D[1,2]) === Zeros(2,2)
+        D = Diagonal([Zeros(1,1), Zeros(2,2)])
+        @test @inferred(D[1,1]) === Zeros(1,1)
+        @test @inferred(D[1,2]) === Zeros(1,2)
 
-    D = Diagonal([Zeros(1,1), Zeros(2,2)])
-    @test @inferred(D[1,1]) === Zeros(1,1)
-    @test @inferred(D[1,2]) === Zeros(1,2)
-
-    @test_throws ArgumentError Diagonal(Fill(Ones(2,2),10))[1,2]
+        @test_throws ArgumentError Diagonal(Fill(Ones(2,2),10))[1,2]
+    end
+    @testset "Triangular" begin
+        U = UpperTriangular(Ones(3,3))
+        @test U == UpperTriangular(ones(3,3))
+        @test axes(U) == (Base.OneTo(3),Base.OneTo(3))
+    end
 end
