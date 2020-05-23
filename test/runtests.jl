@@ -631,14 +631,14 @@ end
 end
 
 @testset "Offset indexing" begin
-    A = Fill(3, (Base.IdentityUnitRange(-1:1),))
-    @test axes(A)  == (Base.IdentityUnitRange(-1:1),)
+    A = Fill(3, (Base.Slice(-1:1),))
+    @test axes(A)  == (Base.Slice(-1:1),)
     @test A[0] == 3
     @test_throws BoundsError A[2]
     @test_throws BoundsError A[-2]
 
-    A = Zeros((Base.IdentityUnitRange(-1:1),))
-    @test axes(A)  == (Base.IdentityUnitRange(-1:1),)
+    A = Zeros((Base.Slice(-1:1),))
+    @test axes(A)  == (Base.Slice(-1:1),)
     @test A[0] == 0
     @test_throws BoundsError A[2]
     @test_throws BoundsError A[-2]
