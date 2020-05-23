@@ -117,7 +117,7 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
         @test AbstractArray{Float32}(E) == Eye{Float32}(5)
         @test AbstractArray{Float32}(E) == Eye{Float32}(5, 5)
 
-        @test Eye{T}(randn(4,5)) ≡ Eye{T}(4,5)
+        @test Eye{T}(randn(4,5)) ≡ Eye{T}(4,5) ≡ Eye{T}((Base.OneTo(4),Base.OneTo(5)))
         @test Eye{T}((Base.OneTo(5),)) ≡ SquareEye{T}((Base.OneTo(5),)) ≡ Eye{T}(5)
     end
 
