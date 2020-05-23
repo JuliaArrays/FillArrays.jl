@@ -175,7 +175,6 @@ end
     @test expected[2, :] == expected_matrix[2, :]
     @test expected[5, :] == expected_matrix[5, :]
 
-    @test stringmime("text/plain", expected) == "5×3 RectDiagonal{Int64,UnitRange{Int64},Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}:\n 1  ⋅  ⋅\n ⋅  2  ⋅\n ⋅  ⋅  3\n ⋅  ⋅  ⋅\n ⋅  ⋅  ⋅"
 
     for Typ in (RectDiagonal, RectDiagonal{Int}, RectDiagonal{Int, UnitRange{Int}})
         @test Typ(data) == expected[1:3, 1:3]
@@ -195,6 +194,9 @@ end
     @test diag(mut) == [5, 2, 3]
     mut[2, 1] = 0
     @test_throws ArgumentError mut[2, 1] = 9
+
+    D = RectDiagonal([1.,2.], (Base.OneTo(3),Base.OneTo(2)))
+    @test stringmime("text/plain", D) == "3×2 RectDiagonal{Float64,Array{Float64,1},Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}:\n 1.0   ⋅ \n  ⋅   2.0\n  ⋅    ⋅ "
 end
 
 # Check that all pair-wise combinations of + / - elements of As and Bs yield the correct
