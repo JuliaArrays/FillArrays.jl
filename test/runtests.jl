@@ -884,22 +884,22 @@ end
     a = randn(3)
     A = randn(1,4)
 
-    @test Fill(2,3)*A == Vector(Fill(2,3))*A
-    @test Fill(2,3,1)*A == Matrix(Fill(2,3,1))*A
-    @test Fill(2,3,3)*a == Matrix(Fill(2,3,3))*a
-    @test Ones(3)*A ==   Vector(Ones(3))*A
-    @test Ones(3,1)*A == Matrix(Ones(3,1))*A
-    @test Ones(3,3)*a == Matrix(Ones(3,3))*a
+    @test Fill(2,3)*A ≈ Vector(Fill(2,3))*A
+    @test Fill(2,3,1)*A ≈ Matrix(Fill(2,3,1))*A
+    @test Fill(2,3,3)*a ≈ Matrix(Fill(2,3,3))*a
+    @test Ones(3)*A ≈ Vector(Ones(3))*A
+    @test Ones(3,1)*A ≈ Matrix(Ones(3,1))*A
+    @test Ones(3,3)*a ≈ Matrix(Ones(3,3))*a
     @test Zeros(3)*A  ≡ Zeros(3,4)
     @test Zeros(3,1)*A == Zeros(3,4)
     @test Zeros(3,3)*a == Zeros(3)
 
-    @test A*Fill(2,4) == A*Vector(Fill(2,4))
-    @test A*Fill(2,4,1) == A*Matrix(Fill(2,4,1))
-    @test a*Fill(2,1,3) == a*Matrix(Fill(2,1,3))
-    @test A*Ones(4) ==   A*Vector(Ones(4))
-    @test A*Ones(4,1) == A*Matrix(Ones(4,1))
-    @test a*Ones(1,3) == a*Matrix(Ones(1,3))
+    @test A*Fill(2,4) ≈ A*Vector(Fill(2,4))
+    @test A*Fill(2,4,1) ≈ A*Matrix(Fill(2,4,1))
+    @test a*Fill(2,1,3) ≈ a*Matrix(Fill(2,1,3))
+    @test A*Ones(4) ≈ A*Vector(Ones(4))
+    @test A*Ones(4,1) ≈ A*Matrix(Ones(4,1))
+    @test a*Ones(1,3) ≈ a*Matrix(Ones(1,3))
     @test A*Zeros(4)  ≡ Zeros(1)
     @test A*Zeros(4,1) ≡ Zeros(1,1)
     @test a*Zeros(1,3) ≡ Zeros(3,3)
