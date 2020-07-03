@@ -43,21 +43,24 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
                 @test convert(Fill{Float64}, Fill(1.0,2)) ≡ Fill(1.0, 2) # was ambiguous
                 @test convert(Fill{Int}, Ones(20)) ≡ Fill(1, 20)
 
-                @test $Typ{T,2}(2ones(T,5,5)) == Z
-                @test $Typ{T}(2ones(T,5,5)) == Z
-                @test $Typ(2ones(T,5,5)) == Z
+                @test $Typ{T,2}(2ones(T,5,5)) ≡ $Typ{T}(5,5)
+                @test $Typ{T}(2ones(T,5,5)) ≡ $Typ{T}(5,5)
+                @test $Typ(2ones(T,5,5)) ≡ $Typ{T}(5,5)
 
-                @test AbstractArray{Float32}(Z) == $Typ{Float32}(5,5)
-                @test AbstractArray{Float32,2}(Z) == $Typ{Float32}(5,5)
+                @test $Typ(Z) ≡ $Typ{T}(Z) ≡ $Typ{T,2}(Z) ≡ typeof(Z)(Z) ≡ Z
+
+                @test AbstractArray{Float32}(Z) ≡ $Typ{Float32}(5,5)
+                @test AbstractArray{Float32,2}(Z) ≡ $Typ{Float32}(5,5)
             end
         end
     end
 
+    @test Fill(1) ≡ Fill{Int}(1) ≡ Fill{Int,0}(1) ≡ Fill{Int,0,Tuple{}}(1,())
     @test Fill(1,(-1,5)) ≡ Fill(1,(0,5))
     @test Fill(1.0,5) isa AbstractVector{Float64}
     @test Fill(1.0,5,5) isa AbstractMatrix{Float64}
-    @test Fill(1,5) == Fill(1,(5,))
-    @test Fill(1,5,5) == Fill(1,(5,5))
+    @test Fill(1,5) ≡ Fill(1,(5,))
+    @test Fill(1,5,5) ≡ Fill(1,(5,5))
     @test eltype(Fill(1.0,5,5)) == Float64
 
     @test Matrix{Float64}(Zeros{ComplexF64}(10,10)) == zeros(10,10)
@@ -82,11 +85,12 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
         @test convert(AbstractArray{T},F) ≡ AbstractArray{T}(F) ≡ F
         @test convert(AbstractMatrix{T},F) ≡ AbstractMatrix{T}(F) ≡ F
 
+        @test convert(AbstractArray{Float32},F) ≡ AbstractArray{Float32}(F) ≡
+                Fill{Float32}(one(Float32),5,5)
+        @test convert(AbstractMatrix{Float32},F) ≡ AbstractMatrix{Float32}(F) ≡
+                Fill{Float32}(one(Float32),5,5)
 
-        @test convert(AbstractArray{Float32},F) == AbstractArray{Float32}(F) ==
-                Fill{Float32}(one(Float32),5,5)
-        @test convert(AbstractMatrix{Float32},F) == AbstractMatrix{Float32}(F) ==
-                Fill{Float32}(one(Float32),5,5)
+        @test Fill{T}(F) ≡ Fill{T,2}(F) ≡ typeof(F)(F) ≡ F
     end
 
     @test Eye(5) isa Diagonal{Float64}
@@ -575,7 +579,12 @@ end
     @testset "Zeros -" begin
         @test Zeros(10) - Zeros(10) ≡ Zeros(10)
         @test Ones(10) - Zeros(10) ≡ Ones(10)
+        @test Ones(10) - Ones(10) ≡ Zeros(10)
         @test Fill(1,10) - Zeros(10) ≡ Fill(1.0,10)
+
+        @test Zeros(10) .- Zeros(1,9) ≡ Zeros(10,9)
+        @test Ones(10) .- Zeros(1,9) ≡ Ones(10,9)
+        @test Ones(10) .- Ones(1,9) ≡ Zeros(10,9)
     end
 
     @testset "Zero .*" begin

@@ -148,6 +148,7 @@ function +(a::Zeros{T}, b::Zeros{V}) where {T, V}
     return Zeros{promote_type(T,V)}(size(a)...)
 end
 -(a::Zeros, b::Zeros) = -(a + b)
+-(a::Ones, b::Ones) = Zeros(a)+Zeros(b)
 
 # Zeros +/- Fill and Fill +/- Zeros
 function +(a::AbstractFill{T}, b::Zeros{V}) where {T, V}

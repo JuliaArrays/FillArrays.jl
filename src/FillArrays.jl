@@ -76,6 +76,11 @@ Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
 @inline Fill(x::T, sz::Vararg{<:Integer,N}) where {T, N}  = Fill{T, N}(x, sz)
 @inline Fill(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T, N}  = Fill{T, N}(x, sz)
 
+# We restrict to  when T is specified to avoid ambiguity with a Fill of a Fill
+@inline Fill{T}(F::Fill{T}) where T = F
+@inline Fill{T,N}(F::Fill{T,N}) where {T,N} = F
+@inline Fill{T,N,Axes}(F::Fill{T,N,Axes}) where {T,N,Axes} = F
+
 @inline axes(F::Fill) = F.axes
 @inline size(F::Fill) = length.(F.axes)
 
@@ -204,10 +209,10 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         @inline $Typ{T}(n::Integer) where T = $Typ{T,1}(n)
         @inline $Typ(n::Integer) = $Typ{Float64,1}(n)
 
-
+        @inline $Typ{T,N,Axes}(A::AbstractArray{V,N}) where{T,V,N,Axes} = $Typ{T,N,Axes}(axes(A))
         @inline $Typ{T,N}(A::AbstractArray{V,N}) where{T,V,N} = $Typ{T,N}(size(A))
         @inline $Typ{T}(A::AbstractArray) where{T} = $Typ{T}(size(A))
-        @inline $Typ(A::AbstractArray) = $Typ(size(A))
+        @inline $Typ(A::AbstractArray) = $Typ{eltype(A)}(A)
 
         @inline axes(Z::$Typ) = Z.axes
         @inline size(Z::$Typ) = length.(Z.axes)
