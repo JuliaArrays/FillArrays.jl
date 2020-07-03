@@ -579,7 +579,12 @@ end
     @testset "Zeros -" begin
         @test Zeros(10) - Zeros(10) ≡ Zeros(10)
         @test Ones(10) - Zeros(10) ≡ Ones(10)
+        @test Ones(10) - Ones(10) ≡ Zeros(10)
         @test Fill(1,10) - Zeros(10) ≡ Fill(1.0,10)
+
+        @test Zeros(10) .- Zeros(1,9) ≡ Zeros(10,9)
+        @test Ones(10) .- Zeros(1,9) ≡ Ones(10,9)
+        @test Ones(10) .- Ones(1,9) ≡ Zeros(10,9)
     end
 
     @testset "Zero .*" begin
