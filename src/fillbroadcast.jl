@@ -9,6 +9,10 @@ function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,
     return Fill(op(getindex_value(r)), axes(r))
 end
 
+broadcasted(::DefaultArrayStyle, ::typeof(+), r::Zeros) = r
+broadcasted(::DefaultArrayStyle, ::typeof(-), r::Zeros) = r
+broadcasted(::DefaultArrayStyle, ::typeof(+), r::Ones) = r
+
 broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::Zeros{T,N}) where {T,N} = r
 broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::Ones{T,N}) where {T,N} = r
 broadcasted(::DefaultArrayStyle{N}, ::typeof(real), r::Zeros{T,N}) where {T,N} = Zeros{real(T)}(r.axes)
