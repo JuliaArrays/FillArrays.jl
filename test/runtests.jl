@@ -477,7 +477,7 @@ end
     @test f.(x, Ones(5)) ≡ Fill(f(5,1.0),5)
 
     y = Ones(5,5)
-    @test (.+)(y) ≡ Fill(1.0,5,5)
+    @test (.+)(y) ≡ Ones(5,5)
     @test (.-)(y) ≡ Fill(-1.0,5,5)
     @test exp.(y) ≡ Fill(exp(1),5,5)
     @test y .+ 1 ≡ Fill(2.0,5,5)
