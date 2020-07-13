@@ -477,7 +477,7 @@ end
     @test f.(x, Ones(5)) ≡ Fill(f(5,1.0),5)
 
     y = Ones(5,5)
-    @test (.+)(y) ≡ Fill(1.0,5,5)
+    @test (.+)(y) ≡ Ones(5,5)
     @test (.-)(y) ≡ Fill(-1.0,5,5)
     @test exp.(y) ≡ Fill(exp(1),5,5)
     @test y .+ 1 ≡ Fill(2.0,5,5)
@@ -542,7 +542,10 @@ end
     @test broadcast(*, rnge, Fill(5.0, 10)) == broadcast(*, rnge, 5.0)
     @test_throws DimensionMismatch broadcast(*, rnge, Fill(5.0, 11))
 
-    @testset "Special zeros" begin
+    @testset "Special Zeros/Ones" begin
+        @test broadcast(+,Zeros(5)) ≡ broadcast(-,Zeros(5)) ≡ Zeros(5)
+        @test broadcast(+,Ones(5)) ≡ Ones(5)
+
         @test Zeros(5) .* Ones(5) ≡ Zeros(5) .* 1 ≡ Zeros(5)
         @test Zeros(5) .* Fill(5.0, 5) ≡ Zeros(5) .* 5.0 ≡ Zeros(5)
         @test Ones(5) .* Zeros(5) ≡ 1 .* Zeros(5) ≡ Zeros(5)
