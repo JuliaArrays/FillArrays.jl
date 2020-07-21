@@ -922,6 +922,16 @@ end
     @test D*Zeros(1,1) ≡ Zeros(1,1)
     @test D*Zeros(1) ≡ Zeros(1)
 
+    D = Diagonal(Fill(2,10))
+    @test D * Ones(10) ≡ Fill(2.0,10)
+    @test D * Ones(10,5) ≡ Fill(2.0,10,5)
+    @test Ones(5,10) * D ≡ Fill(2.0,5,10)
+
+    # following test is broken in Base as of Julia v1.5
+    @test_skip @test_throws DimensionMismatch Diagonal(Fill(1,1)) * Ones(10)
+    @test_throws DimensionMismatch Diagonal(Fill(1,1)) * Ones(10,5)
+    @test_throws DimensionMismatch Ones(5,10) * Diagonal(Fill(1,1))
+
     E = Eye(5)
     @test E*(1:5) ≡ 1.0:5.0
     @test (1:5)'E == (1.0:5)'
