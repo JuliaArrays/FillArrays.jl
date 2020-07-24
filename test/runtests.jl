@@ -864,22 +864,22 @@ end
 @testset "mult" begin
     @test Fill(2,10)*Fill(3,1,12) == Vector(Fill(2,10))*Matrix(Fill(3,1,12))
     @test Fill(2,10)*Fill(3,1,12) ≡ Fill(6,10,12)
-    @test Fill(2,3,10)*Fill(3,10,12) ≡ Fill(6,3,12)
-    @test Fill(2,3,10)*Fill(3,10) ≡ Fill(6,3)
+    @test Fill(2,3,10)*Fill(3,10,12) ≡ Fill(60,3,12)
+    @test Fill(2,3,10)*Fill(3,10) ≡ Fill(60,3)
     @test_throws DimensionMismatch Fill(2,10)*Fill(3,2,12)
     @test_throws DimensionMismatch Fill(2,3,10)*Fill(3,2,12)
 
     @test Ones(10)*Fill(3,1,12) ≡ Fill(3.0,10,12)
-    @test Ones(10,3)*Fill(3,3,12) ≡ Fill(3.0,10,12)
-    @test Ones(10,3)*Fill(3,3) ≡ Fill(3.0,10)
+    @test Ones(10,3)*Fill(3,3,12) ≡ Fill(9.0,10,12)
+    @test Ones(10,3)*Fill(3,3) ≡ Fill(9.0,10)
 
     @test Fill(2,10)*Ones(1,12) ≡ Fill(2.0,10,12)
-    @test Fill(2,3,10)*Ones(10,12) ≡ Fill(2.0,3,12)
-    @test Fill(2,3,10)*Ones(10) ≡ Fill(2.0,3)
+    @test Fill(2,3,10)*Ones(10,12) ≡ Fill(20.0,3,12)
+    @test Fill(2,3,10)*Ones(10) ≡ Fill(20.0,3)
 
     @test Ones(10)*Ones(1,12) ≡ Ones(10,12)
-    @test Ones(3,10)*Ones(10,12) ≡ Ones(3,12)
-    @test Ones(3,10)*Ones(10) ≡ Ones(3)
+    @test Ones(3,10)*Ones(10,12) ≡ Fill(10.0,3,12)
+    @test Ones(3,10)*Ones(10) ≡ Fill(10.0,3)
 
     @test Zeros(10)*Fill(3,1,12) ≡   Zeros(10,12)
     @test Zeros(10,3)*Fill(3,3,12) ≡ Zeros(10,12)

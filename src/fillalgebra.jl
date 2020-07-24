@@ -36,24 +36,19 @@ end
 function mult_fill(a::AbstractFill, b::AbstractFill{<:Any,2})
     axes(a, 2) ≠ axes(b, 1) &&
         throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
-    return Fill(getindex_value(a)*getindex_value(b), (axes(a, 1), axes(b, 2)))
+    return Fill(getindex_value(a)*getindex_value(b)*size(a,2), (axes(a, 1), axes(b, 2)))
 end
 
 function mult_fill(a::AbstractFill, b::AbstractFill{<:Any,1})
     axes(a, 2) ≠ axes(b, 1) &&
         throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
-    return Fill(getindex_value(a)*getindex_value(b), (axes(a, 1),))
+    return Fill(getindex_value(a)*getindex_value(b)*size(a,2), (axes(a, 1),))
 end
 
-function mult_ones(a, b::AbstractMatrix)
+function mult_ones(a::AbstractVector, b::AbstractMatrix)
     axes(a, 2) ≠ axes(b, 1) &&
         throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
     return Ones{promote_type(eltype(a), eltype(b))}((axes(a, 1), axes(b, 2)))
-end
-function mult_ones(a, b::AbstractVector)
-    axes(a, 2) ≠ axes(b, 1) &&
-        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
-    return Ones{promote_type(eltype(a), eltype(b))}((axes(a, 1),))
 end
 
 function mult_zeros(a, b::AbstractMatrix)
@@ -72,8 +67,6 @@ end
 *(a::AbstractFill{<:Any,2}, b::AbstractFill{<:Any,1}) = mult_fill(a,b)
 
 *(a::Ones{<:Any,1}, b::Ones{<:Any,2}) = mult_ones(a, b)
-*(a::Ones{<:Any,2}, b::Ones{<:Any,2}) = mult_ones(a, b)
-*(a::Ones{<:Any,2}, b::Ones{<:Any,1}) = mult_ones(a, b)
 
 *(a::Zeros{<:Any,1}, b::Zeros{<:Any,2}) = mult_zeros(a, b)
 *(a::Zeros{<:Any,2}, b::Zeros{<:Any,2}) = mult_zeros(a, b)
