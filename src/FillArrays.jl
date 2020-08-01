@@ -4,7 +4,8 @@ using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
-    copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero
+    copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero,
+    show
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular
@@ -551,5 +552,18 @@ Base.print_matrix_row(io::IO,
                  }, A::Vector,
         i::Integer, cols::AbstractVector, sep::AbstractString) =
         axes_print_matrix_row(axes(X), io, X, A, i, cols, sep)
+
+
+"""
+    show(io::IO, x::AbstractFill)
+    show(io::IO, ::MIME"text/plain", x::AbstractFill)
+Display concise description.
+"""
+Base.show(io::IO, x::AbstractFill) =
+    print(io, "$(summary(x)) = $(getindex_value(x))")
+
+function Base.show(io::IO, ::MIME"text/plain", x::AbstractFill)
+    show(io, x)
+end
 
 end # module

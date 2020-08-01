@@ -91,6 +91,8 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
                 Fill{Float32}(one(Float32),5,5)
 
         @test Fill{T}(F) ≡ Fill{T,2}(F) ≡ typeof(F)(F) ≡ F
+
+        show(devnull, MIME("text/plain"), F)
     end
 
     @test Eye(5) isa Diagonal{Float64}
@@ -964,7 +966,7 @@ end
 end
 
 @testset "print" begin
-    @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64,1,Tuple{Base.OneTo{$Int}}}:\n  ⋅ \n  ⋅ \n  ⋅ "
+    @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64,1,Tuple{Base.OneTo{$Int}}} = 0.0"
 end
 
 @testset "reshape" begin
