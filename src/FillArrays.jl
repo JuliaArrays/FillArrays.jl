@@ -1,3 +1,4 @@
+""" `FillArrays` module to lazily represent matrices with a single value """
 module FillArrays
 
 using LinearAlgebra, SparseArrays
@@ -16,6 +17,7 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
 export Zeros, Ones, Fill, Eye
 
+""" `AbstractFill{T, N, Axes} <: AbstractArray{T, N}` """
 abstract type AbstractFill{T, N, Axes} <: AbstractArray{T, N} end
 
 ==(a::AbstractFill, b::AbstractFill) = axes(a) == axes(b) && getindex_value(a) == getindex_value(b)
@@ -51,6 +53,7 @@ rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
 IndexStyle(::Type{<:AbstractFill{<:Any,N,<:NTuple{N,Base.OneTo{Int}}}}) where N = IndexLinear()
 
 
+""" `Fill{T, N, Axes} <: AbstractFill{T, N, Axes}` (lazy `fill` with axes)"""
 struct Fill{T, N, Axes} <: AbstractFill{T, N, Axes}
     value::T
     axes::Axes
@@ -74,7 +77,9 @@ Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
 
 @inline Fill{T}(x, sz::Vararg{<:Integer,N}) where {T, N} = Fill{T, N}(x, sz)
 @inline Fill{T}(x, sz::Tuple{Vararg{<:Any,N}}) where {T, N} = Fill{T, N}(x, sz)
+""" `Fill(x, dims...)` construct lazy version of `fill(x, dims...)` """
 @inline Fill(x::T, sz::Vararg{<:Integer,N}) where {T, N}  = Fill{T, N}(x, sz)
+""" `Fill(x, dims)` construct lazy version of `fill(x, dims)` """
 @inline Fill(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T, N}  = Fill{T, N}(x, sz)
 
 # We restrict to  when T is specified to avoid ambiguity with a Fill of a Fill
@@ -190,6 +195,7 @@ Base._reshape(parent::AbstractFill{T, 1, Axes}, dims::Tuple{Int}) where {T, Axes
 
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     @eval begin
+        """ `$($Typ){T, N, Axes} <: AbstractFill{T, N, Axes}` (lazy `$($funcs)` with axes)"""
         struct $Typ{T, N, Axes} <: AbstractFill{T, N, Axes}
             axes::Axes
             @inline $Typ{T,N,Axes}(sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
@@ -203,6 +209,7 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         @inline $Typ{T, 0}(sz::Tuple{}) where {T} = $Typ{T,0,Tuple{}}(sz)
         @inline $Typ{T, N}(sz::Tuple{Vararg{<:Integer, N}}) where {T, N} = $Typ{T,N}(Base.OneTo.(sz))
         @inline $Typ{T, N}(sz::Vararg{<:Integer, N}) where {T, N} = $Typ{T,N}(sz)
+		""" `$($Typ){T}(dims...)` construct lazy version of `$($funcs)(dims...)`"""
         @inline $Typ{T}(sz::Vararg{Integer,N}) where {T, N} = $Typ{T, N}(sz)
         @inline $Typ{T}(sz::SZ) where SZ<:Tuple{Vararg{Any,N}} where {T, N} = $Typ{T, N}(sz)
         @inline $Typ(sz::Vararg{Any,N}) where N = $Typ{Float64,N}(sz)
