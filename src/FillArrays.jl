@@ -1,3 +1,4 @@
+""" `FillArrays` module to lazily represent matrices with a single value """
 module FillArrays
 
 using LinearAlgebra, SparseArrays
