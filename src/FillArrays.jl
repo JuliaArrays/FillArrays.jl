@@ -13,7 +13,7 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
 
 
-export Zeros, Ones, Fill, Eye
+export Zeros, Ones, Fill, Eye, Trues, Falses
 
 abstract type AbstractFill{T, N, Axes} <: AbstractArray{T, N} end
 
