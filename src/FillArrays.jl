@@ -1,4 +1,3 @@
-""" `FillArrays` module to lazily represent matrices with a single value """
 module FillArrays
 
 using LinearAlgebra, SparseArrays
@@ -17,7 +16,11 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
 export Zeros, Ones, Fill, Eye
 
-""" `AbstractFill{T, N, Axes} <: AbstractArray{T, N}` """
+"""
+    AbstractFill{T, N, Axes} <: AbstractArray{T, N}
+
+Supertype for lazy array types whose entries are all equal to constant.
+"""
 abstract type AbstractFill{T, N, Axes} <: AbstractArray{T, N} end
 
 ==(a::AbstractFill, b::AbstractFill) = axes(a) == axes(b) && getindex_value(a) == getindex_value(b)
@@ -53,7 +56,29 @@ rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
 IndexStyle(::Type{<:AbstractFill{<:Any,N,<:NTuple{N,Base.OneTo{Int}}}}) where N = IndexLinear()
 
 
-""" `Fill{T, N, Axes} <: AbstractFill{T, N, Axes}` (lazy `fill` with axes)"""
+"""
+    Fill{T, N, Axes}
+    where `Axes <: Tuple{Vararg{AbstractUnitRange,N}}`
+
+A lazy representation of an array of dimension `N`
+whose entries are all equal to a constant of type `T`,
+with axes of type `Axes`.
+Typically created by `Fill` or `Zeros` or `Ones`
+
+# Examples
+
+```jldoctest
+julia> Fill(7, (2,3))
+2×3 Fill{Int64,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}:
+ 7  7  7
+ 7  7  7
+
+julia> Fill{Float64, 1, Tuple{UnitRange{Int64}}}(7., (1:2,))
+2-element Fill{Float64,1,Tuple{UnitRange{Int64}}} with indices 1:2:
+ 7.0
+ 7.0
+```
+"""
 struct Fill{T, N, Axes} <: AbstractFill{T, N, Axes}
     value::T
     axes::Axes
@@ -209,7 +234,7 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         @inline $Typ{T, 0}(sz::Tuple{}) where {T} = $Typ{T,0,Tuple{}}(sz)
         @inline $Typ{T, N}(sz::Tuple{Vararg{<:Integer, N}}) where {T, N} = $Typ{T,N}(Base.OneTo.(sz))
         @inline $Typ{T, N}(sz::Vararg{<:Integer, N}) where {T, N} = $Typ{T,N}(sz)
-		""" `$($Typ){T}(dims...)` construct lazy version of `$($funcs)(dims...)`"""
+        """ `$($Typ){T}(dims...)` construct lazy version of `$($funcs)(dims...)`"""
         @inline $Typ{T}(sz::Vararg{Integer,N}) where {T, N} = $Typ{T, N}(sz)
         @inline $Typ{T}(sz::SZ) where SZ<:Tuple{Vararg{Any,N}} where {T, N} = $Typ{T, N}(sz)
         @inline $Typ(sz::Vararg{Any,N}) where N = $Typ{Float64,N}(sz)
@@ -561,11 +586,7 @@ Base.print_matrix_row(io::IO,
         axes_print_matrix_row(axes(X), io, X, A, i, cols, sep)
 
 
-"""
-    show(io::IO, x::AbstractFill)
-    show(io::IO, ::MIME"text/plain", x::AbstractFill)
-Display concise description.
-"""
+# Display concise description of a Fill.
 Base.show(io::IO, x::AbstractFill) =
     print(io, "$(summary(x)) = $(getindex_value(x))")
 
