@@ -529,6 +529,7 @@ count(f, x::AbstractFill) = f(getindex_value(x)) ? length(x) : 0
 
 include("fillalgebra.jl")
 include("fillbroadcast.jl")
+include("trues.jl")
 
 ##
 # print
