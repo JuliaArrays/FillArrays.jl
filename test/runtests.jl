@@ -92,7 +92,7 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
         @test Fill{T}(F) ≡ Fill{T,2}(F) ≡ typeof(F)(F) ≡ F
 
-        show(devnull, MIME("text/plain"), F)
+        show(devnull, MIME("text/plain"), F) # for codecov
     end
 
     @test Eye(5) isa Diagonal{Float64}
