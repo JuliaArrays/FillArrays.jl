@@ -127,11 +127,11 @@ function getindex(F::Fill, kj::Vararg{AbstractVector{II},N}) where {II<:Integer,
 end
 
 function getindex(A::Fill, kr::AbstractVector{Bool})
-   length(A) == length(kr) || throw(DimensionMismatch())
+   length(A) == length(kr) || throw(DimensionMismatch("lengths must match"))
    Fill(getindex_value(A), count(kr))
 end
 function getindex(A::Fill, kr::AbstractArray{Bool})
-   size(A) == size(kr) || throw(DimensionMismatch())
+   size(A) == size(kr) || throw(DimensionMismatch("sizes must match"))
    Fill(getindex_value(A), count(kr))
 end
 
@@ -235,11 +235,11 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
             $Typ{T}(length.(kj))
         end
         function getindex(A::$Typ{T}, kr::AbstractVector{Bool}) where T
-            length(A) == length(kr) || throw(DimensionMismatch())
+            length(A) == length(kr) || throw(DimensionMismatch("lengths must match"))
             $Typ{T}(count(kr))
         end
         function getindex(A::$Typ{T}, kr::AbstractArray{Bool}) where T
-            size(A) == size(kr) || throw(DimensionMismatch())
+            size(A) == size(kr) || throw(DimensionMismatch("sizes must match"))
             $Typ{T}(count(kr))
         end
 
