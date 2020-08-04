@@ -23,15 +23,16 @@ const Falses = Zeros{Bool, N, Axes} where {N, Axes}
 
 # y[mask] = x when mask isa Trues (cf y[:] = x)
 function Base.setindex!(y::AbstractArray{T,N}, x, mask::Trues{N}) where {T,N}
-    @boundscheck size(x) == size(mask) == size(y) || throw(DimensionMismatch())
-    @boundscheck checkbounds(x, mask)
-#   @boundscheck axes(mask) == axes(x) || throw("axes mismatch")
+    @boundscheck axes(x) == axes(mask) == axes(y) ||
+        throw(DimensionMismatch("axes must match for setindex!"))
+    @boundscheck checkbounds(y, mask)
     copyto!(y, x)
 end
 
 # x[mask] when mask isa Trues (cf x[trues(size(x))] or x[:])
 function Base.getindex(x::AbstractArray{T,D}, mask::Trues{D}) where {T,D}
-    @boundscheck size(x) == size(mask) || throw(DimensionMismatch())
+    @boundscheck axes(x) == axes(mask) ||
+        throw(DimensionMismatch("axes must match for getindex"))
     @boundscheck checkbounds(x, mask)
     return vec(x)
 end
