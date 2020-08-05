@@ -1,10 +1,12 @@
+""" `FillArrays` module to lazily represent matrices with a single value """
 module FillArrays
 
 using LinearAlgebra, SparseArrays
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
-    copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero
+    copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero,
+    show
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular
@@ -15,6 +17,11 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
 export Zeros, Ones, Fill, Eye, Trues, Falses
 
+"""
+    AbstractFill{T, N, Axes} <: AbstractArray{T, N}
+
+Supertype for lazy array types whose entries are all equal to constant.
+"""
 abstract type AbstractFill{T, N, Axes} <: AbstractArray{T, N} end
 
 ==(a::AbstractFill, b::AbstractFill) = axes(a) == axes(b) && getindex_value(a) == getindex_value(b)
@@ -50,6 +57,29 @@ rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
 IndexStyle(::Type{<:AbstractFill{<:Any,N,<:NTuple{N,Base.OneTo{Int}}}}) where N = IndexLinear()
 
 
+"""
+    Fill{T, N, Axes}
+    where `Axes <: Tuple{Vararg{AbstractUnitRange,N}}`
+
+A lazy representation of an array of dimension `N`
+whose entries are all equal to a constant of type `T`,
+with axes of type `Axes`.
+Typically created by `Fill` or `Zeros` or `Ones`
+
+# Examples
+
+```jldoctest
+julia> Fill(7, (2,3))
+2×3 Fill{Int64,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}:
+ 7  7  7
+ 7  7  7
+
+julia> Fill{Float64, 1, Tuple{UnitRange{Int64}}}(7., (1:2,))
+2-element Fill{Float64,1,Tuple{UnitRange{Int64}}} with indices 1:2:
+ 7.0
+ 7.0
+```
+"""
 struct Fill{T, N, Axes} <: AbstractFill{T, N, Axes}
     value::T
     axes::Axes
@@ -73,7 +103,9 @@ Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
 
 @inline Fill{T}(x, sz::Vararg{<:Integer,N}) where {T, N} = Fill{T, N}(x, sz)
 @inline Fill{T}(x, sz::Tuple{Vararg{<:Any,N}}) where {T, N} = Fill{T, N}(x, sz)
+""" `Fill(x, dims...)` construct lazy version of `fill(x, dims...)` """
 @inline Fill(x::T, sz::Vararg{<:Integer,N}) where {T, N}  = Fill{T, N}(x, sz)
+""" `Fill(x, dims)` construct lazy version of `fill(x, dims)` """
 @inline Fill(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T, N}  = Fill{T, N}(x, sz)
 
 # We restrict to  when T is specified to avoid ambiguity with a Fill of a Fill
@@ -189,6 +221,7 @@ Base._reshape(parent::AbstractFill{T, 1, Axes}, dims::Tuple{Int}) where {T, Axes
 
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     @eval begin
+        """ `$($Typ){T, N, Axes} <: AbstractFill{T, N, Axes}` (lazy `$($funcs)` with axes)"""
         struct $Typ{T, N, Axes} <: AbstractFill{T, N, Axes}
             axes::Axes
             @inline $Typ{T,N,Axes}(sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
@@ -202,6 +235,7 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         @inline $Typ{T, 0}(sz::Tuple{}) where {T} = $Typ{T,0,Tuple{}}(sz)
         @inline $Typ{T, N}(sz::Tuple{Vararg{<:Integer, N}}) where {T, N} = $Typ{T,N}(Base.OneTo.(sz))
         @inline $Typ{T, N}(sz::Vararg{<:Integer, N}) where {T, N} = $Typ{T,N}(sz)
+        """ `$($Typ){T}(dims...)` construct lazy version of `$($funcs)(dims...)`"""
         @inline $Typ{T}(sz::Vararg{Integer,N}) where {T, N} = $Typ{T, N}(sz)
         @inline $Typ{T}(sz::SZ) where SZ<:Tuple{Vararg{Any,N}} where {T, N} = $Typ{T, N}(sz)
         @inline $Typ(sz::Vararg{Any,N}) where N = $Typ{Float64,N}(sz)
@@ -552,5 +586,14 @@ Base.print_matrix_row(io::IO,
                  }, A::Vector,
         i::Integer, cols::AbstractVector, sep::AbstractString) =
         axes_print_matrix_row(axes(X), io, X, A, i, cols, sep)
+
+
+# Display concise description of a Fill.
+Base.show(io::IO, x::AbstractFill) =
+    print(io, "$(summary(x)) = $(getindex_value(x))")
+
+function Base.show(io::IO, ::MIME"text/plain", x::AbstractFill)
+    show(io, x)
+end
 
 end # module
