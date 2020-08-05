@@ -23,16 +23,16 @@ const Falses = Zeros{Bool, N, Axes} where {N, Axes}
 
 # y[mask] = x when mask isa Trues (cf y[:] = x)
 function Base.setindex!(y::AbstractArray{T,N}, x, mask::Trues{N}) where {T,N}
-    @boundscheck axes(x) == axes(mask) == axes(y) ||
-        throw(BoundsError("axes must match for setindex!"))
+    @boundscheck axes(y) == axes(mask) || throw(BoundsError(y, mask))
+    @boundscheck axes(x) == axes(mask) || throw(ArgumentError(
+        "tried to assign $(length(x)) elements to $(length(y)) destinations"))
     @boundscheck checkbounds(y, mask)
     copyto!(y, x)
 end
 
 # x[mask] when mask isa Trues (cf x[trues(size(x))] or x[:])
 function Base.getindex(x::AbstractArray{T,D}, mask::Trues{D}) where {T,D}
-    @boundscheck axes(x) == axes(mask) ||
-        throw(BoundsError("axes must match for getindex"))
+    @boundscheck axes(x) == axes(mask) || throw(BoundsError(x, mask))
     @boundscheck checkbounds(x, mask)
     return vec(x)
 end
