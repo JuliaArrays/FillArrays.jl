@@ -24,7 +24,7 @@ const Falses = Zeros{Bool, N, Axes} where {N, Axes}
 # y[mask] = x when mask isa Trues (cf y[:] = x)
 function Base.setindex!(y::AbstractArray{T,N}, x, mask::Trues{N}) where {T,N}
     @boundscheck axes(y) == axes(mask) || throw(BoundsError(y, mask))
-    @boundscheck axes(x) == axes(mask) || throw(ArgumentError(
+    @boundscheck axes(x) == axes(mask) || throw(DimensionMismatch(
         "tried to assign $(length(x)) elements to $(length(y)) destinations"))
     @boundscheck checkbounds(y, mask)
     copyto!(y, x)
