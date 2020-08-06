@@ -31,8 +31,13 @@ function Base.setindex!(y::AbstractArray{T,N}, x, mask::Trues{N}) where {T,N}
 end
 
 # x[mask] when mask isa Trues (cf x[trues(size(x))] or x[:])
-function Base.getindex(x::AbstractArray{T,D}, mask::Trues{D}) where {T,D}
-    @boundscheck axes(x) == axes(mask) || throw(BoundsError(x, mask))
-    @boundscheck checkbounds(x, mask)
-    return vec(x)
+# Supported here only for a mask with standard OneTo axes.
+function Base.getindex(x::AbstractArray{T,N},
+    mask::Trues{N, NTuple{N,Base.OneTo{Int}}},
+) where {T,N}
+    if axes(x) isa NTuple{N,Base.OneTo{Int}} where N
+       @boundscheck size(x) == size(mask) || throw(BoundsError(x, mask))
+       return vec(x)
+    end
+    return x[trues(size(x))] # else revert to usual getindex method
 end
