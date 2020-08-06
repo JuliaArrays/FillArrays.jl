@@ -22,16 +22,23 @@ const Falses = Zeros{Bool, N, Axes} where {N, Axes}
 
 
 # y[mask] = x when mask isa Trues (cf y[:] = x)
-function Base.setindex!(y::AbstractArray{T,N}, x, mask::Trues{N}) where {T,N}
-    @boundscheck axes(y) == axes(mask) || throw(BoundsError(y, mask))
-    @boundscheck axes(x) == axes(mask) || throw(DimensionMismatch(
-        "tried to assign $(length(x)) elements to $(length(y)) destinations"))
-    @boundscheck checkbounds(y, mask)
-    copyto!(y, x)
+# Supported here only for arrays with standard OneTo axes.
+function Base.setindex!(y::AbstractArray{T,N}, x,
+    mask::Trues{N, NTuple{N,Base.OneTo{Int}}},
+) where {T,N}
+    if axes(x) isa NTuple{N,Base.OneTo{Int}} &&
+       axes(y) isa NTuple{N,Base.OneTo{Int}}
+        @boundscheck size(y) == size(mask) || throw(BoundsError(y, mask))
+        @boundscheck size(x) == size(mask) || throw(DimensionMismatch(
+            "tried to assign $(length(x)) elements to $(length(y)) destinations"))
+        @boundscheck checkbounds(y, mask)
+        return copyto!(y, x)
+    end
+    return setindex!(y, x, trues(size(mask))) # fall back on usual setindex!
 end
 
 # x[mask] when mask isa Trues (cf x[trues(size(x))] or x[:])
-# Supported here only for a mask with standard OneTo axes.
+# Supported here only for arrays with standard OneTo axes.
 function Base.getindex(x::AbstractArray{T,N},
     mask::Trues{N, NTuple{N,Base.OneTo{Int}}},
 ) where {T,N}
