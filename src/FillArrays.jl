@@ -159,11 +159,11 @@ function getindex(F::Fill, kj::Vararg{AbstractVector{II},N}) where {II<:Integer,
 end
 
 function getindex(A::Fill, kr::AbstractVector{Bool})
-   length(A) == length(kr) || throw(DimensionMismatch("lengths must match"))
+   length(A) == length(kr) || throw(DimensionMismatch())
    Fill(getindex_value(A), count(kr))
 end
 function getindex(A::Fill, kr::AbstractArray{Bool})
-   size(A) == size(kr) || throw(DimensionMismatch("sizes must match"))
+   size(A) == size(kr) || throw(DimensionMismatch())
    Fill(getindex_value(A), count(kr))
 end
 
