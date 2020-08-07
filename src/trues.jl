@@ -23,11 +23,8 @@ const Falses = Zeros{Bool, N, Axes} where {N, Axes}
 
 # y[mask] = x when mask isa Trues (cf y[:] = x)
 # Supported here only for arrays with standard OneTo axes.
-function Base.setindex!(y::AbstractArray{T,N}, x,
-    mask::Trues{N, NTuple{N,Base.OneTo{Int}}},
-) where {T,N}
-    if axes(x) isa NTuple{N,Base.OneTo{Int}} &&
-       axes(y) isa NTuple{N,Base.OneTo{Int}}
+function Base.setindex!(y::AbstractArray{T,N}, x, mask::Trues{N, NTuple{N,Base.OneTo{Int}}}) where {T,N}
+    if axes(x) isa NTuple{N,Base.OneTo{Int}} && axes(y) isa NTuple{N,Base.OneTo{Int}}
         @boundscheck size(y) == size(mask) || throw(BoundsError(y, mask))
         @boundscheck size(x) == size(mask) || throw(DimensionMismatch(
             "tried to assign $(length(x)) elements to $(length(y)) destinations"))
@@ -39,10 +36,8 @@ end
 
 # x[mask] when mask isa Trues (cf x[trues(size(x))] or x[:])
 # Supported here only for arrays with standard OneTo axes.
-function Base.getindex(x::AbstractArray{T,N},
-    mask::Trues{N, NTuple{N,Base.OneTo{Int}}},
-) where {T,N}
-    if axes(x) isa NTuple{N,Base.OneTo{Int}} where N
+function Base.getindex(x::AbstractArray{T,N}, mask::Trues{N, NTuple{N,Base.OneTo{Int}}}) where {T,N}
+    if axes(x) isa NTuple{N,Base.OneTo{Int}}
        @boundscheck size(x) == size(mask) || throw(BoundsError(x, mask))
        return vec(x)
     end
