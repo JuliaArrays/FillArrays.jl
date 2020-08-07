@@ -15,7 +15,7 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
 
 
-export Zeros, Ones, Fill, Eye
+export Zeros, Ones, Fill, Eye, Trues, Falses
 
 """
     AbstractFill{T, N, Axes} <: AbstractArray{T, N}
@@ -269,11 +269,11 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
             $Typ{T}(length.(kj))
         end
         function getindex(A::$Typ{T}, kr::AbstractVector{Bool}) where T
-            length(A) == length(kr) || throw(DimensionMismatch())
+            length(A) == length(kr) || throw(DimensionMismatch("lengths must match"))
             $Typ{T}(count(kr))
         end
         function getindex(A::$Typ{T}, kr::AbstractArray{Bool}) where T
-            size(A) == size(kr) || throw(DimensionMismatch())
+            size(A) == size(kr) || throw(DimensionMismatch("sizes must match"))
             $Typ{T}(count(kr))
         end
 
@@ -563,6 +563,7 @@ count(f, x::AbstractFill) = f(getindex_value(x)) ? length(x) : 0
 
 include("fillalgebra.jl")
 include("fillbroadcast.jl")
+include("trues.jl")
 
 ##
 # print

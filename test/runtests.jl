@@ -1015,3 +1015,18 @@ end
         @test axes(U) == (Base.OneTo(3),Base.OneTo(3))
     end
 end
+
+@testset "Trues" begin
+    @test Trues(2,3) == Trues((2,3)) == trues(2,3)
+    @test Falses(2,3) == Falses((2,3)) == falses(2,3)
+    dim = (4,5)
+    mask = Trues(dim)
+    x = randn(dim)
+    @test x[mask] == vec(x) # getindex
+    y = similar(x)
+    y[mask] = x # setindex!
+    @test y == x
+    @test_throws BoundsError ones(3)[Trues(2)]
+    @test_throws BoundsError setindex!(ones(3), zeros(3), Trues(2))
+    @test_throws DimensionMismatch setindex!(ones(2), zeros(3), Trues(2))
+end
