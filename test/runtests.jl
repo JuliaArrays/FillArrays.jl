@@ -1,4 +1,4 @@
-using FillArrays, LinearAlgebra, SparseArrays, Random, Base64, Test
+using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, Random, Base64, Test
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 @testset "fill array constructors and convert" begin
@@ -354,6 +354,7 @@ end
     @test randn(4, 3)' * Zeros(4) === Zeros(3)
     @test randn(4)' * Zeros(4) === zero(Float64)
     @test [1, 2, 3]' * Zeros{Int}(3) === zero(Int)
+    @test [SVector(1,2)', SVector(2,3)', SVector(3,4)']' * Zeros{Int}(3) === SVector(0,0)
     @test_throws DimensionMismatch randn(4)' * Zeros(3)
 
     # Check multiplication by Transpose-d vectors works as expected.

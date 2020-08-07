@@ -126,7 +126,7 @@ function _adjvec_mul_zeros(a::Adjoint{T}, b::Zeros{S, 1}) where {T, S}
     if la ≠ lb
         throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))
     end
-    return zero(promote_type(T, S))
+    return zero(Base.promote_op(*, T, S))
 end
 
 *(a::AdjointAbsVec, b::Zeros{<:Any, 1}) = _adjvec_mul_zeros(a, b)
