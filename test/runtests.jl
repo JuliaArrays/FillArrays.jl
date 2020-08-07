@@ -1,4 +1,4 @@
-using FillArrays, LinearAlgebra, SparseArrays, Random, Base64, Test
+using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, Random, Base64, Test
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 @testset "fill array constructors and convert" begin
@@ -354,6 +354,7 @@ end
     @test randn(4, 3)' * Zeros(4) === Zeros(3)
     @test randn(4)' * Zeros(4) === zero(Float64)
     @test [1, 2, 3]' * Zeros{Int}(3) === zero(Int)
+    @test [SVector(1,2)', SVector(2,3)', SVector(3,4)']' * Zeros{Int}(3) === SVector(0,0)
     @test_throws DimensionMismatch randn(4)' * Zeros(3)
 
     # Check multiplication by Transpose-d vectors works as expected.
@@ -866,22 +867,22 @@ end
 @testset "mult" begin
     @test Fill(2,10)*Fill(3,1,12) == Vector(Fill(2,10))*Matrix(Fill(3,1,12))
     @test Fill(2,10)*Fill(3,1,12) ≡ Fill(6,10,12)
-    @test Fill(2,3,10)*Fill(3,10,12) ≡ Fill(6,3,12)
-    @test Fill(2,3,10)*Fill(3,10) ≡ Fill(6,3)
+    @test Fill(2,3,10)*Fill(3,10,12) ≡ Fill(60,3,12)
+    @test Fill(2,3,10)*Fill(3,10) ≡ Fill(60,3)
     @test_throws DimensionMismatch Fill(2,10)*Fill(3,2,12)
     @test_throws DimensionMismatch Fill(2,3,10)*Fill(3,2,12)
 
     @test Ones(10)*Fill(3,1,12) ≡ Fill(3.0,10,12)
-    @test Ones(10,3)*Fill(3,3,12) ≡ Fill(3.0,10,12)
-    @test Ones(10,3)*Fill(3,3) ≡ Fill(3.0,10)
+    @test Ones(10,3)*Fill(3,3,12) ≡ Fill(9.0,10,12)
+    @test Ones(10,3)*Fill(3,3) ≡ Fill(9.0,10)
 
     @test Fill(2,10)*Ones(1,12) ≡ Fill(2.0,10,12)
-    @test Fill(2,3,10)*Ones(10,12) ≡ Fill(2.0,3,12)
-    @test Fill(2,3,10)*Ones(10) ≡ Fill(2.0,3)
+    @test Fill(2,3,10)*Ones(10,12) ≡ Fill(20.0,3,12)
+    @test Fill(2,3,10)*Ones(10) ≡ Fill(20.0,3)
 
     @test Ones(10)*Ones(1,12) ≡ Ones(10,12)
-    @test Ones(3,10)*Ones(10,12) ≡ Ones(3,12)
-    @test Ones(3,10)*Ones(10) ≡ Ones(3)
+    @test Ones(3,10)*Ones(10,12) ≡ Fill(10.0,3,12)
+    @test Ones(3,10)*Ones(10) ≡ Fill(10.0,3)
 
     @test Zeros(10)*Fill(3,1,12) ≡   Zeros(10,12)
     @test Zeros(10,3)*Fill(3,3,12) ≡ Zeros(10,12)
@@ -923,6 +924,16 @@ end
     @test Zeros(1)*D ≡ Zeros(1,1)
     @test D*Zeros(1,1) ≡ Zeros(1,1)
     @test D*Zeros(1) ≡ Zeros(1)
+
+    D = Diagonal(Fill(2,10))
+    @test D * Ones(10) ≡ Fill(2.0,10)
+    @test D * Ones(10,5) ≡ Fill(2.0,10,5)
+    @test Ones(5,10) * D ≡ Fill(2.0,5,10)
+
+    # following test is broken in Base as of Julia v1.5
+    @test_skip @test_throws DimensionMismatch Diagonal(Fill(1,1)) * Ones(10)
+    @test_throws DimensionMismatch Diagonal(Fill(1,1)) * Ones(10,5)
+    @test_throws DimensionMismatch Ones(5,10) * Diagonal(Fill(1,1))
 
     E = Eye(5)
     @test E*(1:5) ≡ 1.0:5.0

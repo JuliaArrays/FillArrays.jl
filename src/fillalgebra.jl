@@ -36,24 +36,19 @@ end
 function mult_fill(a::AbstractFill, b::AbstractFill{<:Any,2})
     axes(a, 2) ≠ axes(b, 1) &&
         throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
-    return Fill(getindex_value(a)*getindex_value(b), (axes(a, 1), axes(b, 2)))
+    return Fill(getindex_value(a)*getindex_value(b)*size(a,2), (axes(a, 1), axes(b, 2)))
 end
 
 function mult_fill(a::AbstractFill, b::AbstractFill{<:Any,1})
     axes(a, 2) ≠ axes(b, 1) &&
         throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
-    return Fill(getindex_value(a)*getindex_value(b), (axes(a, 1),))
+    return Fill(getindex_value(a)*getindex_value(b)*size(a,2), (axes(a, 1),))
 end
 
-function mult_ones(a, b::AbstractMatrix)
+function mult_ones(a::AbstractVector, b::AbstractMatrix)
     axes(a, 2) ≠ axes(b, 1) &&
         throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
     return Ones{promote_type(eltype(a), eltype(b))}((axes(a, 1), axes(b, 2)))
-end
-function mult_ones(a, b::AbstractVector)
-    axes(a, 2) ≠ axes(b, 1) &&
-        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
-    return Ones{promote_type(eltype(a), eltype(b))}((axes(a, 1),))
 end
 
 function mult_zeros(a, b::AbstractMatrix)
@@ -72,8 +67,6 @@ end
 *(a::AbstractFill{<:Any,2}, b::AbstractFill{<:Any,1}) = mult_fill(a,b)
 
 *(a::Ones{<:Any,1}, b::Ones{<:Any,2}) = mult_ones(a, b)
-*(a::Ones{<:Any,2}, b::Ones{<:Any,2}) = mult_ones(a, b)
-*(a::Ones{<:Any,2}, b::Ones{<:Any,1}) = mult_ones(a, b)
 
 *(a::Zeros{<:Any,1}, b::Zeros{<:Any,2}) = mult_zeros(a, b)
 *(a::Zeros{<:Any,2}, b::Zeros{<:Any,2}) = mult_zeros(a, b)
@@ -98,6 +91,14 @@ end
 *(a::Zeros{<:Any,2}, b::Diagonal) = mult_zeros(a, b)
 *(a::Diagonal, b::Zeros{<:Any,1}) = mult_zeros(a, b)
 *(a::Diagonal, b::Zeros{<:Any,2}) = mult_zeros(a, b)
+function *(a::Diagonal, b::AbstractFill{<:Any,2}) 
+    size(a,2) == size(b,1) || throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
+    a.diag .* b # use special broadcast
+end
+function *(a::AbstractFill{<:Any,2}, b::Diagonal) 
+    size(a,2) == size(b,1) || throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
+    a .* permutedims(b.diag) # use special broadcast
+end
 
 *(a::Adjoint{T, <:StridedMatrix{T}},   b::Fill{T, 1}) where T = reshape(sum(conj.(parent(a)); dims=1) .* b.value, size(parent(a), 2))
 *(a::Transpose{T, <:StridedMatrix{T}}, b::Fill{T, 1}) where T = reshape(sum(parent(a); dims=1) .* b.value, size(parent(a), 2))
@@ -120,13 +121,16 @@ function *(a::StridedMatrix{T}, b::Fill{T, 2}) where T
     fill!(fB, b.value)
     return a*fB
 end
-function *(a::Adjoint{T, <:AbstractVector{T}}, b::Zeros{S, 1}) where {T, S}
+function _adjvec_mul_zeros(a::Adjoint{T}, b::Zeros{S, 1}) where {T, S}
     la, lb = length(a), length(b)
     if la ≠ lb
         throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))
     end
-    return zero(promote_type(T, S))
+    return zero(Base.promote_op(*, T, S))
 end
+
+*(a::AdjointAbsVec, b::Zeros{<:Any, 1}) = _adjvec_mul_zeros(a, b)
+*(a::AdjointAbsVec{<:Number}, b::Zeros{<:Number, 1}) = _adjvec_mul_zeros(a, b)
 *(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::Zeros{<:Any, 1}) = mult_zeros(a, b)
 
 function *(a::Transpose{T, <:AbstractVector{T}}, b::Zeros{T, 1}) where T<:Real

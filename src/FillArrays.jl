@@ -9,7 +9,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     show
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
-    norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular
+    norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular, AdjointAbsVec
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
