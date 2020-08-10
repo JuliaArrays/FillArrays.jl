@@ -598,7 +598,7 @@ Base.array_summary(io::IO, ::Zeros{T}, inds::Tuple{Vararg{Base.OneTo}}) where T 
 Base.array_summary(io::IO, ::Ones{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
     print(io, Base.dims2string(length.(inds)), " Ones{$T}")
 Base.array_summary(io::IO, a::Fill{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
-    print(io, Base.dims2string(length.(inds)), " Fill")
+    print(io, Base.dims2string(length.(inds)), " Fill{$T}")
 
 function Base.show(io::IO, ::MIME"text/plain", x::AbstractFill)
     show(io, x)

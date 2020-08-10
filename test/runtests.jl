@@ -977,7 +977,7 @@ end
 end
 
 @testset "print" begin
-    @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64,1,Tuple{Base.OneTo{$Int}}} = 0.0"
+    @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64}"
 end
 
 @testset "reshape" begin
