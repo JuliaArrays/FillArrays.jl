@@ -40,8 +40,8 @@ julia> Eye{Int}(5)
   ⋅  ⋅  ⋅  1  ⋅
   ⋅  ⋅  ⋅  ⋅  1
 
-julia> Fill(5.0f0, 3, 2)
-3×2 Fill{Float32}: entries equal to 5.0
+julia> Fill(7.0f0, 3, 2)
+3×2 Fill{Float32}: entries equal to 7.0
 
 julia> Trues(2, 3)
 2×3 Ones{Bool}
@@ -63,10 +63,10 @@ julia> Matrix(Zeros(5, 5))
 julia> SparseMatrixCSC(Zeros(5, 5))
 5×5 SparseMatrixCSC{Float64,Int64} with 0 stored entries
 
-julia> Array(Fill(5, (2,3)))
+julia> Array(Fill(7, (2,3)))
 2×3 Array{Int64,2}:
- 5  5  5
- 5  5  5
+ 7  7  7
+ 7  7  7
 ```
 
 There is also support for offset index ranges,
@@ -75,8 +75,8 @@ and the type includes the `axes`:
 julia> Ones((-3:2, 1:2))
 6×2 Ones{Float64,2,Tuple{UnitRange{Int64},UnitRange{Int64}}} with indices -3:2×1:2
 
-julia> Fill(5, ((0:2), (-1:0)))
-3×2 Fill{Int64,2,Tuple{UnitRange{Int64},UnitRange{Int64}}} with indices 0:2×-1:0: entries equal to 5
+julia> Fill(7, ((0:2), (-1:0)))
+3×2 Fill{Int64,2,Tuple{UnitRange{Int64},UnitRange{Int64}}} with indices 0:2×-1:0: entries equal to 7
 
 julia> typeof(Zeros(5,6))
 Zeros{Float64,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}
