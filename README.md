@@ -26,9 +26,6 @@ Here are the matrix types:
 julia> Zeros(5, 6)
 5×6 Zeros{Float64}
 
-julia> typeof(Zeros(5,6))
-Zeros{Float64,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}
-
 julia> Zeros{Int}(2, 3)
 2×3 Zeros{Int64}
 
@@ -65,12 +62,24 @@ julia> Matrix(Zeros(5, 5))
 
 julia> SparseMatrixCSC(Zeros(5, 5))
 5×5 SparseMatrixCSC{Float64,Int64} with 0 stored entries
+
+julia> Array(Fill(5, (2,3)))
+2×3 Array{Int64,2}:
+ 5  5  5
+ 5  5  5
 ```
 
-There is also support for offset index ranges:
+There is also support for offset index ranges,
+and the type includes the `axes`:
 ```julia
 julia> Ones((-3:2, 1:2))
 6×2 Ones{Float64,2,Tuple{UnitRange{Int64},UnitRange{Int64}}} with indices -3:2×1:2
+
+julia> Fill(5, ((0:2), (-1:0)))
+3×2 Fill{Int64,2,Tuple{UnitRange{Int64},UnitRange{Int64}}} with indices 0:2×-1:0: entries equal to 5
+
+julia> typeof(Zeros(5,6))
+Zeros{Float64,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}
 ```
 
 These types have methods that perform many operations efficiently,
