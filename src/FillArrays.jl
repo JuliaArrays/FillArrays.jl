@@ -590,7 +590,18 @@ Base.print_matrix_row(io::IO,
 
 # Display concise description of a Fill.
 Base.show(io::IO, x::AbstractFill) =
-    print(io, "$(summary(x)) = $(getindex_value(x))")
+    print(io, "$(summary(x)): entries equal to $(getindex_value(x))")
+Base.show(io::IO, x::Union{Zeros,Ones}) =
+    print(io, "$(summary(x))")
+
+if VERSION ≥ v"1.5"
+    Base.array_summary(io::IO, ::Zeros{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
+        print(io, Base.dims2string(length.(inds)), " Zeros{$T}")
+    Base.array_summary(io::IO, ::Ones{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
+        print(io, Base.dims2string(length.(inds)), " Ones{$T}")
+    Base.array_summary(io::IO, a::Fill{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
+        print(io, Base.dims2string(length.(inds)), " Fill{$T}")
+end
 
 function Base.show(io::IO, ::MIME"text/plain", x::AbstractFill)
     show(io, x)

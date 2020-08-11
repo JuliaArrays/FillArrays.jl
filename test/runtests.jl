@@ -561,6 +561,11 @@ end
 
         @test conj.(Zeros(5)) ≡ Zeros(5)
         @test conj.(Zeros{ComplexF64}(5)) ≡ Zeros{ComplexF64}(5)
+
+        @test_throws DimensionMismatch broadcast(*, Ones(3), 1:6)
+        @test_throws DimensionMismatch broadcast(*, 1:6, Ones(3))
+        @test_throws DimensionMismatch broadcast(*, Fill(1,3), 1:6)
+        @test_throws DimensionMismatch broadcast(*, 1:6, Fill(1,3))
     end
 
     @testset "support Ref" begin
@@ -976,8 +981,15 @@ end
     end
 end
 
-@testset "print" begin
-    @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64,1,Tuple{Base.OneTo{$Int}}} = 0.0"
+if VERSION ≥ v"1.5"
+    @testset "print" begin
+        @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64}"
+        @test stringmime("text/plain", Ones(3)) == "3-element Ones{Float64}"
+        @test stringmime("text/plain", Fill(7,2)) == "2-element Fill{Int64}: entries equal to 7"
+        @test stringmime("text/plain", Zeros(3,2)) == "3×2 Zeros{Float64}"
+        @test stringmime("text/plain", Ones(3,2)) == "3×2 Ones{Float64}"
+        @test stringmime("text/plain", Fill(7,2,3)) == "2×3 Fill{Int64}: entries equal to 7"
+    end
 end
 
 @testset "reshape" begin

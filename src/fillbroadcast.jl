@@ -24,14 +24,14 @@ broadcasted(::DefaultArrayStyle{N}, ::typeof(imag), r::Ones{T,N}) where {T,N} = 
 
 function broadcasted(::DefaultArrayStyle, op, a::AbstractFill, b::AbstractFill)
     val = op(getindex_value(a), getindex_value(b))
-    return Fill(val, broadcast_shape(size(a), size(b)))
+    return Fill(val, broadcast_shape(axes(a), axes(b)))
 end
 
 function _broadcasted_zeros(a, b)
-    return Zeros{promote_type(eltype(a), eltype(b))}(broadcast_shape(size(a), size(b)))
+    return Zeros{promote_type(eltype(a), eltype(b))}(broadcast_shape(axes(a), axes(b)))
 end
 function _broadcasted_ones(a, b)
-    return Ones{promote_type(eltype(a), eltype(b))}(broadcast_shape(size(a), size(b)))
+    return Ones{promote_type(eltype(a), eltype(b))}(broadcast_shape(axes(a), axes(b)))
 end
 
 broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::Zeros) = _broadcasted_zeros(a, b)
@@ -77,23 +77,23 @@ _range_convert(::Type{AbstractVector{T}}, a::AbstractUnitRange) where T = conver
 _range_convert(::Type{AbstractVector{T}}, a::AbstractRange) where T = convert(T,first(a)):step(a):convert(T,last(a))
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::Ones{T}, b::AbstractRange{V}) where {T,V}
-    broadcast_shape(size(a), size(b)) # Check sizes are compatible.
+    broadcast_shape(axes(a), axes(b)) # Check sizes are compatible.
     return _range_convert(AbstractVector{promote_type(T,V)}, b)
 end
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b::Ones{T}) where {T,V}
-    broadcast_shape(size(a), size(b)) # Check sizes are compatible.
+    broadcast_shape(axes(a), axes(b)) # Check sizes are compatible.
     return _range_convert(AbstractVector{promote_type(T,V)}, a)
 end
 
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractFill, b::AbstractRange)
-    broadcast_shape(size(a), size(b)) # Check sizes are compatible.
+    broadcast_shape(axes(a), axes(b)) # Check sizes are compatible.
     return broadcasted(*, getindex_value(a), b)
 end
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractFill)
-    broadcast_shape(size(a), size(b)) # Check sizes are compatible.
+    broadcast_shape(axes(a), axes(b)) # Check sizes are compatible.
     return broadcasted(*, a, getindex_value(b))
 end
 
