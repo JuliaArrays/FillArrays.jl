@@ -76,35 +76,48 @@ _range_convert(::Type{AbstractVector{T}}, a::AbstractRange{T}) where T = a
 _range_convert(::Type{AbstractVector{T}}, a::AbstractUnitRange) where T = convert(T,first(a)):convert(T,last(a))
 _range_convert(::Type{AbstractVector{T}}, a::AbstractRange) where T = convert(T,first(a)):step(a):convert(T,last(a))
 
+
+# TODO: replacing with the following will support more general broadcasting.
+# function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractFill, b::AbstractRange)
+#     broadcast_shape(axes(a), axes(b)) # check axes
+#     r1 = b[1] * getindex_value(a)
+#     T = typeof(r1)
+#     if length(b) == 1 # Need a fill, but for type stability use StepRangeLen
+#         StepRangeLen{T}(r1, zero(T), length(a))
+#     else
+#         StepRangeLen{T}(r1, convert(T, getindex_value(a) * step(b)), length(b))
+#     end
+# end
+
+# function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractFill)
+#     broadcast_shape(axes(a), axes(b)) # check axes
+#     r1 = a[1] * getindex_value(b)
+#     T = typeof(r1)
+#     if length(a) == 1 # Need a fill, but for type stability use StepRangeLen
+#         StepRangeLen{T}(r1, zero(T), length(b))
+#     else
+#         StepRangeLen{T}(r1, convert(T, step(a) * getindex_value(b)), length(a))
+#     end
+# end
+
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::Ones{T}, b::AbstractRange{V}) where {T,V}
-    broadcast_shape(axes(a), axes(b)) # Check sizes are compatible.
+    broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
     return _range_convert(AbstractVector{promote_type(T,V)}, b)
 end
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b::Ones{T}) where {T,V}
-    broadcast_shape(axes(a), axes(b)) # Check sizes are compatible.
+    broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
     return _range_convert(AbstractVector{promote_type(T,V)}, a)
 end
 
-function broadcasted(::DefaultArrayStyle{2}, ::typeof(*), a::Ones{T}, b::AbstractMatrix{V}) where {T,V}
-    broadcast_shape(axes(a), axes(b)) # Check sizes are compatible.
-    return convert(AbstractMatrix{promote_type(T,V)}, b)
-end
-
-function broadcasted(::DefaultArrayStyle{2}, ::typeof(*), a::AbstractMatrix{V}, b::Ones{T}) where {T,V}
-    broadcast_shape(axes(a), axes(b)) # Check sizes are compatible.
-    return convert(AbstractMatrix{promote_type(T,V)}, a)
-end
-
-
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractFill, b::AbstractRange)
-    broadcast_shape(axes(a), axes(b)) # Check sizes are compatible.
+    broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
     return broadcasted(*, getindex_value(a), b)
 end
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractFill)
-    broadcast_shape(axes(a), axes(b)) # Check sizes are compatible.
+    broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
     return broadcasted(*, a, getindex_value(b))
 end
 

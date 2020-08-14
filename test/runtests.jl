@@ -537,13 +537,20 @@ end
     @test imag(Ones{ComplexF64}(10)) isa Zeros{Float64}
     @test imag(Ones{ComplexF64}(10,10)) isa Zeros{Float64}
 
-    rnge = range(-5.0, step=1.0, length=10)
-    @test broadcast(*, Fill(5.0, 10), rnge) == broadcast(*, 5.0, rnge)
-    @test broadcast(*, Zeros(10, 10), rnge) == zeros(10, 10)
-    @test broadcast(*, rnge, Zeros(10, 10)) == zeros(10, 10)
-    @test_throws DimensionMismatch broadcast(*, Fill(5.0, 11), rnge)
-    @test broadcast(*, rnge, Fill(5.0, 10)) == broadcast(*, rnge, 5.0)
-    @test_throws DimensionMismatch broadcast(*, rnge, Fill(5.0, 11))
+    @testset "range broadcast" begin
+        rnge = range(-5.0, step=1.0, length=10)
+        @test broadcast(*, Fill(5.0, 10), rnge) == broadcast(*, 5.0, rnge)
+        @test broadcast(*, Zeros(10, 10), rnge) == zeros(10, 10)
+        @test broadcast(*, rnge, Zeros(10, 10)) == zeros(10, 10)
+        @test_throws DimensionMismatch broadcast(*, Fill(5.0, 11), rnge)
+        @test broadcast(*, rnge, Fill(5.0, 10)) == broadcast(*, rnge, 5.0)
+        @test_throws DimensionMismatch broadcast(*, rnge, Fill(5.0, 11))
+
+        # following should pass using alternative implementation in code
+        deg = 5:5
+        @test_throws ArgumentError @inferred(broadcast(*, Fill(5.0, 10), deg)) == broadcast(*, fill(5.0,10), deg)
+        @test_throws ArgumentError @inferred(broadcast(*, deg, Fill(5.0, 10))) == broadcast(*, deg, fill(5.0,10))
+    end
 
     @testset "Special Zeros/Ones" begin
         @test broadcast(+,Zeros(5)) ≡ broadcast(-,Zeros(5)) ≡ Zeros(5)
