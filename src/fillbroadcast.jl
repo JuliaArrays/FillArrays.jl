@@ -27,12 +27,21 @@ function broadcasted(::DefaultArrayStyle, op, a::AbstractFill, b::AbstractFill)
     return Fill(val, broadcast_shape(axes(a), axes(b)))
 end
 
-function _broadcasted_zeros(a, b)
-    return Zeros{promote_type(eltype(a), eltype(b))}(broadcast_shape(axes(a), axes(b)))
+function _broadcasted_zeros(a::AbstractArray{T}, b::AbstractArray{V}) where {T,V}
+    return Zeros{promote_type(T,V)}(broadcast_shape(axes(a), axes(b)))
 end
-function _broadcasted_ones(a, b)
-    return Ones{promote_type(eltype(a), eltype(b))}(broadcast_shape(axes(a), axes(b)))
+function _broadcasted_ones(a::AbstractArray{T}, b::AbstractArray{V}) where {T,V}
+    return Ones{promote_type(T,V)}(broadcast_shape(axes(a), axes(b)))
 end
+
+function _broadcasted_zeros(a::Base.Broadcast.Broadcasted, b::AbstractArray{V}) where V
+    return Zeros{promote_type(Base.Broadcast.combine_eltypes(a.f, a.args),V)}(broadcast_shape(axes(a), axes(b)))
+end
+function _broadcasted_ones(a::AbstractArray{T}, b::Base.Broadcast.Broadcasted) where T
+    return Ones{promote_type(T,Base.Broadcast.combine_eltypes(b.f, b.args))}(broadcast_shape(axes(a), axes(b)))
+end
+
+
 
 broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::Zeros) = _broadcasted_zeros(a, b)
 broadcasted(::DefaultArrayStyle, ::typeof(+), a::Ones, b::Zeros) = _broadcasted_ones(a, b)
@@ -51,6 +60,7 @@ for op in (:*, :/)
         broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Number) = _broadcasted_zeros(a, b)
         broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::AbstractRange) = _broadcasted_zeros(a, b)
         broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::AbstractArray) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Base.Broadcast.Broadcasted) = _broadcasted_zeros(a, b)
         broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::Zeros, b::AbstractRange) = _broadcasted_zeros(a, b)
     end
 end
@@ -62,6 +72,7 @@ for op in (:*, :\)
         broadcasted(::DefaultArrayStyle, ::typeof($op), a::Number, b::Zeros) = _broadcasted_zeros(a, b)
         broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractRange, b::Zeros) = _broadcasted_zeros(a, b)
         broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractArray, b::Zeros) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Base.Broadcast.Broadcasted, b::Zeros) = _broadcasted_zeros(a, b)
         broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractRange, b::Zeros) = _broadcasted_zeros(a, b)
     end
 end
