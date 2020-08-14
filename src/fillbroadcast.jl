@@ -86,6 +86,17 @@ function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b
     return _range_convert(AbstractVector{promote_type(T,V)}, a)
 end
 
+function broadcasted(::DefaultArrayStyle{2}, ::typeof(*), a::Ones{T}, b::AbstractMatrix{V}) where {T,V}
+    broadcast_shape(axes(a), axes(b)) # Check sizes are compatible.
+    return convert(AbstractMatrix{promote_type(T,V)}, b)
+end
+
+function broadcasted(::DefaultArrayStyle{2}, ::typeof(*), a::AbstractMatrix{V}, b::Ones{T}) where {T,V}
+    broadcast_shape(axes(a), axes(b)) # Check sizes are compatible.
+    return convert(AbstractMatrix{promote_type(T,V)}, a)
+end
+
+
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractFill, b::AbstractRange)
     broadcast_shape(axes(a), axes(b)) # Check sizes are compatible.
