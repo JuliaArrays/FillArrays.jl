@@ -578,7 +578,7 @@ end
 
         @testset "Nested" begin
             @test randn(5) .\ rand(5) .* Zeros(5) ≡ Zeros(5)
-            @test broadcast(*, Zeros(5), Base.broadcasted(\, randn(5), rand(5))) ≡ Zeros(5)
+            @test broadcast(*, Zeros(5), Base.Broadcast.broadcasted(\, randn(5), rand(5))) ≡ Zeros(5)
         end
     end
 
