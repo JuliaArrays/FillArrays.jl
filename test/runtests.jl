@@ -542,6 +542,8 @@ end
         @test broadcast(*, Fill(5.0, 10), rnge) == broadcast(*, 5.0, rnge)
         @test broadcast(*, Zeros(10, 10), rnge) == zeros(10, 10)
         @test broadcast(*, rnge, Zeros(10, 10)) == zeros(10, 10)
+        @test broadcast(*, Ones{Int}(10), rnge) ≡ rnge
+        @test broadcast(*, rnge, Ones{Int}(10)) ≡ rnge
         @test_throws DimensionMismatch broadcast(*, Fill(5.0, 11), rnge)
         @test broadcast(*, rnge, Fill(5.0, 10)) == broadcast(*, rnge, 5.0)
         @test_throws DimensionMismatch broadcast(*, rnge, Fill(5.0, 11))
@@ -573,6 +575,11 @@ end
         @test_throws DimensionMismatch broadcast(*, 1:6, Ones(3))
         @test_throws DimensionMismatch broadcast(*, Fill(1,3), 1:6)
         @test_throws DimensionMismatch broadcast(*, 1:6, Fill(1,3))
+
+        @testset "Nested" begin
+            @test randn(5) .\ rand(5) .* Zeros(5) ≡ Zeros(5)
+            @test broadcast(*, Zeros(5), Base.broadcasted(\, randn(5), rand(5))) ≡ Zeros(5)
+        end
     end
 
     @testset "support Ref" begin
