@@ -27,21 +27,11 @@ function broadcasted(::DefaultArrayStyle, op, a::AbstractFill, b::AbstractFill)
     return Fill(val, broadcast_shape(axes(a), axes(b)))
 end
 
-function _broadcasted_zeros(a::AbstractArray{T}, b::AbstractArray{V}) where {T,V}
-    return Zeros{promote_type(T,V)}(broadcast_shape(axes(a), axes(b)))
-end
-function _broadcasted_ones(a::AbstractArray{T}, b::AbstractArray{V}) where {T,V}
-    return Ones{promote_type(T,V)}(broadcast_shape(axes(a), axes(b)))
-end
+_broadcasted_eltype(a) = eltype(a)
+_broadcasted_eltype(a::Base.Broadcast.Broadcasted) = Base.Broadcast.combine_eltypes(a.f, a.args)
 
-function _broadcasted_zeros(a::Base.Broadcast.Broadcasted, b::AbstractArray{V}) where V
-    return Zeros{promote_type(Base.Broadcast.combine_eltypes(a.f, a.args),V)}(broadcast_shape(axes(a), axes(b)))
-end
-function _broadcasted_ones(a::AbstractArray{T}, b::Base.Broadcast.Broadcasted) where T
-    return Ones{promote_type(T,Base.Broadcast.combine_eltypes(b.f, b.args))}(broadcast_shape(axes(a), axes(b)))
-end
-
-
+_broadcasted_zeros(a, b) = Zeros{promote_type(_broadcasted_eltype(a), _broadcasted_eltype(b))}(broadcast_shape(axes(a), axes(b)))
+_broadcasted_ones(a, b) = Ones{promote_type(_broadcasted_eltype(a), _broadcasted_eltype(b))}(broadcast_shape(axes(a), axes(b)))
 
 broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::Zeros) = _broadcasted_zeros(a, b)
 broadcasted(::DefaultArrayStyle, ::typeof(+), a::Ones, b::Zeros) = _broadcasted_ones(a, b)
