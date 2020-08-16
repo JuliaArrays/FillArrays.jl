@@ -27,50 +27,53 @@ function broadcasted(::DefaultArrayStyle, op, a::AbstractFill, b::AbstractFill)
     return Fill(val, broadcast_shape(axes(a), axes(b)))
 end
 
-_broadcasted_eltype(a) = eltype(a)
-_broadcasted_eltype(a::Base.Broadcast.Broadcasted) = Base.Broadcast.combine_eltypes(a.f, a.args)
 
-_broadcasted_zeros(a, b) = Zeros{promote_type(_broadcasted_eltype(a), _broadcasted_eltype(b))}(broadcast_shape(axes(a), axes(b)))
-_broadcasted_ones(a, b) = Ones{promote_type(_broadcasted_eltype(a), _broadcasted_eltype(b))}(broadcast_shape(axes(a), axes(b)))
+_broadcasted_zeros(f, a, b) = Zeros{Base.Broadcast.combine_eltypes(f, (a, b))}(broadcast_shape(axes(a), axes(b)))
+_broadcasted_ones(f, a, b) = Ones{Base.Broadcast.combine_eltypes(f, (a, b))}(broadcast_shape(axes(a), axes(b)))
 
-broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::Zeros) = _broadcasted_zeros(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(+), a::Ones, b::Zeros) = _broadcasted_ones(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::Ones) = _broadcasted_ones(a, b)
+# TODO: remove at next breaking version
+_broadcasted_zeros(a, b) = _broadcasted_zeros(+, a, b)
+_broadcasted_ones(a, b) = _broadcasted_ones(+, a, b)
 
-broadcasted(::DefaultArrayStyle, ::typeof(-), a::Zeros, b::Zeros) = _broadcasted_zeros(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(-), a::Ones, b::Zeros) = _broadcasted_ones(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(-), a::Ones, b::Ones) = _broadcasted_zeros(a, b)
+broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::Zeros) = _broadcasted_zeros(+, a, b)
+broadcasted(::DefaultArrayStyle, ::typeof(+), a::Ones, b::Zeros) = _broadcasted_ones(+, a, b)
+broadcasted(::DefaultArrayStyle, ::typeof(+), a::Zeros, b::Ones) = _broadcasted_ones(+, a, b)
 
-broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::Zeros) = _broadcasted_zeros(a, b)
+broadcasted(::DefaultArrayStyle, ::typeof(-), a::Zeros, b::Zeros) = _broadcasted_zeros(-, a, b)
+broadcasted(::DefaultArrayStyle, ::typeof(-), a::Ones, b::Zeros) = _broadcasted_ones(-, a, b)
+broadcasted(::DefaultArrayStyle, ::typeof(-), a::Ones, b::Ones) = _broadcasted_zeros(-, a, b)
 
+broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::Zeros) = _broadcasted_zeros(*, a, b)
+
+# In following, need to restrict to <: Number as otherwise we cannot infer zero from type
+# TODO: generalise to things like SVector
 for op in (:*, :/)
     @eval begin
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Ones) = _broadcasted_zeros(a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Fill) = _broadcasted_zeros(a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Number) = _broadcasted_zeros(a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::AbstractRange) = _broadcasted_zeros(a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::AbstractArray) = _broadcasted_zeros(a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Base.Broadcast.Broadcasted) = _broadcasted_zeros(a, b)
-        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::Zeros, b::AbstractRange) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Ones) = _broadcasted_zeros($op, a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Fill{<:Number}) = _broadcasted_zeros($op, a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Number) = _broadcasted_zeros($op, a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::AbstractRange) = _broadcasted_zeros($op, a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::AbstractArray{<:Number}) = _broadcasted_zeros($op, a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros, b::Base.Broadcast.Broadcasted) = _broadcasted_zeros($op, a, b)
+        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::Zeros, b::AbstractRange) = _broadcasted_zeros($op, a, b)
     end
 end
 
 for op in (:*, :\)
     @eval begin
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Ones, b::Zeros) = _broadcasted_zeros(a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Fill, b::Zeros) = _broadcasted_zeros(a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Number, b::Zeros) = _broadcasted_zeros(a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractRange, b::Zeros) = _broadcasted_zeros(a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractArray, b::Zeros) = _broadcasted_zeros(a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Base.Broadcast.Broadcasted, b::Zeros) = _broadcasted_zeros(a, b)
-        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractRange, b::Zeros) = _broadcasted_zeros(a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Ones, b::Zeros) = _broadcasted_zeros($op, a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Fill{<:Number}, b::Zeros) = _broadcasted_zeros($op, a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Number, b::Zeros) = _broadcasted_zeros($op, a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractRange, b::Zeros) = _broadcasted_zeros($op, a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractArray{<:Number}, b::Zeros) = _broadcasted_zeros($op, a, b)
+        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Base.Broadcast.Broadcasted, b::Zeros) = _broadcasted_zeros($op, a, b)
+        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractRange, b::Zeros) = _broadcasted_zeros($op, a, b)
     end
 end
 
-
-broadcasted(::DefaultArrayStyle, ::typeof(*), a::Ones, b::Ones) = _broadcasted_ones(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(/), a::Ones, b::Ones) = _broadcasted_ones(a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(\), a::Ones, b::Ones) = _broadcasted_ones(a, b)
+for op in (:*, :/, :\)
+    @eval broadcasted(::DefaultArrayStyle, ::typeof($op), a::Ones, b::Ones) = _broadcasted_ones($op, a, b)
+end
 
 # special case due to missing converts for ranges
 _range_convert(::Type{AbstractVector{T}}, a::AbstractRange{T}) where T = a
@@ -111,15 +114,19 @@ function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b
     return _range_convert(AbstractVector{promote_type(T,V)}, a)
 end
 
+# Need to prevent array-valued fills from broadcasting over entry
+_broadcast_getindex_value(a::AbstractFill{<:Number}) = getindex_value(a)
+_broadcast_getindex_value(a::AbstractFill) = Ref(getindex_value(a))
+
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractFill, b::AbstractRange)
     broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-    return broadcasted(*, getindex_value(a), b)
+    return broadcasted(*, _broadcast_getindex_value(a), b)
 end
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractFill)
     broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-    return broadcasted(*, a, getindex_value(b))
+    return broadcasted(*, a, _broadcast_getindex_value(b))
 end
 
 broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Number) where {T,N} = Fill(op(getindex_value(r),x), size(r))
