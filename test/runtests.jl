@@ -576,6 +576,10 @@ end
         @test_throws DimensionMismatch broadcast(*, Fill(1,3), 1:6)
         @test_throws DimensionMismatch broadcast(*, 1:6, Fill(1,3))
 
+        @testset "Number" begin
+            @test broadcast(*, Zeros(5), 2) ≡ broadcast(*, 2, Zeros(5)) ≡ Zeros(5)
+        end
+
         @testset "Nested" begin
             @test randn(5) .\ rand(5) .* Zeros(5) ≡ Zeros(5)
             @test broadcast(*, Zeros(5), Base.Broadcast.broadcasted(\, randn(5), rand(5))) ≡ Zeros(5)
