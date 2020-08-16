@@ -580,6 +580,13 @@ end
             @test randn(5) .\ rand(5) .* Zeros(5) ≡ Zeros(5)
             @test broadcast(*, Zeros(5), Base.Broadcast.broadcasted(\, randn(5), rand(5))) ≡ Zeros(5)
         end
+
+        @testset "array-valued" begin
+            @test broadcast(*, Fill([1,2],3), 1:3) == broadcast(*, 1:3, Fill([1,2],3)) == broadcast(*, 1:3, fill([1,2],3))
+            @test broadcast(*, Fill([1,2],3), Zeros(3)) == broadcast(*, Zeros(3), Fill([1,2],3)) == broadcast(*, zeros(3), fill([1,2],3))
+            @test broadcast(*, Fill([1,2],3), Zeros(3)) isa Fill{Vector{Float64}}
+            @test broadcast(*, [[1,2], [3,4,5]], Zeros(2)) == broadcast(*, Zeros(2), [[1,2], [3,4,5]]) == broadcast(*, zeros(2), [[1,2], [3,4,5]])
+        end
     end
 
     @testset "support Ref" begin
