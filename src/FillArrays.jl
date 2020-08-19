@@ -589,10 +589,10 @@ Base.print_matrix_row(io::IO,
 
 
 # Display concise description of a Fill.
-Base.show(io::IO, x::AbstractFill) =
-    print(io, "$(summary(x)): entries equal to $(getindex_value(x))")
-Base.show(io::IO, x::Union{Zeros,Ones}) =
-    print(io, "$(summary(x))")
+
+
+Base.show(io::IO, x::AbstractFill) = print(io, "$(summary(x)): entries equal to $(getindex_value(x))")
+Base.show(io::IO, x::Union{Zeros,Ones,Eye}) = print(io, "$(summary(x))")
 
 if VERSION ≥ v"1.5"
     Base.array_summary(io::IO, ::Zeros{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
@@ -601,10 +601,10 @@ if VERSION ≥ v"1.5"
         print(io, Base.dims2string(length.(inds)), " Ones{$T}")
     Base.array_summary(io::IO, a::Fill{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
         print(io, Base.dims2string(length.(inds)), " Fill{$T}")
+    Base.array_summary(io::IO, a::Eye{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
+        print(io, Base.dims2string(length.(inds)), " Eye{$T}")        
 end
 
-function Base.show(io::IO, ::MIME"text/plain", x::AbstractFill)
-    show(io, x)
-end
+Base.show(io::IO, ::MIME"text/plain", x::Union{Eye,AbstractFill}) = show(io, x)
 
 end # module
