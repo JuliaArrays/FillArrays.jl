@@ -30,6 +30,7 @@ end
 
 _broadcasted_zeros(f, a, b) = Zeros{Base.Broadcast.combine_eltypes(f, (a, b))}(broadcast_shape(axes(a), axes(b)))
 _broadcasted_ones(f, a, b) = Ones{Base.Broadcast.combine_eltypes(f, (a, b))}(broadcast_shape(axes(a), axes(b)))
+_broadcasted_nan(f, a, b) = Fill(convert(Base.Broadcast.combine_eltypes(f, (a, b)), NaN), broadcast_shape(axes(a), axes(b)))
 
 # TODO: remove at next breaking version
 _broadcasted_zeros(a, b) = _broadcasted_zeros(+, a, b)
@@ -73,6 +74,10 @@ end
 
 for op in (:*, :/, :\)
     @eval broadcasted(::DefaultArrayStyle, ::typeof($op), a::Ones, b::Ones) = _broadcasted_ones($op, a, b)
+end
+
+for op in (:/, :\)
+    @eval broadcasted(::DefaultArrayStyle, ::typeof($op), a::Zeros{<:Number}, b::Zeros{<:Number}) = _broadcasted_nan($op, a, b)
 end
 
 # special case due to missing converts for ranges

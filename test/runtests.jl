@@ -591,6 +591,11 @@ end
             @test broadcast(*, Fill([1,2],3), Zeros(3)) isa Fill{Vector{Float64}}
             @test broadcast(*, [[1,2], [3,4,5]], Zeros(2)) == broadcast(*, Zeros(2), [[1,2], [3,4,5]]) == broadcast(*, zeros(2), [[1,2], [3,4,5]])
         end
+
+        @testset "NaN" begin
+            @test Zeros(5) ./ Zeros(5) ≡ Zeros(5) .\ Zeros(5) ≡ Fill(NaN,5)
+            @test Zeros{Int}(5,6) ./ Zeros{Int}(5) ≡ Zeros{Int}(5) .\ Zeros{Int}(5,6) ≡ Fill(NaN,5,6)
+        end
     end
 
     @testset "support Ref" begin
