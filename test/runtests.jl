@@ -1014,6 +1014,7 @@ if VERSION ≥ v"1.5"
         @test stringmime("text/plain", Zeros(3,2)) == "3×2 Zeros{Float64}"
         @test stringmime("text/plain", Ones(3,2)) == "3×2 Ones{Float64}"
         @test stringmime("text/plain", Fill(7,2,3)) == "2×3 Fill{Int64}: entries equal to 7"
+        @test stringmime("text/plain", Eye(5)) == "5×5 Eye{Float64}"
     end
 end
 
