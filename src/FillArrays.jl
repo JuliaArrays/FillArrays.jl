@@ -153,10 +153,8 @@ convert(::Type{T}, F::T) where T<:Fill = F   # ambiguity fix
 
 getindex(F::Fill{<:Any,0}) = getindex_value(F)
 
-function getindex(F::Fill, kj::Vararg{AbstractVector{II},N}) where {II<:Integer,N}
-    checkbounds(F, kj...)
+Base._unsafe_getindex(::IndexStyle, F::Fill, kj::Vararg{AbstractVector{II},N}) where {II<:Integer,N} =
     Fill(getindex_value(F), length.(kj))
-end
 
 function getindex(A::Fill, kr::AbstractVector{Bool})
    length(A) == length(kr) || throw(DimensionMismatch())
@@ -264,10 +262,8 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         copy(F::$Typ) = F
 
         getindex(F::$Typ{T,0}) where T = getindex_value(F)
-        function getindex(F::$Typ{T}, kj::Vararg{AbstractVector{II},N}) where {T,II<:Integer,N}
-            checkbounds(F, kj...)
+        Base._unsafe_getindex(::IndexStyle, F::$Typ{T}, kj::Vararg{AbstractVector{II},N}) where {T,II<:Integer,N} =
             $Typ{T}(length.(kj))
-        end
         function getindex(A::$Typ{T}, kr::AbstractVector{Bool}) where T
             length(A) == length(kr) || throw(DimensionMismatch("lengths must match"))
             $Typ{T}(count(kr))

@@ -680,6 +680,16 @@ end
     @test A[[true false; true false]] ≡ Zeros{Int}(2)
     @test A[[true, false, true, false]] ≡ Zeros{Int}(2)
     @test_throws DimensionMismatch A[[true false false; true false false]]
+
+    @testset "colon" begin
+        @test Ones(2)[:] ≡ Ones(2)[Base.Slice(Base.OneTo(2))] ≡ Ones(2)
+        @test Zeros(2)[:] ≡ Zeros(2)[Base.Slice(Base.OneTo(2))] ≡ Zeros(2)
+        @test Fill(3.0,2)[:] ≡ Fill(3.0,2)[Base.Slice(Base.OneTo(2))] ≡ Fill(3.0,2)
+
+        @test Ones(2,2)[:,:] ≡ Ones(2,2)[Base.Slice(Base.OneTo(2)),Base.Slice(Base.OneTo(2))] ≡ Ones(2,2)
+        @test Zeros(2,2)[:,:] ≡ Zeros(2)[Base.Slice(Base.OneTo(2)),Base.Slice(Base.OneTo(2))] ≡ Zeros(2,2)
+        @test Fill(3.0,2,2)[:,:] ≡ Fill(3.0,2,2)[Base.Slice(Base.OneTo(2)),Base.Slice(Base.OneTo(2))] ≡ Fill(3.0,2,2)
+    end
 end
 
 @testset "Offset indexing" begin
