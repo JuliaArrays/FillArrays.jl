@@ -42,6 +42,8 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
                 @test convert(Fill, Float64[1,1,1]) ≡ Fill(1.0, 3)
                 @test convert(Fill{Float64}, Fill(1.0,2)) ≡ Fill(1.0, 2) # was ambiguous
                 @test convert(Fill{Int}, Ones(20)) ≡ Fill(1, 20)
+                @test convert(Fill{Int,1}, Ones(20)) ≡ Fill(1, 20)
+                @test convert(Fill{Int,1,Tuple{Base.OneTo{Int}}}, Ones(20)) ≡ Fill(1, 20)
 
                 @test $Typ{T,2}(2ones(T,5,5)) ≡ $Typ{T}(5,5)
                 @test $Typ{T}(2ones(T,5,5)) ≡ $Typ{T}(5,5)
