@@ -161,6 +161,9 @@ getindex(F::Fill{<:Any,0}) = getindex_value(F)
 Base._unsafe_getindex(::IndexStyle, F::Fill, kj::Vararg{AbstractVector{II},N}) where {II<:Integer,N} =
     Fill(getindex_value(F), length.(kj))
 
+Base._unsafe_getindex(::IndexStyle, F::Fill, k::Integer, kj::Vararg{AbstractVector{II},N}) where {II<:Integer,N} =
+    Fill(getindex_value(F), length.(kj))
+
 function getindex(A::Fill, kr::AbstractVector{Bool})
    length(A) == length(kr) || throw(DimensionMismatch())
    Fill(getindex_value(A), count(kr))
@@ -209,14 +212,14 @@ reshape(parent::AbstractFill, dims::Integer...) = reshape(parent, dims)
 reshape(parent::AbstractFill, dims::Union{Int,Colon}...) = reshape(parent, dims)
 reshape(parent::AbstractFill, dims::Union{Integer,Colon}...) = reshape(parent, dims)
 
-reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Integer,Colon}}}) = 
+reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Integer,Colon}}}) =
     fill_reshape(parent, Base._reshape_uncolon(parent, dims)...)
-reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Int,Colon}}}) = 
+reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Int,Colon}}}) =
     fill_reshape(parent, Base._reshape_uncolon(parent, dims)...)
-reshape(parent::AbstractFill, shp::Tuple{Union{Integer,Base.OneTo}, Vararg{Union{Integer,Base.OneTo}}}) = 
-    reshape(parent, Base.to_shape(shp))    
-reshape(parent::AbstractFill, dims::Dims)        = Base._reshape(parent, dims)    
-reshape(parent::AbstractFill, dims::Tuple{Integer, Vararg{Integer}})        = Base._reshape(parent, dims)    
+reshape(parent::AbstractFill, shp::Tuple{Union{Integer,Base.OneTo}, Vararg{Union{Integer,Base.OneTo}}}) =
+    reshape(parent, Base.to_shape(shp))
+reshape(parent::AbstractFill, dims::Dims)        = Base._reshape(parent, dims)
+reshape(parent::AbstractFill, dims::Tuple{Integer, Vararg{Integer}})        = Base._reshape(parent, dims)
 Base._reshape(parent::AbstractFill, dims::Dims) = fill_reshape(parent, dims...)
 Base._reshape(parent::AbstractFill, dims::Tuple{Integer,Vararg{Integer}}) = fill_reshape(parent, dims...)
 # Resolves ambiguity error with `_reshape(v::AbstractArray{T, 1}, dims::Tuple{Int})`
@@ -268,6 +271,9 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
 
         getindex(F::$Typ{T,0}) where T = getindex_value(F)
         Base._unsafe_getindex(::IndexStyle, F::$Typ{T}, kj::Vararg{AbstractVector{II},N}) where {T,II<:Integer,N} =
+            $Typ{T}(length.(kj))
+        # support A[1,1:3]
+        Base._unsafe_getindex(::IndexStyle, F::$Typ{T}, k::Integer, kj::Vararg{AbstractVector{II},N}) where {T,II<:Integer,N} =
             $Typ{T}(length.(kj))
         function getindex(A::$Typ{T}, kr::AbstractVector{Bool}) where T
             length(A) == length(kr) || throw(DimensionMismatch("lengths must match"))
@@ -347,7 +353,7 @@ for f in (:triu, :triu!, :tril, :tril!)
 end
 
 
-Base.replace_in_print_matrix(A::RectDiagonal, i::Integer, j::Integer, s::AbstractString) = 
+Base.replace_in_print_matrix(A::RectDiagonal, i::Integer, j::Integer, s::AbstractString) =
     i == j ? s : Base.replace_with_centered_mark(s)
 
 
@@ -381,7 +387,7 @@ end
 
 Eye(n::Integer, m::Integer) = RectDiagonal(Ones(min(n,m)), n, m)
 Eye{T}(n::Integer, m::Integer) where T = RectDiagonal{T}(Ones{T}(min(n,m)), n, m)
-function Eye{T}((a,b)::NTuple{2,AbstractUnitRange{Int}}) where T 
+function Eye{T}((a,b)::NTuple{2,AbstractUnitRange{Int}}) where T
     ab = length(a) ≤ length(b) ? a : b
     RectDiagonal{T}(Ones{T}((ab,)), (a,b))
 end
@@ -603,7 +609,7 @@ if VERSION ≥ v"1.5"
     Base.array_summary(io::IO, a::Fill{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
         print(io, Base.dims2string(length.(inds)), " Fill{$T}")
     Base.array_summary(io::IO, a::Eye{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
-        print(io, Base.dims2string(length.(inds)), " Eye{$T}")        
+        print(io, Base.dims2string(length.(inds)), " Eye{$T}")
 end
 
 Base.show(io::IO, ::MIME"text/plain", x::Union{Eye,AbstractFill}) = show(io, x)

@@ -165,6 +165,29 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
     end
 end
 
+@testset "indexing" begin
+    for A in (Fill(1,5), Zeros{Int}(5))
+        @test A[1:5] ≡ A[:] ≡ A
+        @test_throws BoundsError A[2:6]
+    end
+    for A in (Fill(1,5,6), Zeros{Int}(5,6))
+        @test A[1:30] ≡ A[:] ≡ vec(A) ≡ reshape(A,30)
+        @test A[1:5,1:6] ≡ A[:,:] ≡ A[1:5,:] ≡ A[:,1:6] ≡ copy(A) ≡ A
+        @test A[1,1:6] ≡ A[1,:] ≡ vec(A[1:1,1:6])
+        @test_throws BoundsError A[1:31]
+        @test_throws DimensionMismatch reshape(A,26)
+        @test_throws BoundsError A[1:6,1:5]
+        @test_throws BoundsError A[6,1:5]
+    end
+
+    for A in (Fill(1,5,6,7), Zeros{Int}(5,6,7))
+        @test A[1:210] ≡ A[:] ≡ vec(A) ≡ reshape(A,210)
+        @test A[1:5,1:6,1:7] ≡ A[:,:,:] ≡ copy(A) ≡ A
+        @test A[1,1:6,1:7] ≡ A[1,:,:]
+        @test A[1,:,:] isa AbstractFill{<:Any,2}
+    end
+end
+
 @testset "RectDiagonal" begin
     data = 1:3
     expected_size = (5, 3)
