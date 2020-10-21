@@ -598,6 +598,10 @@ end
             @test Zeros(5) ./ Zeros(5) ≡ Zeros(5) .\ Zeros(5) ≡ Fill(NaN,5)
             @test Zeros{Int}(5,6) ./ Zeros{Int}(5) ≡ Zeros{Int}(5) .\ Zeros{Int}(5,6) ≡ Fill(NaN,5,6)
         end
+
+        @testset "Addition" begin
+            @test 0 .+ (1:5) ≡ (1:5) .+ 0 ≡ (1:5) .- 0 ≡ 1:5
+        end
     end
 
     @testset "support Ref" begin

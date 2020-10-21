@@ -119,6 +119,18 @@ function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b
     return _range_convert(AbstractVector{promote_type(T,V)}, a)
 end
 
+for op in (:+, -)
+    @eval function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractArray{T}, b::Zeros{V}) where {T,V}
+        broadcast_shape(axes(a), axes(b))
+        LinearAlgebra.copy_oftype(a, promote_type(T,V))
+    end
+end
+
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{T}, b::AbstractArray{V}) where {T,V}
+    broadcast_shape(axes(a), axes(b))
+    LinearAlgebra.copy_oftype(b, promote_type(T,V))
+end
+
 # Need to prevent array-valued fills from broadcasting over entry
 _broadcast_getindex_value(a::AbstractFill{<:Number}) = getindex_value(a)
 _broadcast_getindex_value(a::AbstractFill) = Ref(getindex_value(a))
