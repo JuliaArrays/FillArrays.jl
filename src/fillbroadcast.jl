@@ -109,24 +109,24 @@ _range_convert(::Type{AbstractVector{T}}, a::AbstractRange) where T = convert(T,
 #     end
 # end
 
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::Ones{T}, b::AbstractRange{V}) where {T,V}
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::Ones{T,1}, b::AbstractRange{V}) where {T,V}
     broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
     return _range_convert(AbstractVector{promote_type(T,V)}, b)
 end
 
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b::Ones{T}) where {T,V}
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b::Ones{T,1}) where {T,V}
     broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
     return _range_convert(AbstractVector{promote_type(T,V)}, a)
 end
 
 for op in (:+, -)
-    @eval function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractArray{T}, b::Zeros{V}) where {T,V}
-        broadcast_shape(axes(a), axes(b))
+    @eval function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector{T}, b::Zeros{V,1}) where {T,V}
+        broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
         LinearAlgebra.copy_oftype(a, promote_type(T,V))
     end
 end
 
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{T}, b::AbstractArray{V}) where {T,V}
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{T,1}, b::AbstractVector{V}) where {T,V}
     broadcast_shape(axes(a), axes(b))
     LinearAlgebra.copy_oftype(b, promote_type(T,V))
 end
