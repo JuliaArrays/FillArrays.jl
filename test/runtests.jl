@@ -606,8 +606,8 @@ end
     @testset "range broadcast" begin
         rnge = range(-5.0, step=1.0, length=10)
         @test broadcast(*, Fill(5.0, 10), rnge) == broadcast(*, 5.0, rnge)
-        @test broadcast(*, Zeros(10, 10), rnge) == zeros(10, 10)
-        @test broadcast(*, rnge, Zeros(10, 10)) == zeros(10, 10)
+        @test broadcast(*, Zeros(10, 10), rnge) ≡ Zeros{Float64}(10, 10)
+        @test broadcast(*, rnge, Zeros(10, 10)) ≡ Zeros{Float64}(10, 10)
         @test broadcast(*, Ones{Int}(10), rnge) ≡ rnge
         @test broadcast(*, rnge, Ones{Int}(10)) ≡ rnge
         @test_throws DimensionMismatch broadcast(*, Fill(5.0, 11), rnge)
@@ -618,6 +618,12 @@ end
         deg = 5:5
         @test_throws ArgumentError @inferred(broadcast(*, Fill(5.0, 10), deg)) == broadcast(*, fill(5.0,10), deg)
         @test_throws ArgumentError @inferred(broadcast(*, deg, Fill(5.0, 10))) == broadcast(*, deg, fill(5.0,10))
+
+        @test rnge .+ Zeros(10) ≡ rnge .- Zeros(10) ≡ Zeros(10) .+ rnge ≡ rnge
+
+        @test_throws DimensionMismatch rnge .+ Zeros(5)
+        @test_throws DimensionMismatch rnge .- Zeros(5)
+        @test_throws DimensionMismatch Zeros(5) .+ rnge
     end
 
     @testset "Special Zeros/Ones" begin
@@ -697,6 +703,11 @@ end
         @test Ones(10) - Zeros(10) ≡ Ones(10)
         @test Ones(10) - Ones(10) ≡ Zeros(10)
         @test Fill(1,10) - Zeros(10) ≡ Fill(1.0,10)
+
+        @test Zeros(10) .- Zeros(10) ≡ Zeros(10)
+        @test Ones(10) .- Zeros(10) ≡ Ones(10)
+        @test Ones(10) .- Ones(10) ≡ Zeros(10)
+        @test Fill(1,10) .- Zeros(10) ≡ Fill(1.0,10)
 
         @test Zeros(10) .- Zeros(1,9) ≡ Zeros(10,9)
         @test Ones(10) .- Zeros(1,9) ≡ Ones(10,9)
