@@ -44,6 +44,14 @@ broadcasted(::DefaultArrayStyle, ::typeof(-), a::Zeros, b::Zeros) = _broadcasted
 broadcasted(::DefaultArrayStyle, ::typeof(-), a::Ones, b::Zeros) = _broadcasted_ones(-, a, b)
 broadcasted(::DefaultArrayStyle, ::typeof(-), a::Ones, b::Ones) = _broadcasted_zeros(-, a, b)
 
+broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{<:Any,1}, b::Zeros{<:Any,1}) = _broadcasted_zeros(+, a, b)
+broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Ones{<:Any,1}, b::Zeros{<:Any,1}) = _broadcasted_ones(+, a, b)
+broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{<:Any,1}, b::Ones{<:Any,1}) = _broadcasted_ones(+, a, b)
+
+broadcasted(::DefaultArrayStyle{1}, ::typeof(-), a::Zeros{<:Any,1}, b::Zeros{<:Any,1}) = _broadcasted_zeros(-, a, b)
+broadcasted(::DefaultArrayStyle{1}, ::typeof(-), a::Ones{<:Any,1}, b::Zeros{<:Any,1}) = _broadcasted_ones(-, a, b)
+
+
 broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::Zeros) = _broadcasted_zeros(*, a, b)
 
 # In following, need to restrict to <: Number as otherwise we cannot infer zero from type
@@ -120,9 +128,14 @@ function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b
 end
 
 for op in (:+, -)
-    @eval function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector{T}, b::Zeros{V,1}) where {T,V}
-        broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-        LinearAlgebra.copy_oftype(a, promote_type(T,V))
+    @eval begin
+        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector{T}, b::Zeros{V,1}) where {T,V}
+            broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
+            LinearAlgebra.copy_oftype(a, promote_type(T,V))
+        end
+
+        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFill{T,1}, b::Zeros{V,1}) where {T,V} = 
+            Base.invoke(broadcasted, Tuple{DefaultArrayStyle, typeof($op), AbstractFill, AbstractFill}, DefaultArrayStyle{1}(), $op, a, b)
     end
 end
 
@@ -130,6 +143,9 @@ function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{T,1}, b::Abst
     broadcast_shape(axes(a), axes(b))
     LinearAlgebra.copy_oftype(b, promote_type(T,V))
 end
+
+broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{V,1}, b::AbstractFill{T,1}) where {T,V} = 
+            Base.invoke(broadcasted, Tuple{DefaultArrayStyle, typeof(+), AbstractFill, AbstractFill}, DefaultArrayStyle{1}(), +, a, b)
 
 # Need to prevent array-valued fills from broadcasting over entry
 _broadcast_getindex_value(a::AbstractFill{<:Number}) = getindex_value(a)
