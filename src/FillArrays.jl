@@ -158,16 +158,18 @@ convert(::Type{T}, F::T) where T<:Fill = F   # ambiguity fix
 
 getindex(F::Fill{<:Any,0}) = getindex_value(F)
 
-Base._unsafe_getindex(::IndexStyle, F::Fill, kj::Vararg{AbstractVector{II},N}) where {II<:Integer,N} =
-    Fill(getindex_value(F), length.(kj))
-
-function getindex(A::Fill, kr::AbstractVector{Bool})
-   length(A) == length(kr) || throw(DimensionMismatch())
-   Fill(getindex_value(A), count(kr))
+function Base._unsafe_getindex(::IndexStyle, F::AbstractFill, I::Vararg{Union{Real, AbstractArray}, N}) where N
+    shape = Base.index_shape(I...)
+    fillsimilar(F, shape)
 end
-function getindex(A::Fill, kr::AbstractArray{Bool})
+
+function getindex(A::AbstractFill, kr::AbstractVector{Bool})
+   length(A) == length(kr) || throw(DimensionMismatch())
+   fillsimilar(A, count(kr))
+end
+function getindex(A::AbstractFill, kr::AbstractArray{Bool})
    size(A) == size(kr) || throw(DimensionMismatch())
-   Fill(getindex_value(A), count(kr))
+   fillsimilar(A, count(kr))
 end
 
 sort(a::AbstractFill; kwds...) = a
@@ -202,7 +204,7 @@ end
 function fill_reshape(parent, dims::Integer...)
     n = length(parent)
     prod(dims) == n || _throw_dmrs(n, "size", dims)
-    Fill(getindex_value(parent), dims...)
+    fillsimilar(parent, dims...)
 end
 
 reshape(parent::AbstractFill, dims::Integer...) = reshape(parent, dims)
@@ -267,25 +269,20 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         copy(F::$Typ) = F
 
         getindex(F::$Typ{T,0}) where T = getindex_value(F)
-        Base._unsafe_getindex(::IndexStyle, F::$Typ{T}, kj::Vararg{AbstractVector{II},N}) where {T,II<:Integer,N} =
-            $Typ{T}(length.(kj))
-        function getindex(A::$Typ{T}, kr::AbstractVector{Bool}) where T
-            length(A) == length(kr) || throw(DimensionMismatch("lengths must match"))
-            $Typ{T}(count(kr))
-        end
-        function getindex(A::$Typ{T}, kr::AbstractArray{Bool}) where T
-            size(A) == size(kr) || throw(DimensionMismatch("sizes must match"))
-            $Typ{T}(count(kr))
-        end
-
-        function fill_reshape(parent::$Typ{T}, dims::Integer...) where T
-            n = length(parent)
-            prod(dims) == n || _throw_dmrs(n, "size", dims)
-            $Typ{T}(dims...)
-        end
     end
 end
 
+
+"""
+    fillsimilar(a::AbstractFill, axes)
+
+creates a fill object that has the same fill value as `a` but
+with the specified axes.
+For example, if `a isa Zeros` then so is the returned object.
+"""
+fillsimilar(a::Ones{T}, axes...) where T = Ones{T}(axes...)
+fillsimilar(a::Zeros{T}, axes...) where T = Zeros{T}(axes...)
+fillsimilar(a::AbstractFill, axes...) = Fill(getindex_value(a), axes...)
 
 
 rank(F::Zeros) = 0

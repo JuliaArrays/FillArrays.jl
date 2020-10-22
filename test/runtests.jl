@@ -165,6 +165,70 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
     end
 end
 
+@testset "indexing" begin
+    A = Fill(3.0,5)
+    @test A[1:3] ≡ Fill(3.0,3)
+    @test A[1:3,1:1] ≡ Fill(3.0,3,1)
+    @test_throws BoundsError A[1:3,2]
+    @test_throws BoundsError A[1:26]
+    @test A[[true, false, true, false, false]] ≡ Fill(3.0, 2)
+    A = Fill(3.0, 2, 2)
+    @test A[[true true; true false]] ≡ Fill(3.0, 3)
+    @test_throws DimensionMismatch A[[true, false]]
+
+    A = Ones{Int}(5,5)
+    @test A[1:3] ≡ Ones{Int}(3)
+    @test A[1:3,1:2] ≡ Ones{Int}(3,2)
+    @test A[1:3,2] ≡ Ones{Int}(3)
+    @test_throws BoundsError A[1:26]
+    A = Ones{Int}(2,2)
+    @test A[[true false; true false]] ≡ Ones{Int}(2)
+    @test A[[true, false, true, false]] ≡ Ones{Int}(2)
+    @test_throws DimensionMismatch A[[true false false; true false false]]
+
+    A = Zeros{Int}(5,5)
+    @test A[1:3] ≡ Zeros{Int}(3)
+    @test A[1:3,1:2] ≡ Zeros{Int}(3,2)
+    @test A[1:3,2] ≡ Zeros{Int}(3)
+    @test_throws BoundsError A[1:26]
+    A = Zeros{Int}(2,2)
+    @test A[[true false; true false]] ≡ Zeros{Int}(2)
+    @test A[[true, false, true, false]] ≡ Zeros{Int}(2)
+    @test_throws DimensionMismatch A[[true false false; true false false]]
+
+    @testset "colon" begin
+        @test Ones(2)[:] ≡ Ones(2)[Base.Slice(Base.OneTo(2))] ≡ Ones(2)
+        @test Zeros(2)[:] ≡ Zeros(2)[Base.Slice(Base.OneTo(2))] ≡ Zeros(2)
+        @test Fill(3.0,2)[:] ≡ Fill(3.0,2)[Base.Slice(Base.OneTo(2))] ≡ Fill(3.0,2)
+
+        @test Ones(2,2)[:,:] ≡ Ones(2,2)[Base.Slice(Base.OneTo(2)),Base.Slice(Base.OneTo(2))] ≡ Ones(2,2)
+        @test Zeros(2,2)[:,:] ≡ Zeros(2)[Base.Slice(Base.OneTo(2)),Base.Slice(Base.OneTo(2))] ≡ Zeros(2,2)
+        @test Fill(3.0,2,2)[:,:] ≡ Fill(3.0,2,2)[Base.Slice(Base.OneTo(2)),Base.Slice(Base.OneTo(2))] ≡ Fill(3.0,2,2)
+    end
+
+    @testset "mixed integer / vector /colon" begin
+        a = Fill(2.0,5)
+        z = Zeros(5)
+        @test a[1:5] ≡ a[:] ≡ a
+        @test z[1:5] ≡ z[:] ≡ z
+
+        A = Fill(2.0,5,6)
+        Z = Zeros(5,6)
+        @test A[:,1] ≡ A[1:5,1] ≡ Fill(2.0,5)
+        @test A[1,:] ≡ A[1,1:6] ≡ Fill(2.0,6)
+        @test A[:,:] ≡ A[1:5,1:6] ≡ A[1:5,:] ≡ A[:,1:6] ≡ A
+        @test Z[:,1] ≡ Z[1:5,1] ≡ Zeros(5)
+        @test Z[1,:] ≡ Z[1,1:6] ≡ Zeros(6)
+        @test Z[:,:] ≡ Z[1:5,1:6] ≡ Z[1:5,:] ≡ Z[:,1:6] ≡ Z
+        
+        A = Fill(2.0,5,6,7)
+        Z = Zeros(5,6,7)
+        @test A[:,1,1] ≡ A[1:5,1,1] ≡ Fill(2.0,5)
+        @test A[1,:,1] ≡ A[1,1:6,1] ≡ Fill(2.0,6)
+        @test A[:,:,:] ≡ A[1:5,1:6,1:7] ≡ A[1:5,:,1:7] ≡ A[:,1:6,1:7] ≡ A
+    end
+end
+
 @testset "RectDiagonal" begin
     data = 1:3
     expected_size = (5, 3)
@@ -659,48 +723,6 @@ end
 
     x = Fill(2,5,3)
     @test map(exp,x) === Fill(exp(2),5,3)
-end
-
-@testset "Sub-arrays" begin
-    A = Fill(3.0,5)
-    @test A[1:3] ≡ Fill(3.0,3)
-    @test A[1:3,1:1] ≡ Fill(3.0,3,1)
-    @test_broken A[1:3,2] ≡ Zeros{Int}(3)
-    @test_throws BoundsError A[1:26]
-    @test A[[true, false, true, false, false]] ≡ Fill(3.0, 2)
-    A = Fill(3.0, 2, 2)
-    @test A[[true true; true false]] ≡ Fill(3.0, 3)
-    @test_throws DimensionMismatch A[[true, false]]
-
-    A = Ones{Int}(5,5)
-    @test A[1:3] ≡ Ones{Int}(3)
-    @test A[1:3,1:2] ≡ Ones{Int}(3,2)
-    @test_broken A[1:3,2] ≡ Ones{Int}(3)
-    @test_throws BoundsError A[1:26]
-    A = Ones{Int}(2,2)
-    @test A[[true false; true false]] ≡ Ones{Int}(2)
-    @test A[[true, false, true, false]] ≡ Ones{Int}(2)
-    @test_throws DimensionMismatch A[[true false false; true false false]]
-
-    A = Zeros{Int}(5,5)
-    @test A[1:3] ≡ Zeros{Int}(3)
-    @test A[1:3,1:2] ≡ Zeros{Int}(3,2)
-    @test_broken A[1:3,2] ≡ Zeros{Int}(3)
-    @test_throws BoundsError A[1:26]
-    A = Zeros{Int}(2,2)
-    @test A[[true false; true false]] ≡ Zeros{Int}(2)
-    @test A[[true, false, true, false]] ≡ Zeros{Int}(2)
-    @test_throws DimensionMismatch A[[true false false; true false false]]
-
-    @testset "colon" begin
-        @test Ones(2)[:] ≡ Ones(2)[Base.Slice(Base.OneTo(2))] ≡ Ones(2)
-        @test Zeros(2)[:] ≡ Zeros(2)[Base.Slice(Base.OneTo(2))] ≡ Zeros(2)
-        @test Fill(3.0,2)[:] ≡ Fill(3.0,2)[Base.Slice(Base.OneTo(2))] ≡ Fill(3.0,2)
-
-        @test Ones(2,2)[:,:] ≡ Ones(2,2)[Base.Slice(Base.OneTo(2)),Base.Slice(Base.OneTo(2))] ≡ Ones(2,2)
-        @test Zeros(2,2)[:,:] ≡ Zeros(2)[Base.Slice(Base.OneTo(2)),Base.Slice(Base.OneTo(2))] ≡ Zeros(2,2)
-        @test Fill(3.0,2,2)[:,:] ≡ Fill(3.0,2,2)[Base.Slice(Base.OneTo(2)),Base.Slice(Base.OneTo(2))] ≡ Fill(3.0,2,2)
-    end
 end
 
 @testset "Offset indexing" begin
