@@ -15,10 +15,6 @@ adjoint(a::Zeros{T,2}) where T = Zeros{T}(reverse(a.axes))
 transpose(a::Fill{T,2}) where T = Fill{T}(transpose(a.value), reverse(a.axes))
 adjoint(a::Fill{T,2}) where T = Fill{T}(adjoint(a.value), reverse(a.axes))
 
-fillsimilar(a::Ones{T}, axes) where T = Ones{T}(axes)
-fillsimilar(a::Zeros{T}, axes) where T = Zeros{T}(axes)
-fillsimilar(a::AbstractFill, axes) = Fill(getindex_value(a), axes)
-
 permutedims(a::AbstractFill{<:Any,1}) = fillsimilar(a, (1, length(a)))
 permutedims(a::AbstractFill{<:Any,2}) = fillsimilar(a, reverse(a.axes))
 
