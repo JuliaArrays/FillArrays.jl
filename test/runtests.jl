@@ -1138,3 +1138,20 @@ end
     @test_throws BoundsError setindex!(ones(3), zeros(3), Trues(2))
     @test_throws DimensionMismatch setindex!(ones(2), zeros(3), Trues(2))
 end
+
+@testset "FillArray interface" begin
+    @testset "views" begin
+        a = Fill(2.0,5)
+        v = view(a,1:2)
+        @test FillArrays.getindex_value(v) == FillArrays.unique_value(v) == 2.0
+        @test convert(Fill, v) ≡ Fill(2.0,2)
+    end
+
+    @testset "adjtrans" begin
+        a = Fill(2.0,5)
+        @test FillArrays.getindex_value(a') == FillArrays.unique_value(a') == 2.0
+        @test convert(Fill, a') ≡ Fill(2.0,1,5)
+        @test FillArrays.getindex_value(transpose(a)) == FillArrays.unique_value(transpose(a)) == 2.0
+        @test convert(Fill, transpose(a)) ≡ Fill(2.0,1,5)
+    end
+end

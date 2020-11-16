@@ -605,4 +605,11 @@ end
 
 Base.show(io::IO, ::MIME"text/plain", x::Union{Eye,AbstractFill}) = show(io, x)
 
+##
+# interface
+##
+
+getindex_value(a::LinearAlgebra.AdjOrTrans) = getindex_value(parent(a))
+getindex_value(a::SubArray) = getindex_value(parent(a))
+
 end # module
