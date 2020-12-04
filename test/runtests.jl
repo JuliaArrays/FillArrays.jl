@@ -1028,6 +1028,19 @@ end
     @test E*(1:5) ≡ 1.0:5.0
     @test (1:5)'E == (1.0:5)'
     @test E*E ≡ E
+
+    # Adjoint / Transpose / Triangular / Symmetric
+    for x in [transpose(rand(2, 2)), 
+              adjoint(rand(2,2)),
+              UpperTriangular(rand(2,2)),
+              Symmetric(rand(2,2))]
+        @test x * Ones(2, 2) isa Matrix
+        @test Ones(2, 2) * x isa Matrix
+        @test x * Zeros(2, 2) isa Zeros
+        @test Zeros(2, 2) * x isa Zeros
+        @test x * Fill(1., 2, 2) isa Matrix
+        @test Fill(1., 2, 2) * x isa Matrix
+    end
 end
 
 @testset "count" begin
