@@ -1029,11 +1029,12 @@ end
     @test (1:5)'E == (1.0:5)'
     @test E*E ≡ E
 
-    # Adjoint / Transpose / Triangular / Symmetric
+    # Adjoint / Transpose / Triangular / Symmetric / Hermitian
     for x in [transpose(rand(2, 2)), 
               adjoint(rand(2,2)),
               UpperTriangular(rand(2,2)),
-              Symmetric(rand(2,2))]
+              Symmetric(rand(2,2)),
+              Hermitian(rand(2,2))]
         @test x * Ones(2, 2) isa Matrix
         @test Ones(2, 2) * x isa Matrix
         @test x * Zeros(2, 2) isa Zeros
