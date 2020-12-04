@@ -100,7 +100,7 @@ Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
     Fill{T,N}(convert(T, x)::T, sz)
 
 @inline Fill{T, N}(x, sz::SZ) where SZ<:Tuple{Vararg{Integer,N}} where {T, N} =
-    Fill{T,N}(x, Base.OneTo.(sz))
+    Fill{T,N}(x, Base.oneto.(sz))
 @inline Fill{T, N}(x, sz::Vararg{Integer, N}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
 
 
@@ -238,7 +238,7 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
 
 
         @inline $Typ{T, 0}(sz::Tuple{}) where {T} = $Typ{T,0,Tuple{}}(sz)
-        @inline $Typ{T, N}(sz::Tuple{Vararg{<:Integer, N}}) where {T, N} = $Typ{T,N}(Base.OneTo.(sz))
+        @inline $Typ{T, N}(sz::Tuple{Vararg{<:Integer, N}}) where {T, N} = $Typ{T,N}(Base.oneto.(sz))
         @inline $Typ{T, N}(sz::Vararg{<:Integer, N}) where {T, N} = $Typ{T,N}(sz)
         """ `$($Typ){T}(dims...)` construct lazy version of `$($funcs)(dims...)`"""
         @inline $Typ{T}(sz::Vararg{Integer,N}) where {T, N} = $Typ{T, N}(sz)
@@ -302,7 +302,7 @@ struct RectDiagonal{T,V<:AbstractVector{T},Axes<:Tuple{Vararg{AbstractUnitRange,
     end
 end
 
-@inline RectDiagonal{T,V}(A::V, sz::Tuple{Vararg{Integer, 2}}) where {T,V} = RectDiagonal{T,V}(A, Base.OneTo.(sz))
+@inline RectDiagonal{T,V}(A::V, sz::Tuple{Vararg{Integer, 2}}) where {T,V} = RectDiagonal{T,V}(A, Base.oneto.(sz))
 @inline RectDiagonal{T,V}(A::V, axes::Vararg{Any, 2}) where {T,V} = RectDiagonal{T,V}(A, axes)
 @inline RectDiagonal{T,V}(A::V, sz::Vararg{Integer, 2}) where {T,V} = RectDiagonal{T,V}(A, sz)
 @inline RectDiagonal{T,V}(A::V) where {T,V} = RectDiagonal{T,V}(A, (axes(A, 1), axes(A, 1)))
@@ -494,8 +494,8 @@ cumsum(x::AbstractFill{<:Any,1}) = range(getindex_value(x); step=getindex_value(
 
 cumsum(x::Zeros{<:Any,1}) = x
 cumsum(x::Zeros{Bool,1}) = x
-cumsum(x::Ones{II,1}) where II<:Integer = Base.OneTo{II}(length(x))
-cumsum(x::Ones{Bool,1}) = Base.OneTo{Int}(length(x))
+cumsum(x::Ones{II,1}) where II<:Integer = convert(AbstractVector{II}, Base.oneto(length(x)))
+cumsum(x::Ones{Bool,1}) = Base.oneto(length(x))
 cumsum(x::AbstractFill{Bool,1}) = cumsum(convert(AbstractFill{Int}, x))
 
 
