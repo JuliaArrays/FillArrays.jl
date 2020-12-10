@@ -6,7 +6,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero,
-    show
+    show, view
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular, AdjointAbsVec
@@ -152,7 +152,9 @@ convert(::Type{Fill}, arr::AbstractArray{T}) where T = Fill{T}(unique_value(arr)
 convert(::Type{Fill{T}}, arr::AbstractArray) where T = Fill{T}(unique_value(arr), axes(arr))
 convert(::Type{Fill{T,N}}, arr::AbstractArray{<:Any,N}) where {T,N} = Fill{T,N}(unique_value(arr), axes(arr))
 convert(::Type{Fill{T,N,Axes}}, arr::AbstractArray{<:Any,N}) where {T,N,Axes} = Fill{T,N,Axes}(unique_value(arr), axes(arr))
-convert(::Type{T}, F::T) where T<:Fill = F   # ambiguity fix
+# ambiguity fix
+convert(::Type{Fill}, arr::Fill{T}) where T = Fill{T}(unique_value(arr), axes(arr))
+convert(::Type{T}, F::T) where T<:Fill = F
 
 
 
@@ -211,14 +213,14 @@ reshape(parent::AbstractFill, dims::Integer...) = reshape(parent, dims)
 reshape(parent::AbstractFill, dims::Union{Int,Colon}...) = reshape(parent, dims)
 reshape(parent::AbstractFill, dims::Union{Integer,Colon}...) = reshape(parent, dims)
 
-reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Integer,Colon}}}) = 
+reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Integer,Colon}}}) =
     fill_reshape(parent, Base._reshape_uncolon(parent, dims)...)
-reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Int,Colon}}}) = 
+reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Int,Colon}}}) =
     fill_reshape(parent, Base._reshape_uncolon(parent, dims)...)
-reshape(parent::AbstractFill, shp::Tuple{Union{Integer,Base.OneTo}, Vararg{Union{Integer,Base.OneTo}}}) = 
-    reshape(parent, Base.to_shape(shp))    
-reshape(parent::AbstractFill, dims::Dims)        = Base._reshape(parent, dims)    
-reshape(parent::AbstractFill, dims::Tuple{Integer, Vararg{Integer}})        = Base._reshape(parent, dims)    
+reshape(parent::AbstractFill, shp::Tuple{Union{Integer,Base.OneTo}, Vararg{Union{Integer,Base.OneTo}}}) =
+    reshape(parent, Base.to_shape(shp))
+reshape(parent::AbstractFill, dims::Dims)        = Base._reshape(parent, dims)
+reshape(parent::AbstractFill, dims::Tuple{Integer, Vararg{Integer}})        = Base._reshape(parent, dims)
 Base._reshape(parent::AbstractFill, dims::Dims) = fill_reshape(parent, dims...)
 Base._reshape(parent::AbstractFill, dims::Tuple{Integer,Vararg{Integer}}) = fill_reshape(parent, dims...)
 # Resolves ambiguity error with `_reshape(v::AbstractArray{T, 1}, dims::Tuple{Int})`
@@ -344,7 +346,7 @@ for f in (:triu, :triu!, :tril, :tril!)
 end
 
 
-Base.replace_in_print_matrix(A::RectDiagonal, i::Integer, j::Integer, s::AbstractString) = 
+Base.replace_in_print_matrix(A::RectDiagonal, i::Integer, j::Integer, s::AbstractString) =
     i == j ? s : Base.replace_with_centered_mark(s)
 
 
@@ -378,7 +380,7 @@ end
 
 Eye(n::Integer, m::Integer) = RectDiagonal(Ones(min(n,m)), n, m)
 Eye{T}(n::Integer, m::Integer) where T = RectDiagonal{T}(Ones{T}(min(n,m)), n, m)
-function Eye{T}((a,b)::NTuple{2,AbstractUnitRange{Int}}) where T 
+function Eye{T}((a,b)::NTuple{2,AbstractUnitRange{Int}}) where T
     ab = length(a) ≤ length(b) ? a : b
     RectDiagonal{T}(Ones{T}((ab,)), (a,b))
 end
@@ -600,7 +602,7 @@ if VERSION ≥ v"1.5"
     Base.array_summary(io::IO, a::Fill{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
         print(io, Base.dims2string(length.(inds)), " Fill{$T}")
     Base.array_summary(io::IO, a::Eye{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
-        print(io, Base.dims2string(length.(inds)), " Eye{$T}")        
+        print(io, Base.dims2string(length.(inds)), " Eye{$T}")
 end
 
 Base.show(io::IO, ::MIME"text/plain", x::Union{Eye,AbstractFill}) = show(io, x)
@@ -611,5 +613,16 @@ Base.show(io::IO, ::MIME"text/plain", x::Union{Eye,AbstractFill}) = show(io, x)
 
 getindex_value(a::LinearAlgebra.AdjOrTrans) = getindex_value(parent(a))
 getindex_value(a::SubArray) = getindex_value(parent(a))
+
+
+##
+# view
+##
+
+Base.@propagate_inbounds view(A::AbstractFill, kr::AbstractVector{Bool}) = getindex(F, kr)
+Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, I::Vararg{Union{Real, AbstractArray}, N}) where N =
+    getindex(A, I...)
+Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, I::Vararg{Real, N}) where N =
+    Base.invoke(view, Tuple{AbstractArray,Vararg{Any,N}}, A, I...)
 
 end # module
