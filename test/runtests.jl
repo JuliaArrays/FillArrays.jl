@@ -1037,10 +1037,21 @@ end
               Hermitian(rand(2,2))]
         @test x * Ones(2, 2) isa Matrix
         @test Ones(2, 2) * x isa Matrix
+        @test x * Ones(2) isa Vector
+        @test Ones(2)' * x isa Adjoint{Float64,<:Vector}
         @test x * Zeros(2, 2) isa Zeros
         @test Zeros(2, 2) * x isa Zeros
+        @test x * Zeros(2) isa Vector
+        @test x * Zeros(2) isa Zeros
+        @test Zeros(2)' * x isa Adjoint{Float64,<:Zeros}
         @test x * Fill(1., 2, 2) isa Matrix
         @test Fill(1., 2, 2) * x isa Matrix
+        @test x * Fill(1.,2) isa Vector
+        @test Fill(1.,2)' * x isa Adjoint{Float64,<:Vector}
+        @test x * Ones(2,2) == x * Fill(1., 2, 2) == x * ones(2,2) 
+        @test Ones(2,2) * x == Fill(1., 2, 2) * x == Ones(2,2) * x  
+        @test x * Ones(2) == x * Fill(1.,2) == x * ones(2)
+        @test Ones(2)'x == Fill(1.,2)'x == ones(2)'x
     end
 end
 
