@@ -619,7 +619,8 @@ getindex_value(a::SubArray) = getindex_value(parent(a))
 # view
 ##
 
-Base.@propagate_inbounds view(A::AbstractFill, kr::AbstractVector{Bool}) = getindex(F, kr)
+Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, kr::AbstractArray{Bool,N}) where N = getindex(A, kr)
+Base.@propagate_inbounds view(A::AbstractFill{<:Any,1}, kr::AbstractVector{Bool}) = getindex(A, kr)
 Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, I::Vararg{Union{Real, AbstractArray}, N}) where N =
     getindex(A, I...)
 Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, I::Vararg{Real, N}) where N =

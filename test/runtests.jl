@@ -1146,12 +1146,21 @@ end
         @test FillArrays.getindex_value(v) == FillArrays.unique_value(v) == 2.0
         @test convert(Fill, v) ≡ Fill(2.0,2)
     end
+
     @testset "views" begin
         a = Fill(2.0,5)
         v = view(a,1:2)
         @test v isa Fill
         @test FillArrays.getindex_value(v) == FillArrays.unique_value(v) == 2.0
         @test convert(Fill, v) ≡ Fill(2.0,2)
+        @test view(a,1) isa SubArray
+    end
+
+    @testset "view with bool" begin
+        a = Fill(2.0,5)
+        @test a[[true,false,false,true,false]] ≡ view(a,[true,false,false,true,false])
+        a = Fill(2.0,2,2)
+        @test a[[true false; false true]] ≡ view(a, [true false; false true])
     end
 
     @testset "adjtrans" begin
