@@ -147,12 +147,12 @@ end
 
 ## Matrix-Vector multiplication
 
-*(a::Adjoint{T, <:StridedMatrix{T}},   b::Fill{T, 1}) where T = 
-    reshape(sum(conj.(parent(a)); dims=1) .* b.value, size(parent(a), 2))
-*(a::Transpose{T, <:StridedMatrix{T}}, b::Fill{T, 1}) where T = 
-    reshape(sum(parent(a); dims=1) .* b.value, size(parent(a), 2))
-*(a::StridedMatrix{T}, b::Fill{T, 1}) where T = 
-    reshape(sum(a; dims=2) .* b.value, size(a, 1))
+*(a::Adjoint{T, <:StridedMatrix{T}},   b::AbstractFill{T, 1}) where T = 
+    reshape(sum(conj.(parent(a)); dims=1) .* getindex_value(b), size(parent(a), 2))
+*(a::Transpose{T, <:StridedMatrix{T}}, b::AbstractFill{T, 1}) where T = 
+    reshape(sum(parent(a); dims=1) .* getindex_value(b), size(parent(a), 2))
+*(a::StridedMatrix{T}, b::AbstractFill{T, 1}) where T = 
+    reshape(sum(a; dims=2) .* getindex_value(b), size(a, 1))
 
 
 function _adjvec_mul_zeros(a::Adjoint{T}, b::Zeros{S, 1}) where {T, S}
