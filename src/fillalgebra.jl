@@ -162,11 +162,11 @@ end
 # Zeros +/- Array and Array +/- Zeros
 function +(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return AbstractArray{promote_type(T,V),N}(b)
+    return T == V ? b : AbstractArray{promote_type(T,V),N}(b)
 end
 function +(a::Array{T, N}, b::Zeros{V, N}) where {T, V, N}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return AbstractArray{promote_type(T,V),N}(a)
+    return T == V ? a : AbstractArray{promote_type(T,V),N}(a)
 end
 
 function -(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
