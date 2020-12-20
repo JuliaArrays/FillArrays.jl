@@ -489,6 +489,8 @@ end
 sum(x::AbstractFill) = getindex_value(x)*length(x)
 sum(x::Zeros) = getindex_value(x)
 
+sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
+
 cumsum(x::AbstractFill{<:Any,1}) = range(getindex_value(x); step=getindex_value(x),
                                                     length=length(x))
 
