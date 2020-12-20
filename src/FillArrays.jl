@@ -489,7 +489,10 @@ end
 sum(x::AbstractFill) = getindex_value(x)*length(x)
 sum(x::Zeros) = getindex_value(x)
 
-sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
+# define `sum(::Callable, ::AbstractFill)` to avoid method ambiguity errors on Julia 1.0
+sum(f, x::AbstractFill) = _sum(f, x)
+sum(f::Base.Callable, x::AbstractFill) = _sum(f, x)
+_sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
 
 cumsum(x::AbstractFill{<:Any,1}) = range(getindex_value(x); step=getindex_value(x),
                                                     length=length(x))
