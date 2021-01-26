@@ -17,6 +17,12 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
 export Zeros, Ones, Fill, Eye, Trues, Falses
 
+if VERSION ≤ v"1.5"
+    oneto(n) = Base.OneTo(n)
+else
+    import Base: oneto
+end
+
 """
     AbstractFill{T, N, Axes} <: AbstractArray{T, N}
 
@@ -100,7 +106,7 @@ Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
     Fill{T,N}(convert(T, x)::T, sz)
 
 @inline Fill{T, N}(x, sz::SZ) where SZ<:Tuple{Vararg{Integer,N}} where {T, N} =
-    Fill{T,N}(x, Base.oneto.(sz))
+    Fill{T,N}(x, oneto.(sz))
 @inline Fill{T, N}(x, sz::Vararg{Integer, N}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
 
 
