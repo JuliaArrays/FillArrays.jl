@@ -508,18 +508,23 @@ end
 
 @testset "Cumsum and diff" begin
     @test sum(Fill(3,10)) ≡ 30
+    @test sum(x -> x + 1, Fill(3,10)) ≡ 40
     @test cumsum(Fill(3,10)) ≡ 3:3:30
 
     @test sum(Ones(10)) ≡ 10.0
+    @test sum(x -> x + 1, Ones(10)) ≡ 20.0
     @test cumsum(Ones(10)) ≡ 1.0:10.0
 
     @test sum(Ones{Int}(10)) ≡ 10
+    @test sum(x -> x + 1, Ones{Int}(10)) ≡ 20
     @test cumsum(Ones{Int}(10)) ≡ Base.OneTo(10)
 
     @test sum(Zeros(10)) ≡ 0.0
+    @test sum(x -> x + 1, Zeros(10)) ≡ 10.0
     @test cumsum(Zeros(10)) ≡ Zeros(10)
 
     @test sum(Zeros{Int}(10)) ≡ 0
+    @test sum(x -> x + 1, Zeros{Int}(10)) ≡ 10
     @test cumsum(Zeros{Int}(10)) ≡ Zeros{Int}(10)
 
     @test cumsum(Zeros{Bool}(10)) ≡ Zeros{Bool}(10)
@@ -1140,11 +1145,27 @@ end
 end
 
 @testset "FillArray interface" begin
+    @testset "SubArray" begin
+        a = Fill(2.0,5)
+        v = SubArray(a,(1:2,))
+        @test FillArrays.getindex_value(v) == FillArrays.unique_value(v) == 2.0
+        @test convert(Fill, v) ≡ Fill(2.0,2)
+    end
+
     @testset "views" begin
         a = Fill(2.0,5)
         v = view(a,1:2)
+        @test v isa Fill
         @test FillArrays.getindex_value(v) == FillArrays.unique_value(v) == 2.0
         @test convert(Fill, v) ≡ Fill(2.0,2)
+        @test view(a,1) isa SubArray
+    end
+
+    @testset "view with bool" begin
+        a = Fill(2.0,5)
+        @test a[[true,false,false,true,false]] ≡ view(a,[true,false,false,true,false])
+        a = Fill(2.0,2,2)
+        @test a[[true false; false true]] ≡ view(a, [true false; false true])
     end
 
     @testset "adjtrans" begin
