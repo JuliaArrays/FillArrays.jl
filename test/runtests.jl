@@ -268,7 +268,7 @@ end
     @test_throws ArgumentError mut[2, 1] = 9
 
     D = RectDiagonal([1.,2.], (Base.OneTo(3),Base.OneTo(2)))
-    if VERSION ≤ v"1.5"
+    if VERSION < v"1.6-"
         @test stringmime("text/plain", D) == "3×2 RectDiagonal{Float64,Array{Float64,1},Tuple{Base.OneTo{$Int},Base.OneTo{$Int}}}:\n 1.0   ⋅ \n  ⋅   2.0\n  ⋅    ⋅ "
     else
         @test stringmime("text/plain", D) == "3×2 RectDiagonal{Float64, Vector{Float64}, Tuple{Base.OneTo{$Int}, Base.OneTo{$Int}}}:\n 1.0   ⋅ \n  ⋅   2.0\n  ⋅    ⋅ "

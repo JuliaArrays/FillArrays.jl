@@ -17,7 +17,7 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
 export Zeros, Ones, Fill, Eye, Trues, Falses
 
-if VERSION ≤ v"1.5"
+if VERSION < v"1.6-"
     oneto(n) = Base.OneTo(n)
 else
     import Base: oneto
@@ -246,7 +246,7 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
 
 
         @inline $Typ{T, 0}(sz::Tuple{}) where {T} = $Typ{T,0,Tuple{}}(sz)
-        @inline $Typ{T, N}(sz::Tuple{Vararg{<:Integer, N}}) where {T, N} = $Typ{T,N}(Base.oneto.(sz))
+        @inline $Typ{T, N}(sz::Tuple{Vararg{<:Integer, N}}) where {T, N} = $Typ{T,N}(oneto.(sz))
         @inline $Typ{T, N}(sz::Vararg{<:Integer, N}) where {T, N} = $Typ{T,N}(sz)
         """ `$($Typ){T}(dims...)` construct lazy version of `$($funcs)(dims...)`"""
         @inline $Typ{T}(sz::Vararg{Integer,N}) where {T, N} = $Typ{T, N}(sz)
@@ -310,7 +310,7 @@ struct RectDiagonal{T,V<:AbstractVector{T},Axes<:Tuple{Vararg{AbstractUnitRange,
     end
 end
 
-@inline RectDiagonal{T,V}(A::V, sz::Tuple{Vararg{Integer, 2}}) where {T,V} = RectDiagonal{T,V}(A, Base.oneto.(sz))
+@inline RectDiagonal{T,V}(A::V, sz::Tuple{Vararg{Integer, 2}}) where {T,V} = RectDiagonal{T,V}(A, oneto.(sz))
 @inline RectDiagonal{T,V}(A::V, axes::Vararg{Any, 2}) where {T,V} = RectDiagonal{T,V}(A, axes)
 @inline RectDiagonal{T,V}(A::V, sz::Vararg{Integer, 2}) where {T,V} = RectDiagonal{T,V}(A, sz)
 @inline RectDiagonal{T,V}(A::V) where {T,V} = RectDiagonal{T,V}(A, (axes(A, 1), axes(A, 1)))
@@ -507,8 +507,8 @@ cumsum(x::AbstractFill{<:Any,1}) = range(getindex_value(x); step=getindex_value(
 
 cumsum(x::Zeros{<:Any,1}) = x
 cumsum(x::Zeros{Bool,1}) = x
-cumsum(x::Ones{II,1}) where II<:Integer = convert(AbstractVector{II}, Base.oneto(length(x)))
-cumsum(x::Ones{Bool,1}) = Base.oneto(length(x))
+cumsum(x::Ones{II,1}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
+cumsum(x::Ones{Bool,1}) = oneto(length(x))
 cumsum(x::AbstractFill{Bool,1}) = cumsum(convert(AbstractFill{Int}, x))
 
 
