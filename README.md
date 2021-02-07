@@ -1,6 +1,7 @@
 # FillArrays.jl
 
-[![Build Status](https://travis-ci.org/JuliaArrays/FillArrays.jl.svg?branch=master)](https://travis-ci.org/JuliaArrays/FillArrays.jl)
+
+[![Build Status](https://github.com/JuliaArrays/FillArrays.jl/workflows/CI/badge.svg)](https://github.com/JuliaArrays/FillArrays.jl/actions)
 [![codecov](https://codecov.io/gh/JuliaArrays/FillArrays.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaArrays/FillArrays.jl)
 
 Julia package to lazily represent matrices filled with a single entry,
