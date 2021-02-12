@@ -575,7 +575,7 @@ count(f, x::AbstractFill) = f(getindex_value(x)) ? length(x) : 0
 #########
 # in
 #########
-in(x, A::Union{Ones, Zeros, Fill}) = x == getindex_value(A)
+in(x, A::AbstractFill) = x == getindex_value(A)
 in(x, A::RectDiagonal) = iszero(x) || x in A.diag
 
 include("fillalgebra.jl")
