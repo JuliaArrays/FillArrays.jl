@@ -163,6 +163,17 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
         @test vec(Zeros{Int}(5,10,20)) ≡ Zeros{Int}(1000)
         @test vec(Fill(1,5,10)) ≡ Fill(1,50)
     end
+
+    @testset "in" begin
+        for T in [Zeros, Ones, Fill, Trues, Falses]
+            A = T(4, 4)
+            @test FillArrays.getindex_value(A) in A
+            @test !(FillArrays.getindex_value(A) + 1 in A)
+        end
+        A = FillArrays.RectDiagonal([1, 2, 3])
+        @test 3 in A
+        @test !(4 in A)
+    end
 end
 
 @testset "indexing" begin

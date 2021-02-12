@@ -6,7 +6,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero,
-    show, view
+    show, view, in
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular, AdjointAbsVec
@@ -571,6 +571,12 @@ all(x::AbstractFill) = all(getindex_value(x))
 count(x::Ones{Bool}) = length(x)
 count(x::Zeros{Bool}) = 0
 count(f, x::AbstractFill) = f(getindex_value(x)) ? length(x) : 0
+
+#########
+# in
+#########
+in(x, A::AbstractFill) = x == getindex_value(A)
+in(x, A::RectDiagonal) = iszero(x) || x in A.diag
 
 include("fillalgebra.jl")
 include("fillbroadcast.jl")
