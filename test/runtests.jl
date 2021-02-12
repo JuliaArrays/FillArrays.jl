@@ -172,7 +172,20 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
         end
         A = FillArrays.RectDiagonal([1, 2, 3])
         @test 3 in A
+        @test 0 in A
         @test !(4 in A)
+        A = FillArrays.RectDiagonal([1])
+        @test 1 in A
+        @test !(0 in A)
+        A = FillArrays.RectDiagonal([2], (1:1, 1:4))
+        @test 2 in A
+        @test 0 in A
+        @test !(1 in A)
+        @test !(Zeros(1,1) in A)
+        A = FillArrays.RectDiagonal(Int[])
+        @test !(0 in A)
+        A = FillArrays.RectDiagonal(Int[], (1:0, 1:4))
+        @test !(0 in A)
     end
 end
 
