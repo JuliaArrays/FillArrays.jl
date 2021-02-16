@@ -576,7 +576,11 @@ count(f, x::AbstractFill) = f(getindex_value(x)) ? length(x) : 0
 # in
 #########
 in(x, A::AbstractFill) = x == getindex_value(A)
-in(x, A::RectDiagonal) = iszero(x) || x in A.diag
+function in(x, A::RectDiagonal{<:Number})
+    any(iszero, size(A)) && return false # Empty matrix
+    all(isone, size(A)) && return x == A.diag[1] # A 1x1 matrix has only one element
+    x == zero(eltype(A)) || x in A.diag
+end
 
 include("fillalgebra.jl")
 include("fillbroadcast.jl")
