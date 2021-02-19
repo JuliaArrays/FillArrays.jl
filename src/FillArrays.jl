@@ -380,9 +380,13 @@ const Eye{T,Axes} = RectOrDiagonal{T,Ones{T,1,Tuple{Axes}}}
 
 isone(::SquareEye) = true
 
-for f in (:permutedims, :inv, :triu, :triu!, :tril, :tril!)
-    @eval ($f)(IM::SquareEye) = IM
+# These should actually be in StdLib, LinearAlgebra.jl, for all Diagonal
+for f in (:permutedims, :triu, :triu!, :tril, :tril!)
+    @eval ($f)(IM::Diagonal{<:Any,<:AbstractFill}) = IM
 end
+
+inv(IM::SquareEye) = IM
+inv(IM::Diagonal{<:Any,<:AbstractFill}) = Diagonal(map(inv, IM.diag))
 
 Eye(n::Integer, m::Integer) = RectDiagonal(Ones(min(n,m)), n, m)
 Eye{T}(n::Integer, m::Integer) where T = RectDiagonal{T}(Ones{T}(min(n,m)), n, m)

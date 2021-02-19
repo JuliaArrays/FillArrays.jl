@@ -926,11 +926,14 @@ end
 
 @testset "Eye identity ops" begin
     m = Eye(10)
+    D = Diagonal(Fill(2,10))
     for op in (permutedims, inv)
         @test op(m) === m
     end
+    @test permutedims(D) ≡ D
+    @test inv(D) ≡ Diagonal(Fill(1/2,10))
 
-    for m in (Eye(10), Eye(10, 10), Eye(10, 8), Eye(8, 10))
+    for m in (Eye(10), Eye(10, 10), Eye(10, 8), Eye(8, 10), D)
         for op in (tril, triu, tril!, triu!)
             @test op(m) === m
         end
