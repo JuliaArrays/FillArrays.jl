@@ -244,7 +244,7 @@ end
         @test Z[:,1] ≡ Z[1:5,1] ≡ Zeros(5)
         @test Z[1,:] ≡ Z[1,1:6] ≡ Zeros(6)
         @test Z[:,:] ≡ Z[1:5,1:6] ≡ Z[1:5,:] ≡ Z[:,1:6] ≡ Z
-        
+
         A = Fill(2.0,5,6,7)
         Z = Zeros(5,6,7)
         @test A[:,1,1] ≡ A[1:5,1,1] ≡ Fill(2.0,5)
@@ -1096,6 +1096,31 @@ end
         @test adjoint(A)*fillvec ≈ adjoint(A)*Array(fillvec)
         @test adjoint(A)*fillmat ≈ adjoint(A)*Array(fillmat)
     end
+end
+
+@testset "dot products" begin
+    n = 15
+    o = Ones(1:n)
+    z = Zeros(1:n)
+    D = Diagonal(o)
+    Z = Diagonal(z)
+
+    Random.seed!(5)
+    u = rand(n)
+    v = rand(n)
+
+    @test dot(u, D, v) == dot(u, v)
+    @test dot(u, 2D, v) == 2dot(u, v)
+    @test dot(u, Z, v) == 0
+
+    @test_throws DimensionMismatch dot(u[1:end-1], D, v)
+    @test_throws DimensionMismatch dot(u[1:end-1], D, v[1:end-1])
+
+    @test_throws DimensionMismatch dot(u, 2D, v[1:end-1])
+    @test_throws DimensionMismatch dot(u, 2D, v[1:end-1])
+
+    @test_throws DimensionMismatch dot(u, Z, v[1:end-1])
+    @test_throws DimensionMismatch dot(u, Z, v[1:end-1])
 end
 
 if VERSION ≥ v"1.5"

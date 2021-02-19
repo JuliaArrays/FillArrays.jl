@@ -138,6 +138,23 @@ function *(a::Transpose{T, <:AbstractVector{T}}, b::Zeros{T, 1}) where T<:Real
 end
 *(a::Transpose{T, <:AbstractMatrix{T}}, b::Zeros{T, 1}) where T<:Real = mult_zeros(a, b)
 
+function dot(u::AbstractVector, E::Eye, v::AbstractVector)
+    length(u) == size(E,1) && length(v) == size(E,2) ||
+        throw(DimensionMismatch("dot product arguments have dimensions $(length(u))×$(size(E))×$(length(v))"))
+    dot(u, v)
+end
+
+function dot(u::AbstractVector, D::Diagonal{<:Any,<:Fill}, v::AbstractVector)
+    length(u) == size(D,1) && length(v) == size(D,2) ||
+        throw(DimensionMismatch("dot product arguments have dimensions $(length(u))×$(size(D))×$(length(v))"))
+    D.diag.value*dot(u, v)
+end
+
+function dot(u::AbstractVector{T}, D::Diagonal{U,<:Zeros}, v::AbstractVector{V}) where {T,U,V}
+    length(u) == size(D,1) && length(v) == size(D,2) ||
+        throw(DimensionMismatch("dot product arguments have dimensions $(length(u))×$(size(D))×$(length(v))"))
+    zero(promote_type(T,U,V))
+end
 
 +(a::Zeros) = a
 -(a::Zeros) = a
