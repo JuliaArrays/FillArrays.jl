@@ -1327,4 +1327,47 @@ end
         end
     end
     
+    @testset "Ones" begin
+        @testset "cat shape $s" for s in
+            (
+                0,
+                1,
+                (2, 0),
+                (0, 2),
+                (2,3,4)
+            )
+
+            @testset "Dim $dims" for dims in (1,2,3, Val(4)) 
+                res = cat(Ones(s), Ones(s); dims=dims)
+                @test res isa Ones
+                @test res == cat(ones(s), ones(s); dims=dims)
+
+                res = cat(Ones{Float64}(s), Ones{Int}(s); dims=dims)
+                @test res isa Ones
+                @test res == cat(ones(Float64, s), ones(Int, s); dims=dims)
+            end
+            @testset "Dim $dims" for dims in (
+                (1,2),
+                (2,3),
+                (1,3,4)
+            )
+                # This inserts a bunch of zeros so we can no longer assume the answer is a Fill
+                @test cat(Ones(s), Ones(s); dims=dims) == cat(ones(s), ones(s); dims=dims)
+            end
+        end
+        
+        @testset "vcat" begin
+            # vcat just delegates to cat, so we basically just test that here
+            res = vcat(Ones(3), Ones(4))
+            @test res isa Ones
+            @test res == vcat(ones(3), fill(1,4)) 
+        end
+
+        @testset "hcat" begin
+            # hcat just delegates to cat, so we basically just test that here
+            res = hcat(Ones(2), Ones(2))
+            @test res isa Ones
+            @test res == hcat(ones(2), fill(1,2)) 
+        end
+    end
 end
