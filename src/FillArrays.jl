@@ -589,6 +589,7 @@ end
 include("fillalgebra.jl")
 include("fillbroadcast.jl")
 include("trues.jl")
+include("fillcat.jl")
 
 ##
 # print

@@ -1232,3 +1232,59 @@ end
         @test convert(Fill, transpose(a)) ≡ Fill(2.0,1,5)
     end
 end
+
+@testset "Concatenation" begin
+
+    @testset "Fill" begin
+        @testset "cat shape $s" for s in
+            (
+                0,
+                1,
+                (2, 0),
+                (2, 3),
+                (0, 2),
+                (2,3,4)
+            )
+
+            @testset "Dim $dims" for dims in (1,2,3, Val(4)) 
+                res = cat(Fill(1, s), Fill(1, s); dims=dims)
+
+                @test res isa Fill
+                @test res == cat(fill(1, s), fill(1, s); dims=dims)
+
+                res = cat(Fill(1.0, s), Fill(1, s); dims=dims)
+
+                @test res isa Fill
+                @test res == cat(fill(1.0, s), fill(1, s); dims=dims)
+
+                @test cat(Fill(1, s), Fill(2, s);dims=dims) == cat(fill(1, s), fill(2, s);dims=dims)
+            end
+            @testset "Dim $dims" for dims in (
+                (1,2),
+                (2,3),
+                (1,3,4)
+            )
+                # This inserts a bunch of zeros so we can no longer assume the answer is a Fill
+                @test cat(Fill(1, s), Fill(1, s); dims=dims) == cat(fill(1, s), fill(1,s); dims=dims)
+                @test cat(Fill(0, s), Fill(0, s); dims=dims) isa Fill
+                @test cat(Fill(0.0, s), Fill(0.0, s); dims=dims) isa Fill
+
+                @test cat(Fill(1, s), Fill(2, s);dims=dims) == cat(fill(1, s), fill(2, s);dims=dims)
+            end
+        end
+        
+        @testset "vcat" begin
+            # Vcat just delegates to cat, so we basically just test that here
+            res = vcat(Fill(1, 3), Fill(1, 4))
+            @test res isa Fill
+            @test res == vcat(fill(1, 3), fill(1,4)) 
+        end
+
+        @testset "hcat" begin
+            # Vcat just delegates to cat, so we basically just test that here
+            res = hcat(Fill(1, 2), Fill(1, 2))
+            @test res isa Fill
+            @test res == hcat(fill(1, 2), fill(1,2)) 
+        end
+    end
+end
