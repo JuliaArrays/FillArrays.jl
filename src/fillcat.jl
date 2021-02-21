@@ -7,7 +7,11 @@ function Base.cat_t(::Type{T}, fs::Fill...; dims) where T
 
     # When dims is a tuple the output gets zero padded and we can't use a Fill unless it is all zeros
     # There might be some cases when it does not get padded which are not considered here
-    allvals[] !== zero(T) && sum(catdims) > 1 && return Base._cat_t(dims, T, fs...)
+    
+    if sum(catdims) > 1 
+        allvals[] isa Number || return Base._cat_t(dims, T, fs...)
+        allvals[] !== zero(T) && return Base._cat_t(dims, T, fs...)
+    end
 
     shape = cat_shape_fill(catdims, fs)
     return Fill(convert(T, fs[1].value), shape)

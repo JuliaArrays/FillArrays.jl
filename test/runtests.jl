@@ -1254,6 +1254,10 @@ end
                 @test res isa Fill
                 @test res == cat(fill(1.0, s), fill(1, s); dims=dims)
 
+                res = cat(Fill(:a, s), Fill(:a, s); dims=dims)
+                @test res isa Fill
+                @test res == cat(fill(:a, s), fill(:a, s);dims=dims)
+
                 @test cat(Fill(1, s), Fill(2, s);dims=dims) == cat(fill(1, s), fill(2, s);dims=dims)
             end
             @testset "Dim $dims" for dims in (
