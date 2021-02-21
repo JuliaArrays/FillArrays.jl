@@ -1241,19 +1241,16 @@ end
                 0,
                 1,
                 (2, 0),
-                (2, 3),
                 (0, 2),
                 (2,3,4)
             )
 
             @testset "Dim $dims" for dims in (1,2,3, Val(4)) 
                 res = cat(Fill(1, s), Fill(1, s); dims=dims)
-
                 @test res isa Fill
                 @test res == cat(fill(1, s), fill(1, s); dims=dims)
 
                 res = cat(Fill(1.0, s), Fill(1, s); dims=dims)
-
                 @test res isa Fill
                 @test res == cat(fill(1.0, s), fill(1, s); dims=dims)
 
@@ -1274,17 +1271,60 @@ end
         end
         
         @testset "vcat" begin
-            # Vcat just delegates to cat, so we basically just test that here
+            # vcat just delegates to cat, so we basically just test that here
             res = vcat(Fill(1, 3), Fill(1, 4))
             @test res isa Fill
             @test res == vcat(fill(1, 3), fill(1,4)) 
         end
 
         @testset "hcat" begin
-            # Vcat just delegates to cat, so we basically just test that here
+            # hcat just delegates to cat, so we basically just test that here
             res = hcat(Fill(1, 2), Fill(1, 2))
             @test res isa Fill
             @test res == hcat(fill(1, 2), fill(1,2)) 
         end
     end
+
+    @testset "Zeros" begin
+        @testset "cat shape $s" for s in 
+            (
+                0,
+                1,
+                (2, 0),
+                (0, 2),
+                (2,3,4)
+            )
+
+            @testset "Dim $dims" for dims in (
+                1,
+                2,
+                Val(3),
+                (1,2),
+                (2,3)
+            )
+                res = cat(Zeros(s), Zeros(s); dims=dims) 
+                @test res isa Zeros
+                @test res == cat(zeros(s), zeros(s); dims=dims)
+
+                res = cat(Zeros{Float64}(s), Zeros{Int}(s); dims=dims) 
+                @test res isa Zeros
+                @test res == cat(zeros(Float64, s), zeros(Int, s); dims=dims)
+            end
+        end
+
+        @testset "vcat" begin
+            # vcat just delegates to cat, so we basically just test that here
+            res = vcat(Zeros(3), Zeros(4))
+            @test res isa Zeros
+            @test res == vcat(zeros(3), zeros(4)) 
+        end
+
+        @testset "hcat" begin
+            # hcat just delegates to cat, so we basically just test that here
+            res = vcat(Zeros(2), Zeros(2))
+            @test res isa Zeros
+            @test res == vcat(zeros(2), zeros(2)) 
+        end
+    end
+    
 end
