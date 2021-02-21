@@ -1259,7 +1259,8 @@ end
             @testset "Dim $dims" for dims in (
                 (1,2),
                 (2,3),
-                (1,3,4)
+                (1,3,4),
+                Iterators.take(3:5, 2)
             )
                 # This inserts a bunch of zeros so we can no longer assume the answer is a Fill
                 @test cat(Fill(1, s), Fill(1, s); dims=dims) == cat(fill(1, s), fill(1,s); dims=dims)
@@ -1300,7 +1301,8 @@ end
                 2,
                 Val(3),
                 (1,2),
-                (2,3)
+                (2,3),
+                Iterators.take(3:5, 2)
             )
                 res = cat(Zeros(s), Zeros(s); dims=dims) 
                 @test res isa Zeros
@@ -1349,7 +1351,8 @@ end
             @testset "Dim $dims" for dims in (
                 (1,2),
                 (2,3),
-                (1,3,4)
+                (1,3,4),
+                Iterators.take(3:5, 2)
             )
                 # This inserts a bunch of zeros so we can no longer assume the answer is a Fill
                 @test cat(Ones(s), Ones(s); dims=dims) == cat(ones(s), ones(s); dims=dims)
