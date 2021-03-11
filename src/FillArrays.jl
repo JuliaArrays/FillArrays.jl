@@ -32,15 +32,13 @@ abstract type AbstractFill{T, N, Axes} <: AbstractArray{T, N} end
 
 ==(a::AbstractFill, b::AbstractFill) = axes(a) == axes(b) && getindex_value(a) == getindex_value(b)
 
-@inline function getindex(F::AbstractFill, k::Integer)
-    @boundscheck checkbounds(F, k)
-    getindex_value(F)
-end
-
-@inline function getindex(F::AbstractFill{T, N}, kj::Vararg{<:Integer, N}) where {T, N}
+Base.@propagate_inbounds @inline function _fill_getindex(F::AbstractFill, kj::Integer...)
     @boundscheck checkbounds(F, kj...)
     getindex_value(F)
 end
+
+getindex(F::AbstractFill, k::Integer) = _fill_getindex(F, k)
+getindex(F::AbstractFill{T, N}, kj::Vararg{<:Integer, N}) where {T, N} = _fill_getindex(F, kj...)
 
 @inline function setindex!(F::AbstractFill, v, k::Integer)
     @boundscheck checkbounds(F, k)
@@ -166,19 +164,24 @@ convert(::Type{T}, F::T) where T<:Fill = F
 
 getindex(F::Fill{<:Any,0}) = getindex_value(F)
 
-function Base._unsafe_getindex(::IndexStyle, F::AbstractFill, I::Vararg{Union{Real, AbstractArray}, N}) where N
+Base.@propagate_inbounds @inline function _fill_getindex(A::AbstractFill, I::Vararg{Union{Real, AbstractArray}, N}) where N
+    @boundscheck checkbounds(A, I...)
     shape = Base.index_shape(I...)
-    fillsimilar(F, shape)
+    fillsimilar(A, shape)
 end
 
-function getindex(A::AbstractFill, kr::AbstractVector{Bool})
-   length(A) == length(kr) || throw(DimensionMismatch())
+Base.@propagate_inbounds @inline function _fill_getindex(A::AbstractFill, kr::AbstractArray{Bool})
+   @boundscheck checkbounds(A, kr)
    fillsimilar(A, count(kr))
 end
-function getindex(A::AbstractFill, kr::AbstractArray{Bool})
-   size(A) == size(kr) || throw(DimensionMismatch())
-   fillsimilar(A, count(kr))
-end
+
+Base.@propagate_inbounds @inline Base._unsafe_getindex(::IndexStyle, F::AbstractFill, I::Vararg{Union{Real, AbstractArray}, N}) where N =
+    @inbounds(return _fill_getindex(F, I...))
+
+
+
+getindex(A::AbstractFill, kr::AbstractVector{Bool}) = _fill_getindex(A, kr)
+getindex(A::AbstractFill, kr::AbstractArray{Bool}) = _fill_getindex(A, kr)
 
 sort(a::AbstractFill; kwds...) = a
 sort!(a::AbstractFill; kwds...) = a
@@ -644,10 +647,10 @@ getindex_value(a::SubArray) = getindex_value(parent(a))
 # view
 ##
 
-Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, kr::AbstractArray{Bool,N}) where N = getindex(A, kr)
-Base.@propagate_inbounds view(A::AbstractFill{<:Any,1}, kr::AbstractVector{Bool}) = getindex(A, kr)
+Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, kr::AbstractArray{Bool,N}) where N = _fill_getindex(A, kr)
+Base.@propagate_inbounds view(A::AbstractFill{<:Any,1}, kr::AbstractVector{Bool}) = _fill_getindex(A, kr)
 Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, I::Vararg{Union{Real, AbstractArray}, N}) where N =
-    getindex(A, I...)
+    _fill_getindex(A, I...)
 Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, I::Vararg{Real, N}) where N =
     Base.invoke(view, Tuple{AbstractArray,Vararg{Any,N}}, A, I...)
 
