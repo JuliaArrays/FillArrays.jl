@@ -198,7 +198,7 @@ end
     @test A[[true, false, true, false, false]] ≡ Fill(3.0, 2)
     A = Fill(3.0, 2, 2)
     @test A[[true true; true false]] ≡ Fill(3.0, 3)
-    @test_throws DimensionMismatch A[[true, false]]
+    @test_throws BoundsError A[[true, false]]
 
     A = Ones{Int}(5,5)
     @test A[1:3] ≡ Ones{Int}(3)
@@ -208,7 +208,7 @@ end
     A = Ones{Int}(2,2)
     @test A[[true false; true false]] ≡ Ones{Int}(2)
     @test A[[true, false, true, false]] ≡ Ones{Int}(2)
-    @test_throws DimensionMismatch A[[true false false; true false false]]
+    @test_throws BoundsError A[[true false false; true false false]]
 
     A = Zeros{Int}(5,5)
     @test A[1:3] ≡ Zeros{Int}(3)
@@ -218,7 +218,7 @@ end
     A = Zeros{Int}(2,2)
     @test A[[true false; true false]] ≡ Zeros{Int}(2)
     @test A[[true, false, true, false]] ≡ Zeros{Int}(2)
-    @test_throws DimensionMismatch A[[true false false; true false false]]
+    @test_throws BoundsError A[[true false false; true false false]]
 
     @testset "colon" begin
         @test Ones(2)[:] ≡ Ones(2)[Base.Slice(Base.OneTo(2))] ≡ Ones(2)
@@ -1214,7 +1214,7 @@ end
         @test v isa Fill
         @test FillArrays.getindex_value(v) == FillArrays.unique_value(v) == 2.0
         @test convert(Fill, v) ≡ Fill(2.0,2)
-        @test view(a,1) isa SubArray
+        @test view(a,1) ≡ Fill(2.0)
     end
 
     @testset "view with bool" begin
