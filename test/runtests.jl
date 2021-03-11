@@ -1214,7 +1214,7 @@ end
         @test v isa Fill
         @test FillArrays.getindex_value(v) == FillArrays.unique_value(v) == 2.0
         @test convert(Fill, v) ≡ Fill(2.0,2)
-        @test view(a,1) isa SubArray
+        @test view(a,1) ≡ Fill(2.0)
     end
 
     @testset "view with bool" begin

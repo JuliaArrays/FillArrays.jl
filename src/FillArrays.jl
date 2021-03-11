@@ -650,8 +650,12 @@ getindex_value(a::SubArray) = getindex_value(parent(a))
 Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, kr::AbstractArray{Bool,N}) where N = _fill_getindex(A, kr)
 Base.@propagate_inbounds view(A::AbstractFill{<:Any,1}, kr::AbstractVector{Bool}) = _fill_getindex(A, kr)
 Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, I::Vararg{Union{Real, AbstractArray}, N}) where N =
-    _fill_getindex(A, I...)
-Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, I::Vararg{Real, N}) where N =
-    Base.invoke(view, Tuple{AbstractArray,Vararg{Any,N}}, A, I...)
+    _fill_getindex(A, Base.to_indices(A,I)...)
+
+# not getindex since we need array-like indexing
+function Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, I::Vararg{Real, N}) where N
+    @boundscheck checkbounds(A, I...)
+    fillsimilar(A)
+end
 
 end # module
