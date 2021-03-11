@@ -653,7 +653,7 @@ Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, I::Vararg{Union{Real, Ab
     _fill_getindex(A, Base.to_indices(A,I)...)
 
 # not getindex since we need array-like indexing
-function Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, I::Vararg{Real, N}) where N
+Base.@propagate_inbounds function view(A::AbstractFill{<:Any,N}, I::Vararg{Real, N}) where N
     @boundscheck checkbounds(A, I...)
     fillsimilar(A)
 end
