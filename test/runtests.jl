@@ -927,6 +927,7 @@ end
 @testset "Eye identity ops" begin
     m = Eye(10)
     D = Diagonal(Fill(2,10))
+    
     for op in (permutedims, inv)
         @test op(m) === m
     end
@@ -938,6 +939,11 @@ end
             @test op(m) === m
         end
     end
+
+    @test copy(m) ≡ m
+    @test copy(D) ≡ D
+    @test LinearAlgebra.copy_oftype(m, Int) ≡ Eye{Int}(10)
+    @test LinearAlgebra.copy_oftype(D, Float64) ≡ Diagonal(Fill(2.0,10))
 end
 
 @testset "Issue #31" begin
