@@ -660,7 +660,8 @@ end
 # interface
 ##
 
-getindex_value(a::LinearAlgebra.AdjOrTrans) = getindex_value(parent(a)) # FillArrays.getindex_value(Adjoint(Fill(1+im,2,2)))
+getindex_value(a::LinearAlgebra.Adjoint) = adjoint(getindex_value(parent(a)))
+getindex_value(a::LinearAlgebra.Transpose) = transpose(getindex_value(parent(a)))
 getindex_value(a::SubArray) = getindex_value(parent(a))
 
 

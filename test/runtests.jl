@@ -1241,10 +1241,10 @@ end
     end
 
     @testset "adjtrans" begin
-        a = Fill(2.0,5)
-        @test FillArrays.getindex_value(a') == FillArrays.unique_value(a') == 2.0
-        @test convert(Fill, a') ≡ Fill(2.0,1,5)
-        @test FillArrays.getindex_value(transpose(a)) == FillArrays.unique_value(transpose(a)) == 2.0
-        @test convert(Fill, transpose(a)) ≡ Fill(2.0,1,5)
+        a = Fill(2.0+im, 5)
+        @test FillArrays.getindex_value(a') == FillArrays.unique_value(a') == 2.0 - im
+        @test convert(Fill, a') ≡ Fill(2.0-im,1,5)
+        @test FillArrays.getindex_value(transpose(a)) == FillArrays.unique_value(transpose(a)) == 2.0 + im
+        @test convert(Fill, transpose(a)) ≡ Fill(2.0+im,1,5)
     end
 end
