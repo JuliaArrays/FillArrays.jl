@@ -618,9 +618,26 @@ Base.print_matrix_row(io::IO,
 
 # Display concise description of a Fill.
 
+function Base.show(io::IO, ::MIME"text/plain", x::AbstractFill)
+    if get(IOContext(io), :compact, false)  # for example [Fill(i==j,2,2) for i in 1:3, j in 1:4]
+        return show(io, x)
+    end
+    summary(io, x)
+    if x isa Union{Zeros,Ones}
+    elseif length(x) > 1
+        print(io, ", with entries equal to ", getindex_value(x))
+    else
+        print(io, ", with entry equal to ", getindex_value(x))
+    end
+end
 
-Base.show(io::IO, x::AbstractFill) = print(io, "$(summary(x)): entries equal to $(getindex_value(x))")
-Base.show(io::IO, x::Union{Zeros,Ones,Eye}) = print(io, "$(summary(x))")
+function Base.show(io::IO, x::AbstractFill)  # for example (Fill(π,3),)
+    print(io, nameof(typeof(x)), "(")
+    x isa Union{Zeros,Ones} || print(io, getindex_value(x), ", ")
+    join(io, size(x), ", ")
+    print(io, ")")
+end
+Base.show(io::IO, x::Eye) = print(io, "Eye(", size(x,1), ")")
 
 if VERSION ≥ v"1.5"
     Base.array_summary(io::IO, ::Zeros{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
@@ -633,13 +650,12 @@ if VERSION ≥ v"1.5"
         print(io, Base.dims2string(length.(inds)), " Eye{$T}")
 end
 
-Base.show(io::IO, ::MIME"text/plain", x::Union{Eye,AbstractFill}) = show(io, x)
 
 ##
 # interface
 ##
 
-getindex_value(a::LinearAlgebra.AdjOrTrans) = getindex_value(parent(a))
+getindex_value(a::LinearAlgebra.AdjOrTrans) = getindex_value(parent(a)) # FillArrays.getindex_value(Adjoint(Fill(1+im,2,2)))
 getindex_value(a::SubArray) = getindex_value(parent(a))
 
 
