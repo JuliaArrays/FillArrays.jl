@@ -1146,6 +1146,7 @@ end
     @test repr(Zeros(3)) == "Zeros(3)"
     @test repr(Ones(3,2)) == "Ones(3, 2)"
     @test repr(Fill(7,3,2)) == "Fill(7, 3, 2)"
+    @test repr(Fill(1f0,10)) == "Fill(1.0f0, 10)"  # Float32!
     @test repr(Eye(9)) == "Eye(9)"
 end
 

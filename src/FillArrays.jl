@@ -634,7 +634,11 @@ end
 
 function Base.show(io::IO, x::AbstractFill)  # for example (Fill(π,3),)
     print(io, nameof(typeof(x)), "(")
-    x isa Union{Zeros, Ones} || print(io, getindex_value(x), ", ")
+    if x isa Union{Zeros, Ones}
+    else
+        show(io, getindex_value(x))  # show not print to handle (Fill(1f0,2),)
+        print(io, ", ")
+    end
     join(io, size(x), ", ")
     print(io, ")")
 end
