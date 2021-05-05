@@ -618,12 +618,13 @@ Base.print_matrix_row(io::IO,
 
 # Display concise description of a Fill.
 
-function Base.show(io::IO, ::MIME"text/plain", x::AbstractFill)
+function Base.show(io::IO, ::MIME"text/plain", x::Union{Eye, AbstractFill})
     if get(IOContext(io), :compact, false)  # for example [Fill(i==j,2,2) for i in 1:3, j in 1:4]
         return show(io, x)
     end
     summary(io, x)
-    if x isa Union{Zeros,Ones}
+    if x isa Union{Zeros, Ones, Eye}
+        # then no need to print entries
     elseif length(x) > 1
         print(io, ", with entries equal to ", getindex_value(x))
     else
@@ -633,7 +634,7 @@ end
 
 function Base.show(io::IO, x::AbstractFill)  # for example (Fill(π,3),)
     print(io, nameof(typeof(x)), "(")
-    x isa Union{Zeros,Ones} || print(io, getindex_value(x), ", ")
+    x isa Union{Zeros, Ones} || print(io, getindex_value(x), ", ")
     join(io, size(x), ", ")
     print(io, ")")
 end

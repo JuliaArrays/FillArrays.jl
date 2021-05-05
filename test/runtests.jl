@@ -1132,16 +1132,21 @@ end
     @test_throws DimensionMismatch dot(u, Z, v[1:end-1])
 end
 
-if VERSION ≥ v"1.5"
-    @testset "print" begin
+@testset "print" begin
+    if VERSION ≥ v"1.5"
         @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64}"
         @test stringmime("text/plain", Ones(3)) == "3-element Ones{Float64}"
-        @test stringmime("text/plain", Fill(7,2)) == "2-element Fill{$Int}: entries equal to 7"
+        @test stringmime("text/plain", Fill(7,2)) == "2-element Fill{$Int}, with entries equal to 7"
         @test stringmime("text/plain", Zeros(3,2)) == "3×2 Zeros{Float64}"
         @test stringmime("text/plain", Ones(3,2)) == "3×2 Ones{Float64}"
-        @test stringmime("text/plain", Fill(7,2,3)) == "2×3 Fill{$Int}: entries equal to 7"
+        @test stringmime("text/plain", Fill(7,2,3)) == "2×3 Fill{$Int}, with entries equal to 7"
+        @test stringmime("text/plain", Fill(8.0,1)) == "1-element Fill{Float64}, with entry equal to 8.0"
         @test stringmime("text/plain", Eye(5)) == "5×5 Eye{Float64}"
     end
+    @test repr(Zeros(3)) == "Zeros(3)"
+    @test repr(Ones(3,2)) == "Ones(3, 2)"
+    @test repr(Fill(7,3,2)) == "Fill(7, 3, 2)"
+    @test repr(Eye(9)) == "Eye(9)"
 end
 
 @testset "reshape" begin
