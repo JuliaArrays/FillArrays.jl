@@ -1134,6 +1134,7 @@ end
 
 @testset "print" begin
     if VERSION ≥ v"1.5"
+        # 3-arg show, full printing
         @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64}"
         @test stringmime("text/plain", Ones(3)) == "3-element Ones{Float64}"
         @test stringmime("text/plain", Fill(7,2)) == "2-element Fill{$Int}, with entries equal to 7"
@@ -1143,11 +1144,14 @@ end
         @test stringmime("text/plain", Fill(8.0,1)) == "1-element Fill{Float64}, with entry equal to 8.0"
         @test stringmime("text/plain", Eye(5)) == "5×5 Eye{Float64}"
     end
+    # 2-arg show, compact printing
     @test repr(Zeros(3)) == "Zeros(3)"
     @test repr(Ones(3,2)) == "Ones(3, 2)"
     @test repr(Fill(7,3,2)) == "Fill(7, 3, 2)"
     @test repr(Fill(1f0,10)) == "Fill(1.0f0, 10)"  # Float32!
     @test repr(Eye(9)) == "Eye(9)"
+    # also used for arrays of arrays:
+    @test contains(stringmime("text/plain", [Eye(2) for i in 1:2, j in 1:2]), "Eye(2) ")
 end
 
 @testset "reshape" begin
