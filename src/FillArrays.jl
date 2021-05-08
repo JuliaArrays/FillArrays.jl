@@ -637,7 +637,7 @@ function Base.show(io::IO, x::AbstractFill)  # for example (Fill(π,3),)
     if x isa Union{Zeros, Ones}
     else
         show(io, getindex_value(x))  # show not print to handle (Fill(1f0,2),)
-        print(io, ", ")
+        ndims(x) > 0 && print(io, ", ")
     end
     join(io, size(x), ", ")
     print(io, ")")
