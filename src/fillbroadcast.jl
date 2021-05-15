@@ -2,6 +2,33 @@
 
 map(f::Function, r::AbstractFill) = Fill(f(getindex_value(r)), axes(r))
 
+function map(f::Function, vs::AbstractFill{<:Any,1}...)
+    stop = mapreduce(length, min, vs)
+    val = f(map(getindex_value, vs)...)
+    Fill(val, stop)
+end
+
+function map(f::Function, rs::AbstractFill...)
+    if _maplinear(rs...)
+        map(f, map(vec, rs)...)
+    else
+        val = f(map(getindex_value, rs)...)
+        Fill(val, axes(first(rs)))
+    end
+end
+
+function _maplinear(rs...) # tries to match Base's behaviour, could perhaps hook in more deeply
+    if any(ndims(r)==1 for r in rs)
+        return true
+    else
+        r1 = axes(first(rs))
+        for r in rs
+            axes(r) == r1 || throw(DimensionMismatch(
+            "dimensions must match: a has dims $r1, b has dims $(axes(r))"))
+        end
+        return false
+    end
+end
 
 ### Unary broadcasting
 

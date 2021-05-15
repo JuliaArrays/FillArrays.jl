@@ -758,15 +758,20 @@ end
 end
 
 @testset "map" begin
-    x = Ones(5)
-    @test map(exp,x) === Fill(exp(1.0),5)
-    @test map(isone,x) === Fill(true,5)
+    x1 = Ones(5)
+    @test map(exp,x1) === Fill(exp(1.0),5)
+    @test map(isone,x1) === Fill(true,5)
 
-    x = Zeros(5)
-    @test map(exp,x) === exp.(x)
+    x0 = Zeros(5)
+    @test map(exp,x0) === exp.(x0)
 
-    x = Fill(2,5,3)
-    @test map(exp,x) === Fill(exp(2),5,3)
+    x2 = Fill(2,5,3)
+    @test map(exp,x2) === Fill(exp(2),5,3)
+
+    @test map(+, x1, x2) === Fill(3.0, 5)
+    @test map(+, x2, x2) === x2 .+ x2
+    @test_throws DimensionMismatch map(+, x2', x2)
+end
 end
 
 @testset "Offset indexing" begin
