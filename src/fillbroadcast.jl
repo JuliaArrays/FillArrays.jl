@@ -32,11 +32,24 @@ end
 
 ### mapreduce
 
-# Apply f, then take the same path as Base -- calling reduce would cause an infinite loop,
-# as there is no special reduce(op, ::Fill) method.
+function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, ::Colon)
+    fval = f(getindex_value(A))
+    out = fval
+    for _ in 2:length(A)
+        out = op(out, fval)
+    end
+    out
+end
 
-mapreduce(f, op, A::AbstractFill; dims=:, init=Base._InitialValue()) =
-    Base._mapreduce_dim(identity, op, init, map(f, A), dims)
+function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
+    fval = f(getindex_value(A))
+    red = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
+    out = fval
+    for _ in 2:red
+        out = op(out, fval)
+    end
+    Fill(out, ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
+end
 
 function mapreduce(f, op, A::AbstractFill, B::AbstractFill; kw...)
     val(_...) = f(getindex_value(A), getindex_value(B))
