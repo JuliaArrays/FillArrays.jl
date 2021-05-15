@@ -32,7 +32,7 @@ end
 
 ### mapreduce
 
-mapreduce(f, op, A::AbstractFill; kw...) = reduce(op, map(f, A); kw...)
+# mapreduce(f, op, A::AbstractFill; kw...) = reduce(op, map(f, A); kw...)
 
 function mapreduce(f, op, A::AbstractFill, B::AbstractFill; kw...)
     val(_...) = f(getindex_value(A), getindex_value(B))

@@ -779,7 +779,7 @@ end
     Y = Fill(1.0, 3, 4)
     O = Ones(3, 4)
 
-    @test_broken mapreduce(exp, +, Y) == mapreduce(exp, +, y)
+    @test mapreduce(exp, +, Y) == mapreduce(exp, +, y)  # no special method right now
 
     # Two arrays
     @test mapreduce(*, +, x, Y) == mapreduce(*, +, x, y)
