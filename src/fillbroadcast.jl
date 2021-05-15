@@ -30,6 +30,31 @@ function _maplinear(rs...) # tries to match Base's behaviour, could perhaps hook
     end
 end
 
+### mapreduce
+
+mapreduce(f, op, A::AbstractFill; kw...) = reduce(op, map(f, A); kw...)
+
+function mapreduce(f, op, A::AbstractFill, B::AbstractFill; kw...)
+    val(_...) = f(getindex_value(A), getindex_value(B))
+    reduce(op, map(val, A, B); kw...)
+end
+
+# These are particularly useful because mapreduce(*, +, A, B; dims) is slow in Base,
+# but can be re-written as some mapreduce(g, +, C; dims) which is fast.
+
+function mapreduce(f, op, A::AbstractFill, B::AbstractArray, Cs::AbstractArray...; kw...)
+    g(b, cs...) = f(getindex_value(A), b, cs...)
+    mapreduce(g, op, B, Cs...; kw...)
+end
+function mapreduce(f, op, A::AbstractArray, B::AbstractFill, Cs::AbstractArray...; kw...)
+    h(a, cs...) = f(a, getindex_value(B), cs...)
+    mapreduce(h, op, A, Cs...; kw...)
+end
+function mapreduce(f, op, A::AbstractFill, B::AbstractFill, Cs::AbstractArray...; kw...)
+    gh(cs...) = f(getindex_value(A), getindex_value(B), cs...)
+    mapreduce(gh, op, A, Cs...; kw...)
+end
+
 ### Unary broadcasting
 
 function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,N}

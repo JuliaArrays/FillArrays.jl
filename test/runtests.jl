@@ -772,6 +772,32 @@ end
     @test map(+, x2, x2) === x2 .+ x2
     @test_throws DimensionMismatch map(+, x2', x2)
 end
+
+@testset "mapreduce" begin
+    x = rand(3, 4)
+    y = fill(1.0, 3, 4)
+    Y = Fill(1.0, 3, 4)
+    O = Ones(3, 4)
+
+    @test_broken mapreduce(exp, +, Y) == mapreduce(exp, +, y)
+
+    # Two arrays
+    @test mapreduce(*, +, x, Y) == mapreduce(*, +, x, y)
+    @test mapreduce(*, +, Y, x) == mapreduce(*, +, y, x)
+    @test mapreduce(*, +, x, O) == mapreduce(*, +, x, y)
+    @test mapreduce(*, +, Y, O) == mapreduce(*, +, y, y)
+
+    @test mapreduce(*, +, x, Y, dims=1, init=5.0) == mapreduce(*, +, x, y, dims=1, init=5.0)
+    @test mapreduce(*, +, Y, x, dims=1, init=5.0) == mapreduce(*, +, y, x, dims=1, init=5.0)
+    @test mapreduce(*, +, x, O, dims=1, init=5.0) == mapreduce(*, +, x, y, dims=1, init=5.0)
+    @test mapreduce(*, +, Y, O, dims=1, init=5.0) == mapreduce(*, +, y, y, dims=1, init=5.0)
+
+    # More than two
+    @test mapreduce(*, +, x, Y, x) == mapreduce(*, +, x, y, x)
+    @test mapreduce(*, +, Y, x, x) == mapreduce(*, +, y, x, x)
+    @test mapreduce(*, +, x, O, Y) == mapreduce(*, +, x, y, y)
+    @test mapreduce(*, +, Y, O, Y) == mapreduce(*, +, y, y, y)
+    @test mapreduce(*, +, Y, O, Y, x) == mapreduce(*, +, y, y, y, x)
 end
 
 @testset "Offset indexing" begin
