@@ -782,9 +782,12 @@ end
 
     @test mapreduce(exp, +, Y) == mapreduce(exp, +, y)
     @test mapreduce(exp, +, Y; dims=2) == mapreduce(exp, +, y; dims=2)
-    @test mapreduce(exp, +, Y; dims=(1,), init=5.0) == mapreduce(exp, +, y; dims=(1,), init=5.0)
     @test mapreduce(identity, +, Y) == sum(y) == sum(Y)
     @test mapreduce(identity, +, Y, dims=1) == sum(y, dims=1) == sum(Y, dims=1)
+
+    if VERSION >= v"1.5"
+        @test mapreduce(exp, +, Y; dims=(1,), init=5.0) == mapreduce(exp, +, y; dims=(1,), init=5.0)
+    end
 
     # Two arrays
     @test mapreduce(*, +, x, Y) == mapreduce(*, +, x, y)
@@ -796,10 +799,12 @@ end
     op2(x,y) = x^2 + 3y
     @test mapreduce(f2, op2, x, Y) == mapreduce(f2, op2, x, y)
 
-    @test mapreduce(f2, op2, x, Y, dims=1, init=5.0) == mapreduce(f2, op2, x, y, dims=1, init=5.0)
-    @test mapreduce(f2, op2, Y, x, dims=1, init=5.0) == mapreduce(f2, op2, y, x, dims=1, init=5.0)
-    @test mapreduce(f2, op2, x, O, dims=1, init=5.0) == mapreduce(f2, op2, x, y, dims=1, init=5.0)
-    @test mapreduce(f2, op2, Y, O, dims=1, init=5.0) == mapreduce(f2, op2, y, y, dims=1, init=5.0)
+    if VERSION >= v"1.5"
+        @test mapreduce(f2, op2, x, Y, dims=1, init=5.0) == mapreduce(f2, op2, x, y, dims=1, init=5.0)
+        @test mapreduce(f2, op2, Y, x, dims=1, init=5.0) == mapreduce(f2, op2, y, x, dims=1, init=5.0)
+        @test mapreduce(f2, op2, x, O, dims=1, init=5.0) == mapreduce(f2, op2, x, y, dims=1, init=5.0)
+        @test mapreduce(f2, op2, Y, O, dims=1, init=5.0) == mapreduce(f2, op2, y, y, dims=1, init=5.0)
+    end
 
     # More than two
     @test mapreduce(+, +, x, Y, x) == mapreduce(+, +, x, y, x)

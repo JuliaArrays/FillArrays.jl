@@ -32,23 +32,29 @@ end
 
 ### mapreduce
 
-function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, ::Colon)
-    fval = f(getindex_value(A))
-    out = fval
-    for _ in 2:length(A)
-        out = op(out, fval)
-    end
-    out
-end
+if VERSION >= v"1.5"
+    # _InitialValue was introduced after 1.0, before 1.5, not sure exact version.
+    # Without these methods, some reductions will give an Array not a Fill.
 
-function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
-    fval = f(getindex_value(A))
-    red = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
-    out = fval
-    for _ in 2:red
-        out = op(out, fval)
+    function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, ::Colon)
+        fval = f(getindex_value(A))
+        out = fval
+        for _ in 2:length(A)
+            out = op(out, fval)
+        end
+        out
     end
-    Fill(out, ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
+
+    function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
+        fval = f(getindex_value(A))
+        red = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
+        out = fval
+        for _ in 2:red
+            out = op(out, fval)
+        end
+        Fill(out, ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
+    end
+
 end
 
 function mapreduce(f, op, A::AbstractFill, B::AbstractFill; kw...)
