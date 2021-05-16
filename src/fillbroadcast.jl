@@ -69,7 +69,7 @@ function mapreduce(f, op, A::AbstractArray, B::AbstractFill, Cs::AbstractArray..
 end
 function mapreduce(f, op, A::AbstractFill, B::AbstractFill, Cs::AbstractArray...; kw...)
     gh(cs...) = f(getindex_value(A), getindex_value(B), cs...)
-    mapreduce(gh, op, A, Cs...; kw...)
+    mapreduce(gh, op, Cs...; kw...)
 end
 
 ### Unary broadcasting
