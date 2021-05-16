@@ -1111,7 +1111,7 @@ end
     n = 15
     o = Ones(1:n)
     z = Zeros(1:n)
-    D = Diagonal(o)
+    D = Diagonal(o) # Eye
     Z = Diagonal(z)
 
     Random.seed!(5)
@@ -1127,6 +1127,15 @@ end
 
     @test dot(u, o) ≈ dot(u, Array(o))
     @test dot(X, o) ≈ dot(Array(X), Array(o))
+
+    M = Fill(rand(ComplexF64), n, n)
+    D2 = Diagonal(u)
+
+    @test dot(M, D) ≈ dot(Array(M), Array(D))
+    @test dot(D, M) ≈ dot(Array(D), Array(M))
+
+    @test dot(M, D2) ≈ dot(Array(M), Array(D2))
+    @test dot(D2, M) ≈ dot(Array(D2), Array(M))
 
     @test_throws DimensionMismatch dot(u, X[1:end-1])
 

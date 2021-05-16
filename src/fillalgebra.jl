@@ -151,6 +151,15 @@ function dot(a::AbstractFill, b::AbstractFill)
     dot(getindex_value(a), getindex_value(b)) * length(a)
 end
 
+function dot(a::Diagonal, b::AbstractFill{<:Any,2})
+    size(a) == size(b) || throw(DimensionMismatch("Matrix sizes $(size(a)) and $(size(a)) differ"))
+    adjoint(sum(a.diag)) * getindex_value(b)
+end
+function dot(a::AbstractFill{<:Any,2}, b::Diagonal)
+    size(a) == size(b) || throw(DimensionMismatch("Matrix sizes $(size(a)) and $(size(a)) differ"))
+    adjoint(getindex_value(a)) * sum(b.diag)
+end
+
 function dot(u::AbstractVector, E::Eye, v::AbstractVector)
     length(u) == size(E,1) && length(v) == size(E,2) ||
         throw(DimensionMismatch("dot product arguments have dimensions $(length(u))×$(size(E))×$(length(v))"))
