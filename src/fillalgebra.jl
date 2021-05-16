@@ -138,6 +138,19 @@ function *(a::Transpose{T, <:AbstractVector{T}}, b::Zeros{T, 1}) where T<:Real
 end
 *(a::Transpose{T, <:AbstractMatrix{T}}, b::Zeros{T, 1}) where T<:Real = mult_zeros(a, b)
 
+function dot(a::AbstractArray, b::AbstractFill)
+    length(a) == length(b) || throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
+    adjoint(sum(a)) * getindex_value(b)
+end
+function dot(a::AbstractFill, b::AbstractArray)
+    length(a) == length(b) || throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
+    adjoint(getindex_value(a)) * sum(b)
+end
+function dot(a::AbstractFill, b::AbstractFill)
+    length(a) == length(b) || throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
+    dot(getindex_value(a), getindex_value(b)) * length(a)
+end
+
 function dot(u::AbstractVector, E::Eye, v::AbstractVector)
     length(u) == size(E,1) && length(v) == size(E,2) ||
         throw(DimensionMismatch("dot product arguments have dimensions $(length(u))×$(size(E))×$(length(v))"))

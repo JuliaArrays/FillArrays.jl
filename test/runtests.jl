@@ -1115,9 +1115,22 @@ end
     Z = Diagonal(z)
 
     Random.seed!(5)
-    u = rand(n)
-    v = rand(n)
+    u = rand(ComplexF64, n)
+    v = rand(ComplexF64, n)
+    X = Fill(rand(ComplexF64), n)
+    Y = Fill(rand(ComplexF64), n)
 
+    # 2-arg dot
+    @test dot(u, X) ≈ dot(u, Array(X))
+    @test dot(X, v) ≈ dot(Array(X), v)
+    @test dot(X, Y) ≈ dot(Array(X), Array(Y))
+
+    @test dot(u, o) ≈ dot(u, Array(o))
+    @test dot(X, o) ≈ dot(Array(X), Array(o))
+
+    @test_throws DimensionMismatch dot(u, X[1:end-1])
+
+    # 3-arg dot
     @test dot(u, D, v) == dot(u, v)
     @test dot(u, 2D, v) == 2dot(u, v)
     @test dot(u, Z, v) == 0
