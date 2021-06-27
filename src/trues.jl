@@ -46,8 +46,8 @@ end
 
 # https://github.com/JuliaArrays/FillArrays.jl/issues/148
 function Base.getindex(
-    a::FillArrays.AbstractFill{T, 1, Axes} where Axes, 
-    b::Trues{1, Tuple{Base.OneTo{Int64}}}) where T
+    a::AbstractFill{T, 1, Axes} where Axes,
+    b::Trues{1, Tuple{Base.OneTo{Int}}}) where T
     @boundscheck length(a) == length(b) || throw(BoundsError(a, b))
-    return Fill(a[1], length(a))
+    return Fill(getindex_value(a), length(a))
 end
