@@ -1204,6 +1204,8 @@ end
     @test_throws BoundsError ones(3)[Trues(2)]
     @test_throws BoundsError setindex!(ones(3), zeros(3), Trues(2))
     @test_throws DimensionMismatch setindex!(ones(2), zeros(3), Trues(2))
+    @test Ones(3)[Trues(3)] == Ones(3)
+    @test_throws BoundsError Ones(3)[Trues(2)]
 end
 
 @testset "FillArray interface" begin

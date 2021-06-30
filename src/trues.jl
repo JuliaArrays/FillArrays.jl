@@ -43,3 +43,11 @@ function Base.getindex(x::AbstractArray{T,N}, mask::Trues{N, NTuple{N,Base.OneTo
     end
     return x[trues(size(x))] # else revert to usual getindex method
 end
+
+# https://github.com/JuliaArrays/FillArrays.jl/issues/148
+function Base.getindex(
+    a::AbstractFill{T, 1, Tuple{Base.OneTo{Int}}},
+    b::Trues{1, Tuple{Base.OneTo{Int}}}) where T
+    @boundscheck length(a) == length(b) || throw(BoundsError(a, b))
+    return Fill(getindex_value(a), length(a))
+end
