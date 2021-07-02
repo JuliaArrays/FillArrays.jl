@@ -1206,6 +1206,9 @@ end
     @test_throws DimensionMismatch setindex!(ones(2), zeros(3), Trues(2))
     @test Ones(3)[Trues(3)] == Ones(3)
     @test_throws BoundsError Ones(3)[Trues(2)]
+    @test Ones(2,3)[Trues(2,3)] == Ones(6)
+    @test Ones(2,3)[Trues(6)] == Ones(6)
+    @test_throws BoundsError Ones(2,3)[Trues(3,2)]
 end
 
 @testset "FillArray interface" begin
