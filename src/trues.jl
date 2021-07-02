@@ -46,7 +46,7 @@ end
 
 # https://github.com/JuliaArrays/FillArrays.jl/issues/148 and 150
 function Base.getindex(
-    a::AbstractFill{T, N, Tuple{Vararg{Base.OneTo{Int64}, N}}},
+    a::AbstractFill{T, N, Tuple{Vararg{Base.OneTo{Int}, N}}},
     b::Trues{N, Tuple{Vararg{Base.OneTo{Int64}, N}}},
 ) where {T, N}
     @boundscheck size(a) == size(b) || throw(BoundsError(a, b))
