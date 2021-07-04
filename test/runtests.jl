@@ -536,6 +536,7 @@ end
 
 @testset "Cumsum and diff" begin
     @test sum(Fill(3,10)) ≡ 30
+    @test reduce(+, Fill(3,10)) ≡ 30
     @test sum(x -> x + 1, Fill(3,10)) ≡ 40
     @test cumsum(Fill(3,10)) ≡ 3:3:30
 
@@ -758,15 +759,63 @@ end
 end
 
 @testset "map" begin
-    x = Ones(5)
-    @test map(exp,x) === Fill(exp(1.0),5)
-    @test map(isone,x) === Fill(true,5)
+    x1 = Ones(5)
+    @test map(exp,x1) === Fill(exp(1.0),5)
+    @test map(isone,x1) === Fill(true,5)
 
-    x = Zeros(5)
-    @test map(exp,x) === exp.(x)
+    x0 = Zeros(5)
+    @test map(exp,x0) === exp.(x0)
 
-    x = Fill(2,5,3)
-    @test map(exp,x) === Fill(exp(2),5,3)
+    x2 = Fill(2,5,3)
+    @test map(exp,x2) === Fill(exp(2),5,3)
+
+    @test map(+, x1, x2) === Fill(3.0, 5)
+    @test map(+, x2, x2) === x2 .+ x2
+    @test_throws DimensionMismatch map(+, x2', x2)
+end
+
+@testset "mapreduce" begin
+    x = rand(3, 4)
+    y = fill(1.0, 3, 4)
+    Y = Fill(1.0, 3, 4)
+    O = Ones(3, 4)
+
+    @test mapreduce(exp, +, Y) == mapreduce(exp, +, y)
+    @test mapreduce(exp, +, Y; dims=2) == mapreduce(exp, +, y; dims=2)
+    @test mapreduce(identity, +, Y) == sum(y) == sum(Y)
+    @test mapreduce(identity, +, Y, dims=1) == sum(y, dims=1) == sum(Y, dims=1)
+
+    if VERSION >= v"1.4"
+        @test mapreduce(exp, +, Y; dims=(1,), init=5.0) == mapreduce(exp, +, y; dims=(1,), init=5.0)
+    end
+
+    if VERSION >= v"1.2" # Vararg mapreduce was added in Julia 1.2
+
+        # Two arrays
+        @test mapreduce(*, +, x, Y) == mapreduce(*, +, x, y)
+        @test mapreduce(*, +, Y, x) == mapreduce(*, +, y, x)
+        @test mapreduce(*, +, x, O) == mapreduce(*, +, x, y)
+        @test mapreduce(*, +, Y, O) == mapreduce(*, +, y, y)
+
+        f2(x,y) = 1 + x/y
+        op2(x,y) = x^2 + 3y
+        @test mapreduce(f2, op2, x, Y) == mapreduce(f2, op2, x, y)
+
+        if VERSION >= v"1.4"
+            @test mapreduce(f2, op2, x, Y, dims=1, init=5.0) == mapreduce(f2, op2, x, y, dims=1, init=5.0)
+            @test mapreduce(f2, op2, Y, x, dims=1, init=5.0) == mapreduce(f2, op2, y, x, dims=1, init=5.0)
+            @test mapreduce(f2, op2, x, O, dims=1, init=5.0) == mapreduce(f2, op2, x, y, dims=1, init=5.0)
+            @test mapreduce(f2, op2, Y, O, dims=1, init=5.0) == mapreduce(f2, op2, y, y, dims=1, init=5.0)
+        end
+
+        # More than two
+        @test mapreduce(+, +, x, Y, x) == mapreduce(+, +, x, y, x)
+        @test mapreduce(+, +, Y, x, x) == mapreduce(+, +, y, x, x)
+        @test mapreduce(+, +, x, O, Y) == mapreduce(+, +, x, y, y)
+        @test mapreduce(+, +, Y, O, Y) == mapreduce(+, +, y, y, y)
+        @test mapreduce(+, +, Y, O, Y, x) == mapreduce(+, +, y, y, y, x)
+
+    end
 end
 
 @testset "Offset indexing" begin
