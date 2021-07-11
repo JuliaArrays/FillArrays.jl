@@ -138,6 +138,28 @@ function *(a::Transpose{T, <:AbstractVector{T}}, b::Zeros{T, 1}) where T<:Real
 end
 *(a::Transpose{T, <:AbstractMatrix{T}}, b::Zeros{T, 1}) where T<:Real = mult_zeros(a, b)
 
+function dot(a::AbstractArray, b::AbstractFill)
+    length(a) == length(b) || throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
+    adjoint(sum(a)) * getindex_value(b)
+end
+function dot(a::AbstractFill, b::AbstractArray)
+    length(a) == length(b) || throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
+    adjoint(getindex_value(a)) * sum(b)
+end
+function dot(a::AbstractFill, b::AbstractFill)
+    length(a) == length(b) || throw(DimensionMismatch("first array has length $(length(a)) which does not match the length of the second, $(length(b))."))
+    dot(getindex_value(a), getindex_value(b)) * length(a)
+end
+
+function dot(a::Diagonal, b::AbstractFill{<:Any,2})
+    size(a) == size(b) || throw(DimensionMismatch("Matrix sizes $(size(a)) and $(size(a)) differ"))
+    adjoint(sum(a.diag)) * getindex_value(b)
+end
+function dot(a::AbstractFill{<:Any,2}, b::Diagonal)
+    size(a) == size(b) || throw(DimensionMismatch("Matrix sizes $(size(a)) and $(size(a)) differ"))
+    adjoint(getindex_value(a)) * sum(b.diag)
+end
+
 function dot(u::AbstractVector, E::Eye, v::AbstractVector)
     length(u) == size(E,1) && length(v) == size(E,2) ||
         throw(DimensionMismatch("dot product arguments have dimensions $(length(u))×$(size(E))×$(length(v))"))
