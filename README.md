@@ -87,3 +87,21 @@ These types have methods that perform many operations efficiently,
 including elementary algebra operations like multiplication and addition,
 as well as linear algebra methods like
 `norm`, `adjoint`, `transpose` and `vec`.
+
+Broadcasting operations and `map`, `mapreduce` are also done efficiently, when possible, by evaluating the function being applied only once. Notice that this will only match the behaviour of a dense matrix from `fill` if the function is pure:
+
+```julia
+julia> sin.(Fill(pi, 10)) isa Fill  # one evaluation, not 10
+true
+
+julia> map(sqrt, Fill(4, 2,5))
+2×5 Fill{Float64}: entries equal to 2.0
+
+julia> map(_ -> rand(), Fill(4, 2,5))
+2×5 Fill{Float64}: entries equal to 0.7201617100284206
+
+julia> map(_ -> rand(), fill(4, 2,5))  # 10 evaluations
+2×5 Matrix{Float64}:
+ 0.43675   0.270809  0.56536   0.0948089  0.24655
+ 0.959363  0.79598   0.238662  0.401909   0.317716
+```
