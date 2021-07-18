@@ -595,7 +595,7 @@ end
 #########
 
 mean(A::AbstractFill; dims=(:)) = mean(identity, A; dims=dims)
-function mean(f, A::AbstractFill; dims=(:))
+function mean(f::Union{Function, Type}, A::AbstractFill; dims=(:))
     val = float(f(getindex_value(A)))
     dims isa Colon ? val : 
         Fill(val, ntuple(d -> d in dims ? 1 : size(A,d), ndims(A)))
