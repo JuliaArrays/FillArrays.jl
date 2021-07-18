@@ -13,7 +13,7 @@ import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose,
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
-import Statistics: mean, std, var
+import Statistics: mean, std, var, cov, cor
 
 
 export Zeros, Ones, Fill, Eye, Trues, Falses
@@ -598,7 +598,7 @@ mean(A::AbstractFill; dims=(:)) = mean(identity, A; dims=dims)
 function mean(f::Union{Function, Type}, A::AbstractFill; dims=(:))
     val = float(f(getindex_value(A)))
     dims isa Colon ? val : 
-        Fill(val, ntuple(d -> d in dims ? 1 : size(A,d), ndims(A)))
+        Fill(val, ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
 end
 
 for fun in (:std, :var)
@@ -606,9 +606,22 @@ for fun in (:std, :var)
         if mean !== nothing
             mean ≈ Statistics.mean(A; dims=dims) || throw(ArgumentError("pre-computed mean is incorrect"))
         end
-        dims isa Colon ? zero(float(T)) : Zeros{float(T)}(ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
+        dims isa Colon ? zero(float(T)) : 
+            Zeros{float(T)}(ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
     end
 end
+
+cov(A::AbstractFill{T,1}; corrected::Bool=true) where {T<:Number} = zero(float(T))
+cov(A::AbstractFill{T,2}; corrected::Bool=true, dims::Integer=1) where {T<:Number} = 
+    Zeros{float(T)}(size(A, 3-dims), size(A, 3-dims))
+
+cor(A::AbstractFill{T,1}) where {T<:Number} = one(float(T))
+function cor(A::AbstractFill{T,2}; dims::Integer=1) where {T<:Number}
+    out = fill(float(T)(NaN), size(A, 3-dims), size(A, 3-dims))
+    out[LinearAlgebra.diagind(out)] .= 1
+    out
+end
+
 
 #########
 # include

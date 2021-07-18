@@ -1314,4 +1314,12 @@ end
 
     @test mean(Fill(3,4,5), dims=2) == mean(fill(3,4,5), dims=2)
     @test std(Fill(3,4,5), corrected=true, mean=3) == std(fill(3,4,5), corrected=true, mean=3)
+
+    @test cov(Fill(3,4)) === cov(fill(3,4))
+    @test cov(Fill(3,4,5)) == cov(fill(3,4,5))
+    @test cov(Fill(3,4,5), dims=2) == cov(fill(3,4,5), dims=2)
+
+    @test cor(Fill(3,4)) === cor(fill(3,4))
+    @test cor(Fill(3, 4, 5)) ≈ cor(fill(3, 4, 5)) nans=true
+    @test cor(Fill(3, 4, 5), dims=2) ≈ cor(fill(3, 4, 5), dims=2) nans=true
 end
