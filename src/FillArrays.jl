@@ -1,7 +1,7 @@
 """ `FillArrays` module to lazily represent matrices with a single value """
 module FillArrays
 
-using LinearAlgebra, SparseArrays
+using LinearAlgebra, SparseArrays, Statistics
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
@@ -13,6 +13,7 @@ import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose,
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
+import Statistics: mean, std, var
 
 
 export Zeros, Ones, Fill, Eye, Trues, Falses
@@ -588,6 +589,30 @@ function in(x, A::RectDiagonal{<:Number})
     all(isone, size(A)) && return x == A.diag[1] # A 1x1 matrix has only one element
     x == zero(eltype(A)) || x in A.diag
 end
+
+#########
+# mean, std
+#########
+
+mean(A::AbstractFill; dims=(:)) = mean(identity, A; dims=dims)
+function mean(f, A::AbstractFill; dims=(:))
+    val = float(f(getindex_value(A)))
+    dims isa Colon ? val : 
+        Fill(val, ntuple(d -> d in dims ? 1 : size(A,d), ndims(A)))
+end
+
+for fun in (:std, :var)
+    @eval function $fun(A::AbstractFill{T}; corrected::Bool=true, mean=nothing, dims=(:)) where {T<:Number}
+        if mean !== nothing
+            mean ≈ Statistics.mean(A; dims=dims) || throw(ArgumentError("pre-computed mean is incorrect"))
+        end
+        dims isa Colon ? zero(float(T)) : Zeros{float(T)}(ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
+    end
+end
+
+#########
+# include
+#########
 
 include("fillalgebra.jl")
 include("fillbroadcast.jl")
