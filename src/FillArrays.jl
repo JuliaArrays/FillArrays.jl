@@ -601,14 +601,10 @@ function mean(f::Union{Function, Type}, A::AbstractFill; dims=(:))
         Fill(val, ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
 end
 
-for fun in (:std, :var)
-    @eval function $fun(A::AbstractFill{T}; corrected::Bool=true, mean=nothing, dims=(:)) where {T<:Number}
-        if mean !== nothing
-            mean ≈ Statistics.mean(A; dims=dims) || throw(ArgumentError("pre-computed mean is incorrect"))
-        end
-        dims isa Colon ? zero(float(T)) : 
-            Zeros{float(T)}(ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
-    end
+
+function var(A::AbstractFill{T}; corrected::Bool=true, mean=nothing, dims=(:)) where {T<:Number}
+    dims isa Colon ? zero(float(T)) : 
+        Zeros{float(T)}(ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
 end
 
 cov(A::AbstractFill{T,1}; corrected::Bool=true) where {T<:Number} = zero(float(T))
