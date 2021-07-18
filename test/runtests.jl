@@ -1,4 +1,7 @@
-using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, Random, Base64, Test, Statistics
+
+using FillArrays, StaticArrays, ChainRulesCore, Base64
+using LinearAlgebra, SparseArrays, Random, Statistics, Test  # standard libraries
+
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 @testset "fill array constructors and convert" begin
@@ -1322,4 +1325,13 @@ end
     @test cor(Fill(3,4)) == cor(fill(3,4))
     @test cor(Fill(3, 4, 5)) ≈ cor(fill(3, 4, 5)) nans=true
     @test cor(Fill(3, 4, 5), dims=2) ≈ cor(fill(3, 4, 5), dims=2) nans=true
+end
+
+@testset "ChainRules integration" begin
+    @test ProjectTo(Fill(1,2,3))(ones(2,3)) === Fill(1.0, 2, 3)
+    @test ProjectTo(Fill(1,2,3))(ones(2,3,1) .+ im) === Fill(1.0, 2, 3)
+    @test ProjectTo(Fill(1,2,3))(Fill(1+im, 2,3)) === Fill(1.0, 2, 3)
+
+    @test ProjectTo(Eye(3))(rand(3,3)) === NoTangent()
+    @test ProjectTo(Zeros(3))(rand(3)) === NoTangent()
 end
