@@ -1,7 +1,7 @@
 """ `FillArrays` module to lazily represent matrices with a single value """
 module FillArrays
 
-using LinearAlgebra, SparseArrays
+using LinearAlgebra, SparseArrays, Statistics
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
@@ -13,6 +13,7 @@ import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose,
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
+import Statistics: mean, std, var, cov, cor
 
 
 export Zeros, Ones, Fill, Eye, Trues, Falses
@@ -588,6 +589,39 @@ function in(x, A::RectDiagonal{<:Number})
     all(isone, size(A)) && return x == A.diag[1] # A 1x1 matrix has only one element
     x == zero(eltype(A)) || x in A.diag
 end
+
+#########
+# mean, std
+#########
+
+mean(A::AbstractFill; dims=(:)) = mean(identity, A; dims=dims)
+function mean(f::Union{Function, Type}, A::AbstractFill; dims=(:))
+    val = float(f(getindex_value(A)))
+    dims isa Colon ? val : 
+        Fill(val, ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
+end
+
+
+function var(A::AbstractFill{T}; corrected::Bool=true, mean=nothing, dims=(:)) where {T<:Number}
+    dims isa Colon ? zero(float(T)) : 
+        Zeros{float(T)}(ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
+end
+
+cov(A::AbstractFill{T,1}; corrected::Bool=true) where {T<:Number} = zero(float(T))
+cov(A::AbstractFill{T,2}; corrected::Bool=true, dims::Integer=1) where {T<:Number} = 
+    Zeros{float(T)}(size(A, 3-dims), size(A, 3-dims))
+
+cor(A::AbstractFill{T,1}) where {T<:Number} = one(float(T))
+function cor(A::AbstractFill{T,2}; dims::Integer=1) where {T<:Number}
+    out = fill(float(T)(NaN), size(A, 3-dims), size(A, 3-dims))
+    out[LinearAlgebra.diagind(out)] .= 1
+    out
+end
+
+
+#########
+# include
+#########
 
 include("fillalgebra.jl")
 include("fillbroadcast.jl")

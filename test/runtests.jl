@@ -1,4 +1,4 @@
-using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, Random, Base64, Test
+using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, Random, Base64, Test, Statistics
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 @testset "fill array constructors and convert" begin
@@ -1302,4 +1302,24 @@ end
         @test FillArrays.getindex_value(transpose(a)) == FillArrays.unique_value(transpose(a)) == 2.0 + im
         @test convert(Fill, transpose(a)) ≡ Fill(2.0+im,1,5)
     end
+end
+
+@testset "Statistics" begin
+    @test mean(Fill(3,4,5)) === mean(fill(3,4,5))
+    @test std(Fill(3,4,5)) === std(fill(3,4,5))
+    @test var(Trues(5)) === var(trues(5))
+    @test mean(Trues(5)) === mean(trues(5))
+
+    @test mean(sqrt, Fill(3,4,5)) ≈ mean(sqrt, fill(3,4,5))
+
+    @test mean(Fill(3,4,5), dims=2) == mean(fill(3,4,5), dims=2)
+    @test std(Fill(3,4,5), corrected=true, mean=3) == std(fill(3,4,5), corrected=true, mean=3)
+
+    @test cov(Fill(3,4)) === cov(fill(3,4))
+    @test cov(Fill(3,4,5)) == cov(fill(3,4,5))
+    @test cov(Fill(3,4,5), dims=2) == cov(fill(3,4,5), dims=2)
+
+    @test cor(Fill(3,4)) == cor(fill(3,4))
+    @test cor(Fill(3, 4, 5)) ≈ cor(fill(3, 4, 5)) nans=true
+    @test cor(Fill(3, 4, 5), dims=2) ≈ cor(fill(3, 4, 5), dims=2) nans=true
 end
