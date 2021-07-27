@@ -103,7 +103,7 @@ julia> println.(Fill(pi, 10))
 
 Notice that this will only match the behaviour of a dense matrix from `fill` if the function is pure. And that happens before the fused broadcast:
 
-```
+```julia
 julia> map(_ -> rand(), Fill("pi", 2,5))  # not a pure function!
 2×5 Fill{Float64}: entries equal to 0.7201617100284206
 
