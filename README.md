@@ -117,7 +117,7 @@ julia> ones(1,5) .+ (_ -> rand()).(Fill("vec", 2))  # Fill broadcast is done fir
  1.51796  1.51796  1.51796  1.51796  1.51796
  1.51796  1.51796  1.51796  1.51796  1.51796
 
-julia> ones(1,5) .+ (_ -> rand()).(fill("vec", 2))  # 10 evaluations of one fused function
+julia> ones(1,5) .+ (_ -> rand()).(fill("vec", 2))  # fused, 10 evaluations
 2×5 Matrix{Float64}:
  1.51337  1.17578  1.19815  1.43035  1.2987
  1.30253  1.21909  1.61755  1.02645  1.77681
