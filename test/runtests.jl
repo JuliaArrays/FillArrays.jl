@@ -1,5 +1,6 @@
 using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, Random, Base64, Test, Statistics
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
+using InteractiveUtils: code_llvm
 
 @testset "fill array constructors and convert" begin
     for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
@@ -1322,4 +1323,18 @@ end
     @test cor(Fill(3,4)) == cor(fill(3,4))
     @test cor(Fill(3, 4, 5)) ≈ cor(fill(3, 4, 5)) nans=true
     @test cor(Fill(3, 4, 5), dims=2) ≈ cor(fill(3, 4, 5), dims=2) nans=true
+end
+
+@testset "Inbounds optimization" begin
+    function llvm_lines(a)
+        f(x,j) = @inbounds x[j]
+        io = IOBuffer()
+        code_llvm(io, f, (typeof(a), Int); debuginfo=:none)
+        # countlines(io) -- doesn't work for some reason
+        count(==('\n'), String(take!(io)))
+    end
+    
+    @test llvm_lines(Zeros(10)) < 10
+    @test llvm_lines(Ones(10)) < 10
+    @test llvm_lines(Fill(2.0,10)) < 10
 end
