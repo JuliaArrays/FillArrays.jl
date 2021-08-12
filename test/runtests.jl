@@ -1331,8 +1331,8 @@ end
 #         f(x,j) = @inbounds x[j]
 #         io = IOBuffer()
 #         code_llvm(io, f, (typeof(a), Int); debuginfo=:none)
-#         # countlines(io) -- doesn't work for some reason
-#         count(==('\n'), String(take!(io)))
+#         seekstart(io)
+#         countlines(io)
 #     end
     
 #     @test llvm_lines(Zeros(10)) < 10
