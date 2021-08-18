@@ -9,7 +9,8 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     show, view, in, mapreduce
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
-    dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular, AdjointAbsVec
+    dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular, AdjointAbsVec,
+    issymmetric, ishermitian
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
@@ -61,6 +62,8 @@ end
 rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
 IndexStyle(::Type{<:AbstractFill{<:Any,N,<:NTuple{N,Base.OneTo{Int}}}}) where N = IndexLinear()
 
+issymmetric(F::AbstractFill) = axes(F,1) == axes(F,2)
+ishermitian(F::AbstractFill) = issymmetric(F) & iszero(imag(getindex_value(F)))
 
 """
     Fill{T, N, Axes}

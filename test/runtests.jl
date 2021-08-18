@@ -411,6 +411,13 @@ end
     @test rank(Eye(2)) == 2
 end
 
+@testset "ishermitian" begin
+    for el in (2, 3+0im, 4+5im), size in [(3,3), (3,4)]
+        @test issymmetric(Fill(el, size...)) == issymmetric(fill(el, size...))
+        @test ishermitian(Fill(el, size...)) == ishermitian(fill(el, size...))
+    end
+end
+
 @testset "BigInt indices" begin
     for A in (Zeros(BigInt(100)), Ones(BigInt(100)), Fill(2, BigInt(100)))
         @test length(A) isa BigInt
