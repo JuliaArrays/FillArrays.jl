@@ -1,4 +1,4 @@
-import ChainRulesCore: ProjectTo, NoTangent
+import ChainRulesCore: ProjectTo, NoTangent, Tangent
 
 """
     ProjectTo(::Fill) -> ProjectTo{Fill}
@@ -22,6 +22,14 @@ function (project::ProjectTo{Fill})(dx::AbstractArray)
         size(dx, d) == length(get(project.axes, d, 1)) || throw(_projection_mismatch(axes_x, size(dx)))
     end
     Fill(mean(dx), project.axes)  # Note that mean(dx::Fill) is optimised
+end
+
+function (project::ProjectTo{Fill})(dx::Tangent{<:Fill})
+    # This would need a definition for length(::NoTangent) to be safe:
+    # for d in 1:max(length(dx.axes), length(project.axes))
+    #     length(get(dx.axes, d, 1)) == length(get(project.axes, d, 1)) || throw(_projection_mismatch(dx.axes, size(dx)))
+    # end
+    Fill(dx.value / prod(length, project.axes), project.axes)
 end
 
 function _projection_mismatch(axes_x::Tuple, size_dx::Tuple)

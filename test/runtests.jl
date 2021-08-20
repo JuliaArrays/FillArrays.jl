@@ -1328,9 +1328,11 @@ end
 end
 
 @testset "ChainRules integration" begin
-    @test ProjectTo(Fill(1,2,3))(ones(2,3)) === Fill(1.0, 2, 3)
-    @test ProjectTo(Fill(1,2,3))(ones(2,3,1) .+ im) === Fill(1.0, 2, 3)
-    @test ProjectTo(Fill(1,2,3))(Fill(1+im, 2,3)) === Fill(1.0, 2, 3)
+    x = Fill(1,2,3)
+    @test ProjectTo(x)(ones(2,3)) === Fill(1.0, 2, 3)
+    @test ProjectTo(x)(ones(2,3,1) .+ im) === Fill(1.0, 2, 3)
+    @test ProjectTo(x)(Fill(1+im, 2,3)) === Fill(1.0, 2, 3)
+    @test ProjectTo(x)(Tangent{typeof(x)}(; value=6)) === Fill(1.0, 2, 3)
 
     @test ProjectTo(Eye(3))(rand(3,3)) === NoTangent()
     @test ProjectTo(Zeros(3))(rand(3)) === NoTangent()
