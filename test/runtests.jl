@@ -585,6 +585,7 @@ end
     @test x .+ Ones(5) ≡ Fill(6.0,5)
     f = (x,y) -> cos(x*y)
     @test f.(x, Ones(5)) ≡ Fill(f(5,1.0),5)
+    @test x .^ 1 ≡ Fill(5,5)
 
     y = Ones(5,5)
     @test (.+)(y) ≡ Ones(5,5)
@@ -593,6 +594,7 @@ end
     @test y .+ 1 ≡ Fill(2.0,5,5)
     @test y .+ y ≡ Fill(2.0,5,5)
     @test y .* y ≡ y ./ y ≡ y .\ y ≡ y
+    @test y .^ 1 ≡ y .^ 0 ≡ Ones(5,5)
 
     rng = MersenneTwister(123456)
     sizes = [(5, 4), (5, 1), (1, 4), (1, 1), (5,)]
@@ -620,6 +622,8 @@ end
         end
     end
 
+    @test Zeros{Int}(5) .^ 0 ≡ Ones{Int}(5)
+    @test Zeros{Int}(5) .^ 1 ≡ Zeros{Int}(5)
     @test Zeros{Int}(5) .+ Zeros(5) isa Zeros{Float64}
 
     # Test for conj, real and imag with complex element types
