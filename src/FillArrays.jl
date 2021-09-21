@@ -701,6 +701,8 @@ getindex_value(a::LinearAlgebra.Adjoint) = adjoint(getindex_value(parent(a)))
 getindex_value(a::LinearAlgebra.Transpose) = transpose(getindex_value(parent(a)))
 getindex_value(a::SubArray) = getindex_value(parent(a))
 
+copy(a::LinearAlgebra.Adjoint{<:Any,<:AbstractFill}) = copy(parent(a))'
+copy(a::LinearAlgebra.Transpose{<:Any,<:AbstractFill}) = transpose(parent(a))
 
 ##
 # view

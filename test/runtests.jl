@@ -1020,6 +1020,8 @@ end
     @test Fill(1+im, 5, 6)' ≡ Fill(1-im, 6,5)
     @test transpose(Fill(1+im, 5, 6)) ≡ Fill(1+im, 6,5)
     @test Ones(5)' isa Adjoint # Vectors still need special dot product
+    @test copy(Ones(5)') ≡ Ones(5)'
+    @test copy(transpose(Ones(5))) ≡ transpose(Ones(5))
     @test Fill([1+im 2; 3 4; 5 6], 2,3)' == Fill([1+im 2; 3 4; 5 6]', 3,2)
     @test transpose(Fill([1+im 2; 3 4; 5 6], 2,3)) == Fill(transpose([1+im 2; 3 4; 5 6]), 3,2)
 
