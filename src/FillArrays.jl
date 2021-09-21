@@ -142,7 +142,7 @@ convert(::Type{AbstractFill}, F::AbstractFill) = F
 convert(::Type{AbstractFill{T}}, F::AbstractFill) where T = convert(AbstractArray{T}, F)
 convert(::Type{AbstractFill{T,N}}, F::AbstractFill) where {T,N} = convert(AbstractArray{T,N}, F)
 
-copy(F::Fill) = Fill(copy(F.value), F.axes)
+copy(F::Fill) = Fill(F.value, F.axes)
 
 """ Throws an error if `arr` does not contain one and only one unique value. """
 function unique_value(arr::AbstractArray)
