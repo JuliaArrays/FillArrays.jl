@@ -142,7 +142,7 @@ convert(::Type{AbstractFill}, F::AbstractFill) = F
 convert(::Type{AbstractFill{T}}, F::AbstractFill) where T = convert(AbstractArray{T}, F)
 convert(::Type{AbstractFill{T,N}}, F::AbstractFill) where {T,N} = convert(AbstractArray{T,N}, F)
 
-copy(F::Fill) = Fill(F.value, F.axes)
+copy(F::Fill) = Fill(copy(F.value), F.axes)
 
 """ Throws an error if `arr` does not contain one and only one unique value. """
 function unique_value(arr::AbstractArray)
@@ -701,6 +701,8 @@ getindex_value(a::LinearAlgebra.Adjoint) = adjoint(getindex_value(parent(a)))
 getindex_value(a::LinearAlgebra.Transpose) = transpose(getindex_value(parent(a)))
 getindex_value(a::SubArray) = getindex_value(parent(a))
 
+copy(a::LinearAlgebra.Adjoint{<:Any,<:AbstractFill}) = copy(parent(a))'
+copy(a::LinearAlgebra.Transpose{<:Any,<:AbstractFill}) = transpose(parent(a))
 
 ##
 # view
