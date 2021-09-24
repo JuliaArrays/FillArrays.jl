@@ -125,8 +125,14 @@ function _adjvec_mul_zeros(a::Adjoint{T}, b::Zeros{S, 1}) where {T, S}
     return zero(Base.promote_op(*, T, S))
 end
 
+*(a::AdjointAbsVec{<:Any,<:Zeros{<:Any,1}}, b::AbstractMatrix) = mult_zeros(a, b)
+*(a::TransposeAbsVec{<:Any,<:Zeros{<:Any,1}}, b::AbstractMatrix) = mult_zeros(a, b)
+
 *(a::AdjointAbsVec, b::Zeros{<:Any, 1}) = _adjvec_mul_zeros(a, b)
 *(a::AdjointAbsVec{<:Number}, b::Zeros{<:Number, 1}) = _adjvec_mul_zeros(a, b)
+*(a::TransposeAbsVec, b::Zeros{<:Any, 1}) = _adjvec_mul_zeros(a, b)
+*(a::TransposeAbsVec{<:Number}, b::Zeros{<:Number, 1}) = _adjvec_mul_zeros(a, b)
+
 *(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::Zeros{<:Any, 1}) = mult_zeros(a, b)
 
 function *(a::Transpose{T, <:AbstractVector{T}}, b::Zeros{T, 1}) where T<:Real
@@ -137,6 +143,17 @@ function *(a::Transpose{T, <:AbstractVector{T}}, b::Zeros{T, 1}) where T<:Real
     return zero(T)
 end
 *(a::Transpose{T, <:AbstractMatrix{T}}, b::Zeros{T, 1}) where T<:Real = mult_zeros(a, b)
+
+
+function dot(a::Zeros{T,1}, b::Zeros{V,1}) where {T,V}
+    axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
+    zero(promote_type(T,V))
+end
+
+function dot(a::AbstractFill{T,1}, b::AbstractFill{V,1}) where {T,V}
+    axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
+    getindex_value(a)getindex_value(b)*length(b)
+end
 
 function dot(u::AbstractVector, E::Eye, v::AbstractVector)
     length(u) == size(E,1) && length(v) == size(E,2) ||
