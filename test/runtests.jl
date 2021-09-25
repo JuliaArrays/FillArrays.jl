@@ -451,29 +451,40 @@ end
     @test [1,2,3]*Zeros(1,3) ≡ Zeros(3,3)
     @test_throws MethodError [1,2,3]*Zeros(3) # Not defined for [1,2,3]*[0,0,0] either
 
-    # Check multiplication by Adjoint vectors works as expected.
-    @test randn(4, 3)' * Zeros(4) === Zeros(3)
-    @test randn(4)' * Zeros(4) === zero(Float64)
-    @test [1, 2, 3]' * Zeros{Int}(3) === zero(Int)
-    @test [SVector(1,2)', SVector(2,3)', SVector(3,4)']' * Zeros{Int}(3) === SVector(0,0)
-    @test_throws DimensionMismatch randn(4)' * Zeros(3)
+    @testset "Check multiplication by Adjoint vectors works as expected." begin
+        @test randn(4, 3)' * Zeros(4) === Zeros(3)
+        @test randn(4)' * Zeros(4) === zero(Float64)
+        @test [1, 2, 3]' * Zeros{Int}(3) === zero(Int)
+        @test [SVector(1,2)', SVector(2,3)', SVector(3,4)']' * Zeros{Int}(3) === SVector(0,0)
+        @test_throws DimensionMismatch randn(4)' * Zeros(3)
+        @test Zeros(5)' * randn(5,3) ≡ Zeros(5)'*Zeros(5,3) ≡ Zeros(5)'*Ones(5,3) ≡ Zeros(3)'
+        @test Zeros(5)' * randn(5) ≡ Zeros(5)' * Zeros(5) ≡ Zeros(5)' * Ones(5) ≡ 0.0 
+        @test Zeros(5) * Zeros(6)' ≡ Zeros(5,1) * Zeros(6)' ≡ Zeros(5,6)
+        @test randn(5) * Zeros(6)' ≡ randn(5,1) * Zeros(6)' ≡ Zeros(5,6)
+    end
 
-    # Check multiplication by Transpose-d vectors works as expected.
-    @test transpose(randn(4, 3)) * Zeros(4) === Zeros(3)
-    @test transpose(randn(4)) * Zeros(4) === zero(Float64)
-    @test transpose([1, 2, 3]) * Zeros{Int}(3) === zero(Int)
-    @test_throws DimensionMismatch transpose(randn(4)) * Zeros(3)
+    @testset "Check multiplication by Transpose-d vectors works as expected." begin
+        @test transpose(randn(4, 3)) * Zeros(4) === Zeros(3)
+        @test transpose(randn(4)) * Zeros(4) === zero(Float64)
+        @test transpose([1, 2, 3]) * Zeros{Int}(3) === zero(Int)
+        @test_throws DimensionMismatch transpose(randn(4)) * Zeros(3)
+        @test transpose(Zeros(5)) * randn(5,3) ≡ transpose(Zeros(5))*Zeros(5,3) ≡ transpose(Zeros(5))*Ones(5,3) ≡ transpose(Zeros(3))
+        @test transpose(Zeros(5)) * randn(5) ≡ transpose(Zeros(5)) * Zeros(5) ≡ transpose(Zeros(5)) * Ones(5) ≡ 0.0 
+        @test randn(5) * transpose(Zeros(6)) ≡ randn(5,1) * transpose(Zeros(6)) ≡ Zeros(5,6)
+    end
 
-    @test +(Zeros{Float64}(3, 5)) === Zeros{Float64}(3, 5)
-    @test -(Zeros{Float32}(5, 2)) === Zeros{Float32}(5, 2)
-
-    # `Zeros` are closed under addition and subtraction (both unary and binary).
     z1, z2 = Zeros{Float64}(4), Zeros{Int}(4)
-    @test +(z1) === z1
-    @test -(z1) === z1
 
-    test_addition_and_subtraction([z1, z2], [z1, z2], Zeros)
-    test_addition_and_subtraction_dim_mismatch(z1, Zeros{Float64}(4, 2))
+    @testset "`Zeros` are closed under addition and subtraction (both unary and binary)." begin
+        @test +(Zeros{Float64}(3, 5)) === Zeros{Float64}(3, 5)
+        @test -(Zeros{Float32}(5, 2)) === Zeros{Float32}(5, 2)
+
+        @test +(z1) === z1
+        @test -(z1) === z1
+
+        test_addition_and_subtraction([z1, z2], [z1, z2], Zeros)
+        test_addition_and_subtraction_dim_mismatch(z1, Zeros{Float64}(4, 2))
+    end
 
     # `Zeros` +/- `Fill`s should yield `Fills`.
     fill1, fill2 = Fill(5.0, 4), Fill(5, 4)
@@ -502,36 +513,41 @@ end
         @test op(Zeros{Float64}(4, 5), Zeros{Int}(4, 5)) === Zeros{Float64}(4, 5)
     end
 
-    # Zeros +/- dense where + / - have different results.
-    @test +(Zeros(3, 5), X) == X && +(X, Zeros(3, 5)) == X
-    @test !(Zeros(3, 5) + X === X) && !(X + Zeros(3, 5) === X)
-    @test -(Zeros(3, 5), X) == -X
+    @testset "Zeros +/- dense where + / - have different results." begin
+        @test +(Zeros(3, 5), X) == X && +(X, Zeros(3, 5)) == X
+        @test !(Zeros(3, 5) + X === X) && !(X + Zeros(3, 5) === X)
+        @test -(Zeros(3, 5), X) == -X
+    end
 
-    # Addition with different eltypes.
-    @test +(Zeros{Float32}(3, 5), X) isa Matrix{Float64}
-    @test !(+(Zeros{Float32}(3, 5), X) === X)
-    @test +(Zeros{Float32}(3, 5), X) == X
-    @test !(+(Zeros{ComplexF64}(3, 5), X) === X)
-    @test +(Zeros{ComplexF64}(3, 5), X) == X
+    @testset "Addition with different eltypes." begin
+        @test +(Zeros{Float32}(3, 5), X) isa Matrix{Float64}
+        @test !(+(Zeros{Float32}(3, 5), X) === X)
+        @test +(Zeros{Float32}(3, 5), X) == X
+        @test !(+(Zeros{ComplexF64}(3, 5), X) === X)
+        @test +(Zeros{ComplexF64}(3, 5), X) == X
+    end
 
-    # Subtraction with different eltypes.
-    @test -(Zeros{Float32}(3, 5), X) isa Matrix{Float64}
-    @test -(Zeros{Float32}(3, 5), X) == -X
-    @test -(Zeros{ComplexF64}(3, 5), X) == -X
+    @testset "Subtraction with different eltypes." begin
+        @test -(Zeros{Float32}(3, 5), X) isa Matrix{Float64}
+        @test -(Zeros{Float32}(3, 5), X) == -X
+        @test -(Zeros{ComplexF64}(3, 5), X) == -X
+    end
 
-    # Tests for ranges.
-    X = randn(5)
-    @test !(Zeros(5) + X === X)
-    @test Zeros{Int}(5) + (1:5) === (1:5) && (1:5) + Zeros{Int}(5) === (1:5)
-    @test Zeros(5) + (1:5) === (1.0:1.0:5.0) && (1:5) + Zeros(5) === (1.0:1.0:5.0)
-    @test (1:5) - Zeros{Int}(5) === (1:5)
-    @test Zeros{Int}(5) - (1:5) === -1:-1:-5
-    @test Zeros(5) - (1:5) === -1.0:-1.0:-5.0
+    @testset "Tests for ranges." begin
+        X = randn(5)
+        @test !(Zeros(5) + X === X)
+        @test Zeros{Int}(5) + (1:5) === (1:5) && (1:5) + Zeros{Int}(5) === (1:5)
+        @test Zeros(5) + (1:5) === (1.0:1.0:5.0) && (1:5) + Zeros(5) === (1.0:1.0:5.0)
+        @test (1:5) - Zeros{Int}(5) === (1:5)
+        @test Zeros{Int}(5) - (1:5) === -1:-1:-5
+        @test Zeros(5) - (1:5) === -1.0:-1.0:-5.0
+    end
 
-    # test Base.zero
-    @test zero(Zeros(10)) == Zeros(10)
-    @test zero(Ones(10,10)) == Zeros(10,10)
-    @test zero(Fill(0.5, 10, 10)) == Zeros(10,10)
+    @testset "test Base.zero" begin
+        @test zero(Zeros(10)) == Zeros(10)
+        @test zero(Ones(10,10)) == Zeros(10,10)
+        @test zero(Fill(0.5, 10, 10)) == Zeros(10,10)
+    end
 end
 
 @testset "maximum/minimum/svd/sort" begin
@@ -1187,6 +1203,17 @@ end
     @test dot(u, 2D, v) == 2dot(u, v)
     @test dot(u, Z, v) == 0
 
+    @test dot(Zeros(5), Zeros{ComplexF16}(5)) ≡ zero(ComplexF64)
+    @test dot(Zeros(5), Ones{ComplexF16}(5)) ≡ zero(ComplexF64)
+    @test dot(Ones{ComplexF16}(5), Zeros(5)) ≡ zero(ComplexF64)
+    @test dot(randn(5), Zeros{ComplexF16}(5)) ≡ dot(Zeros{ComplexF16}(5), randn(5)) ≡ zero(ComplexF64)
+
+    @test dot(Fill(1,5), Fill(2.0,5)) ≡ 10.0
+
+    let N = 2^big(1000) # fast dot for fast sum
+        @test dot(Fill(2,N),1:N) == dot(Fill(2,N),1:N) == dot(1:N,Fill(2,N)) == 2*sum(1:N)
+    end
+
     @test_throws DimensionMismatch dot(u[1:end-1], D, v)
     @test_throws DimensionMismatch dot(u[1:end-1], D, v[1:end-1])
 
@@ -1195,6 +1222,9 @@ end
 
     @test_throws DimensionMismatch dot(u, Z, v[1:end-1])
     @test_throws DimensionMismatch dot(u, Z, v[1:end-1])
+
+    @test_throws DimensionMismatch dot(Zeros(5), Zeros(6))
+    @test_throws DimensionMismatch dot(Zeros(5), randn(6))
 end
 
 @testset "print" begin

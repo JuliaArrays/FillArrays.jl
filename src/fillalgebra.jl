@@ -83,6 +83,8 @@ end
 *(a::Zeros{<:Any,2}, b::AbstractVector) = mult_zeros(a, b)
 *(a::AbstractVector, b::Zeros{<:Any,2}) = mult_zeros(a, b)
 
+*(a::Zeros{<:Any,1}, b::AdjOrTransAbsVec) = mult_zeros(a, b)
+
 *(a::Zeros{<:Any,1}, b::Diagonal) = mult_zeros(a, b)
 *(a::Zeros{<:Any,2}, b::Diagonal) = mult_zeros(a, b)
 *(a::Diagonal, b::Zeros{<:Any,1}) = mult_zeros(a, b)
@@ -125,8 +127,15 @@ function _adjvec_mul_zeros(a::Adjoint{T}, b::Zeros{S, 1}) where {T, S}
     return zero(Base.promote_op(*, T, S))
 end
 
-*(a::AdjointAbsVec{<:Any,<:Zeros{<:Any,1}}, b::AbstractMatrix) = mult_zeros(a, b)
-*(a::TransposeAbsVec{<:Any,<:Zeros{<:Any,1}}, b::AbstractMatrix) = mult_zeros(a, b)
+*(a::AdjointAbsVec{<:Any,<:Zeros{<:Any,1}}, b::AbstractMatrix) = (b' * a')'
+*(a::AdjointAbsVec{<:Any,<:Zeros{<:Any,1}}, b::Zeros{<:Any,2}) = (b' * a')'
+*(a::TransposeAbsVec{<:Any,<:Zeros{<:Any,1}}, b::AbstractMatrix) = transpose(transpose(b) * transpose(a))
+*(a::TransposeAbsVec{<:Any,<:Zeros{<:Any,1}}, b::Zeros{<:Any,2}) = transpose(transpose(b) * transpose(a))
+
+*(a::AbstractVector, b::AdjOrTransAbsVec{<:Any,<:Zeros{<:Any,1}}) = a * permutedims(parent(b))
+*(a::AbstractMatrix, b::AdjOrTransAbsVec{<:Any,<:Zeros{<:Any,1}}) = a * permutedims(parent(b))
+*(a::Zeros{<:Any,1}, b::AdjOrTransAbsVec{<:Any,<:Zeros{<:Any,1}}) = a * permutedims(parent(b))
+*(a::Zeros{<:Any,2}, b::AdjOrTransAbsVec{<:Any,<:Zeros{<:Any,1}}) = a * permutedims(parent(b))
 
 *(a::AdjointAbsVec, b::Zeros{<:Any, 1}) = _adjvec_mul_zeros(a, b)
 *(a::AdjointAbsVec{<:Number}, b::Zeros{<:Number, 1}) = _adjvec_mul_zeros(a, b)
@@ -144,16 +153,38 @@ function *(a::Transpose{T, <:AbstractVector{T}}, b::Zeros{T, 1}) where T<:Real
 end
 *(a::Transpose{T, <:AbstractMatrix{T}}, b::Zeros{T, 1}) where T<:Real = mult_zeros(a, b)
 
-
-function dot(a::Zeros{T,1}, b::Zeros{V,1}) where {T,V}
+# treat zero separately to support ∞-vectors
+function _zero_dot(a, b)
     axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
-    zero(promote_type(T,V))
+    zero(promote_type(eltype(a),eltype(b)))
 end
 
-function dot(a::AbstractFill{T,1}, b::AbstractFill{V,1}) where {T,V}
+_fill_dot(a::Zeros, b::Zeros) = _zero_dot(a, b)
+_fill_dot(a::Zeros, b) = _zero_dot(a, b)
+_fill_dot(a, b::Zeros) = _zero_dot(a, b)
+_fill_dot(a::Zeros, b::AbstractFill) = _zero_dot(a, b)
+_fill_dot(a::AbstractFill, b::Zeros) = _zero_dot(a, b)
+
+function _fill_dot(a::AbstractFill, b::AbstractFill)
     axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
     getindex_value(a)getindex_value(b)*length(b)
 end
+
+# support types with fast sum
+function _fill_dot(a::AbstractFill, b)
+    axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
+    getindex_value(a)sum(b)
+end
+
+function _fill_dot(a, b::AbstractFill)
+    axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
+    sum(a)getindex_value(b)
+end
+
+
+dot(a::AbstractFill{<:Any,1}, b::AbstractFill{<:Any,1}) = _fill_dot(a, b)
+dot(a::AbstractFill{<:Any,1}, b::AbstractVector) = _fill_dot(a, b)
+dot(a::AbstractVector, b::AbstractFill{<:Any,1}) = _fill_dot(a, b)
 
 function dot(u::AbstractVector, E::Eye, v::AbstractVector)
     length(u) == size(E,1) && length(v) == size(E,2) ||
