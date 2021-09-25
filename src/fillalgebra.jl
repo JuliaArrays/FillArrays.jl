@@ -119,12 +119,12 @@ function *(a::StridedMatrix{T}, b::Fill{T, 2}) where T
     fill!(fB, b.value)
     return a*fB
 end
-function _adjvec_mul_zeros(a::Adjoint{T}, b::Zeros{S, 1}) where {T, S}
+function _adjvec_mul_zeros(a, b)
     la, lb = length(a), length(b)
     if la ≠ lb
         throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))
     end
-    return zero(Base.promote_op(*, T, S))
+    return zero(Base.promote_op(*, eltype(a), eltype(b)))
 end
 
 *(a::AdjointAbsVec{<:Any,<:Zeros{<:Any,1}}, b::AbstractMatrix) = (b' * a')'

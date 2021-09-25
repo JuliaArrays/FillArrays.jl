@@ -461,6 +461,10 @@ end
         @test Zeros(5)' * randn(5) ≡ Zeros(5)' * Zeros(5) ≡ Zeros(5)' * Ones(5) ≡ 0.0 
         @test Zeros(5) * Zeros(6)' ≡ Zeros(5,1) * Zeros(6)' ≡ Zeros(5,6)
         @test randn(5) * Zeros(6)' ≡ randn(5,1) * Zeros(6)' ≡ Zeros(5,6)
+        @test Zeros(5) * randn(6)' ≡ Zeros(5,6)
+
+        @test ([[1,2]])' * Zeros{SVector{2,Int}}(1) ≡ 0
+        @test_broken ([[1,2,3]])' * Zeros{SVector{2,Int}}(1)
     end
 
     @testset "Check multiplication by Transpose-d vectors works as expected." begin
@@ -471,6 +475,11 @@ end
         @test transpose(Zeros(5)) * randn(5,3) ≡ transpose(Zeros(5))*Zeros(5,3) ≡ transpose(Zeros(5))*Ones(5,3) ≡ transpose(Zeros(3))
         @test transpose(Zeros(5)) * randn(5) ≡ transpose(Zeros(5)) * Zeros(5) ≡ transpose(Zeros(5)) * Ones(5) ≡ 0.0 
         @test randn(5) * transpose(Zeros(6)) ≡ randn(5,1) * transpose(Zeros(6)) ≡ Zeros(5,6)
+        @test Zeros(5) * transpose(randn(6)) ≡ Zeros(5,6)
+        @test transpose(randn(5)) * Zeros(5) ≡ 0.0
+
+        @test transpose([[1,2]]) * Zeros{SVector{2,Int}}(1) ≡ 0
+        @test_broken transpose([[1,2,3]]) * Zeros{SVector{2,Int}}(1)
     end
 
     z1, z2 = Zeros{Float64}(4), Zeros{Int}(4)
@@ -1151,25 +1160,7 @@ end
     @test E*(1:5) ≡ 1.0:5.0
     @test (1:5)'E == (1.0:5)'
     @test E*E ≡ E
-end
 
-@testset "count" begin
-    @test count(Ones{Bool}(10)) == count(Fill(true,10)) == 10
-    @test count(Zeros{Bool}(10)) == count(Fill(false,10)) == 0
-    @test count(x -> 1 ≤ x < 2, Fill(1.3,10)) == 10
-    @test count(x -> 1 ≤ x < 2, Fill(2.0,10)) == 0
-end
-
-@testset "norm" begin
-    for a in (Zeros{Int}(5), Zeros(5,3), Zeros(2,3,3),
-                Ones{Int}(5), Ones(5,3), Ones(2,3,3),
-                Fill(2.3,5), Fill([2.3,4.2],5), Fill(4)),
-        p in (-Inf, 0, 0.1, 1, 2, 3, Inf)
-        @test norm(a,p) ≈ norm(Array(a),p)
-    end
-end
-
-@testset "multiplication" begin
     for T in (Float64, ComplexF64)
         fv = T == Float64 ? Float64(1.6) : ComplexF64(1.6, 1.3)
         n  = 10
@@ -1185,6 +1176,22 @@ end
         @test transpose(A)*fillmat ≈ transpose(A)*Array(fillmat)
         @test adjoint(A)*fillvec ≈ adjoint(A)*Array(fillvec)
         @test adjoint(A)*fillmat ≈ adjoint(A)*Array(fillmat)
+    end
+end
+
+@testset "count" begin
+    @test count(Ones{Bool}(10)) == count(Fill(true,10)) == 10
+    @test count(Zeros{Bool}(10)) == count(Fill(false,10)) == 0
+    @test count(x -> 1 ≤ x < 2, Fill(1.3,10)) == 10
+    @test count(x -> 1 ≤ x < 2, Fill(2.0,10)) == 0
+end
+
+@testset "norm" begin
+    for a in (Zeros{Int}(5), Zeros(5,3), Zeros(2,3,3),
+                Ones{Int}(5), Ones(5,3), Ones(2,3,3),
+                Fill(2.3,5), Fill([2.3,4.2],5), Fill(4)),
+        p in (-Inf, 0, 0.1, 1, 2, 3, Inf)
+        @test norm(a,p) ≈ norm(Array(a),p)
     end
 end
 
