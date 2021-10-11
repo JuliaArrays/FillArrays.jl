@@ -204,12 +204,7 @@ end
 function +(a::Fill{T, 1}, b::AbstractRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
-    return (a.value + first(b)):convert(Tout, step(b)):(a.value + last(b))
-end
-function +(a::Fill{T, 1}, b::UnitRange) where {T}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    Tout = promote_type(T, eltype(b))
-    return (a.value + first(b)):(a.value + last(b))
+    return a.value .+ b
 end
 +(a::AbstractRange, b::AbstractFill) = b + a
 

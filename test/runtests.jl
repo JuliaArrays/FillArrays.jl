@@ -694,6 +694,14 @@ end
         @test_throws DimensionMismatch rnge .+ Zeros(5)
         @test_throws DimensionMismatch rnge .- Zeros(5)
         @test_throws DimensionMismatch Zeros(5) .+ rnge
+
+        @test Fill(2,10) + (1:10) isa UnitRange
+        @test (1:10) + Fill(2,10) isa UnitRange
+
+        f = Fill(1+im,10)
+        @test f + rnge isa AbstractRange
+        @test f + rnge == rnge + f
+        @test f + (1:10) isa AbstractRange
     end
 
     @testset "Special Zeros/Ones" begin
