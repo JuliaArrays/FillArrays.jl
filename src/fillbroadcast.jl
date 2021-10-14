@@ -212,7 +212,7 @@ for op in (:+, -)
             LinearAlgebra.copy_oftype(a, promote_type(T,V))
         end
 
-        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFill{T,1}, b::Zeros{V,1}) where {T,V} = 
+        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFill{T,1}, b::Zeros{V,1}) where {T,V} =
             Base.invoke(broadcasted, Tuple{DefaultArrayStyle, typeof($op), AbstractFill, AbstractFill}, DefaultArrayStyle{1}(), $op, a, b)
     end
 end
@@ -222,7 +222,7 @@ function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{T,1}, b::Abst
     LinearAlgebra.copy_oftype(b, promote_type(T,V))
 end
 
-broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{V,1}, b::AbstractFill{T,1}) where {T,V} = 
+broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{V,1}, b::AbstractFill{T,1}) where {T,V} =
             Base.invoke(broadcasted, Tuple{DefaultArrayStyle, typeof(+), AbstractFill, AbstractFill}, DefaultArrayStyle{1}(), +, a, b)
 
 # Need to prevent array-valued fills from broadcasting over entry
@@ -250,3 +250,22 @@ broadcasted(::DefaultArrayStyle{N}, ::typeof(Base.literal_pow), ::Base.RefValue{
 broadcasted(::DefaultArrayStyle{N}, ::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::Ones{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = Ones{T}(axes(r))
 broadcasted(::DefaultArrayStyle{N}, ::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::Zeros{T,N}, ::Base.RefValue{Val{0}}) where {T,N} = Ones{T}(axes(r))
 broadcasted(::DefaultArrayStyle{N}, ::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::Zeros{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = Zeros{T}(axes(r))
+
+# Special broadcasting rules involving structured matrices
+const DiagonalFill = Diagonal{<:Any, <:AbstractFill}
+broadcasted(::StructuredMatrixStyle, ::typeof(+), D1::DiagonalFill, D2::DiagonalFill) = Diagonal(parent(D1) .+ parent(D2))
+broadcasted(::StructuredMatrixStyle, ::typeof(-), D1::DiagonalFill, D2::DiagonalFill) = Diagonal(parent(D1) .- parent(D2))
+
+broadcasted(::StructuredMatrixStyle, ::typeof(*), D::DiagonalFill, x::Number) = Diagonal(parent(D) .* x)
+broadcasted(::StructuredMatrixStyle, ::typeof(*), x::Number, D::DiagonalFill) = Diagonal(x .* parent(D))
+broadcasted(::StructuredMatrixStyle, ::typeof(*), D1::DiagonalFill, D2::DiagonalFill) = Diagonal(parent(D1) .* parent(D2))
+
+broadcasted(::StructuredMatrixStyle, ::typeof(/), D::DiagonalFill, x::Number) = Diagonal(parent(D) ./ x)
+broadcasted(::StructuredMatrixStyle, ::typeof(\), x::Number, D::DiagonalFill) = Diagonal(x .\ parent(D))
+
+broadcasted(::StructuredMatrixStyle, ::typeof(*), D::DiagonalFill, x::AbstractRange) = Diagonal(parent(D) .* x)
+broadcasted(::StructuredMatrixStyle, ::typeof(*), x::AbstractRange, D::DiagonalFill) = Diagonal(x .* parent(D))
+
+broadcasted(::StructuredMatrixStyle, ::typeof(^), D::DiagonalFill, x::Number) = Diagonal(parent(D) .^ x)
+
+broadcasted(::StructuredMatrixStyle, ::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, D::DiagonalFill, ::Base.RefValue{Val{k}}) where {k} = Diagonal(parent(D) .^ k)

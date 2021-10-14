@@ -458,7 +458,7 @@ end
         @test [SVector(1,2)', SVector(2,3)', SVector(3,4)']' * Zeros{Int}(3) === SVector(0,0)
         @test_throws DimensionMismatch randn(4)' * Zeros(3)
         @test Zeros(5)' * randn(5,3) ≡ Zeros(5)'*Zeros(5,3) ≡ Zeros(5)'*Ones(5,3) ≡ Zeros(3)'
-        @test Zeros(5)' * randn(5) ≡ Zeros(5)' * Zeros(5) ≡ Zeros(5)' * Ones(5) ≡ 0.0 
+        @test Zeros(5)' * randn(5) ≡ Zeros(5)' * Zeros(5) ≡ Zeros(5)' * Ones(5) ≡ 0.0
         @test Zeros(5) * Zeros(6)' ≡ Zeros(5,1) * Zeros(6)' ≡ Zeros(5,6)
         @test randn(5) * Zeros(6)' ≡ randn(5,1) * Zeros(6)' ≡ Zeros(5,6)
         @test Zeros(5) * randn(6)' ≡ Zeros(5,6)
@@ -473,7 +473,7 @@ end
         @test transpose([1, 2, 3]) * Zeros{Int}(3) === zero(Int)
         @test_throws DimensionMismatch transpose(randn(4)) * Zeros(3)
         @test transpose(Zeros(5)) * randn(5,3) ≡ transpose(Zeros(5))*Zeros(5,3) ≡ transpose(Zeros(5))*Ones(5,3) ≡ transpose(Zeros(3))
-        @test transpose(Zeros(5)) * randn(5) ≡ transpose(Zeros(5)) * Zeros(5) ≡ transpose(Zeros(5)) * Ones(5) ≡ 0.0 
+        @test transpose(Zeros(5)) * randn(5) ≡ transpose(Zeros(5)) * Zeros(5) ≡ transpose(Zeros(5)) * Ones(5) ≡ 0.0
         @test randn(5) * transpose(Zeros(6)) ≡ randn(5,1) * transpose(Zeros(6)) ≡ Zeros(5,6)
         @test Zeros(5) * transpose(randn(6)) ≡ Zeros(5,6)
         @test transpose(randn(5)) * Zeros(5) ≡ 0.0
@@ -1023,7 +1023,7 @@ end
 @testset "Eye identity ops" begin
     m = Eye(10)
     D = Diagonal(Fill(2,10))
-    
+
     for op in (permutedims, inv)
         @test op(m) === m
     end
@@ -1383,4 +1383,31 @@ end
     @test cor(Fill(3,4)) == cor(fill(3,4))
     @test cor(Fill(3, 4, 5)) ≈ cor(fill(3, 4, 5)) nans=true
     @test cor(Fill(3, 4, 5), dims=2) ≈ cor(fill(3, 4, 5), dims=2) nans=true
+end
+
+@testset "broadcasting StructuredMatrix" begin
+    @testset "Diagonal" begin
+        D = Diagonal(Fill(3, 2))
+        @test D .+ D isa FillArrays.DiagonalFill
+        @test D .+ D == Matrix(D) .+ Matrix(D)
+        @test D .- D isa FillArrays.DiagonalFill
+        @test D .- D == Matrix(D) .- Matrix(D)
+        @test (D .* 2) isa FillArrays.DiagonalFill
+        @test D .* 2 == Matrix(D) .* 2
+        @test (2 .* D) isa FillArrays.DiagonalFill
+        @test 2 .* D == 2 .* Matrix(D)
+        @test D .* D isa FillArrays.DiagonalFill
+        @test D .* D == Matrix(D) .* Matrix(D)
+        @test (D ./ 2) isa FillArrays.DiagonalFill
+        @test D ./ 2 == Matrix(D) ./ 2
+        @test (2 .\ D) isa FillArrays.DiagonalFill
+        @test 2 .\ D == 2 .\ Matrix(D)
+        @test (D .^ 2) isa FillArrays.DiagonalFill
+        @test D .^ 2 == Matrix(D) .^ 2
+        n = 2
+        @test (D .^ n) isa FillArrays.DiagonalFill
+        @test D .^ n == Matrix(D) .^ n
+        @test D .* (1:2) == Matrix(D) .* (1:2)
+        @test (1:2) .* D == (1:2) .* Matrix(D)
+    end
 end

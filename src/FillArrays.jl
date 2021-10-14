@@ -10,7 +10,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular, AdjointAbsVec, TransposeAbsVec,
-    issymmetric, ishermitian, AdjOrTransAbsVec
+    issymmetric, ishermitian, AdjOrTransAbsVec, StructuredMatrixStyle
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
@@ -595,18 +595,18 @@ end
 mean(A::AbstractFill; dims=(:)) = mean(identity, A; dims=dims)
 function mean(f::Union{Function, Type}, A::AbstractFill; dims=(:))
     val = float(f(getindex_value(A)))
-    dims isa Colon ? val : 
+    dims isa Colon ? val :
         Fill(val, ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
 end
 
 
 function var(A::AbstractFill{T}; corrected::Bool=true, mean=nothing, dims=(:)) where {T<:Number}
-    dims isa Colon ? zero(float(T)) : 
+    dims isa Colon ? zero(float(T)) :
         Zeros{float(T)}(ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
 end
 
 cov(A::AbstractFill{T,1}; corrected::Bool=true) where {T<:Number} = zero(float(T))
-cov(A::AbstractFill{T,2}; corrected::Bool=true, dims::Integer=1) where {T<:Number} = 
+cov(A::AbstractFill{T,2}; corrected::Bool=true, dims::Integer=1) where {T<:Number} =
     Zeros{float(T)}(size(A, 3-dims), size(A, 3-dims))
 
 cor(A::AbstractFill{T,1}) where {T<:Number} = one(float(T))
