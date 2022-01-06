@@ -40,7 +40,7 @@ Base.@propagate_inbounds @inline function _fill_getindex(F::AbstractFill, kj::In
 end
 
 getindex(F::AbstractFill, k::Integer) = _fill_getindex(F, k)
-getindex(F::AbstractFill{T, N}, kj::Vararg{<:Integer, N}) where {T, N} = _fill_getindex(F, kj...)
+getindex(F::AbstractFill{T, N}, kj::Vararg{Integer, N}) where {T, N} = _fill_getindex(F, kj...)
 
 @inline function setindex!(F::AbstractFill, v, k::Integer)
     @boundscheck checkbounds(F, k)
@@ -48,7 +48,7 @@ getindex(F::AbstractFill{T, N}, kj::Vararg{<:Integer, N}) where {T, N} = _fill_g
     F
 end
 
-@inline function setindex!(F::AbstractFill{T, N}, v, kj::Vararg{<:Integer, N}) where {T, N}
+@inline function setindex!(F::AbstractFill{T, N}, v, kj::Vararg{Integer, N}) where {T, N}
     @boundscheck checkbounds(F, kj...)
     v == getindex_value(F) || throw(ArgumentError("Cannot setindex! to $v for an AbstractFill with value $(getindex_value(F))."))
     F
@@ -112,12 +112,12 @@ Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
 @inline Fill{T, N}(x, sz::Vararg{Integer, N}) where {T, N} = Fill{T,N}(convert(T, x)::T, sz)
 
 
-@inline Fill{T}(x, sz::Vararg{<:Integer,N}) where {T, N} = Fill{T, N}(x, sz)
-@inline Fill{T}(x, sz::Tuple{Vararg{<:Any,N}}) where {T, N} = Fill{T, N}(x, sz)
+@inline Fill{T}(x, sz::Vararg{Integer,N}) where {T, N} = Fill{T, N}(x, sz)
+@inline Fill{T}(x, sz::Tuple{Vararg{Any,N}}) where {T, N} = Fill{T, N}(x, sz)
 """ `Fill(x, dims...)` construct lazy version of `fill(x, dims...)` """
-@inline Fill(x::T, sz::Vararg{<:Integer,N}) where {T, N}  = Fill{T, N}(x, sz)
+@inline Fill(x::T, sz::Vararg{Integer,N}) where {T, N}  = Fill{T, N}(x, sz)
 """ `Fill(x, dims)` construct lazy version of `fill(x, dims)` """
-@inline Fill(x::T, sz::Tuple{Vararg{<:Any,N}}) where {T, N}  = Fill{T, N}(x, sz)
+@inline Fill(x::T, sz::Tuple{Vararg{Any,N}}) where {T, N}  = Fill{T, N}(x, sz)
 
 # We restrict to  when T is specified to avoid ambiguity with a Fill of a Fill
 @inline Fill{T}(F::Fill{T}) where T = F
@@ -248,8 +248,8 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
 
 
         @inline $Typ{T, 0}(sz::Tuple{}) where {T} = $Typ{T,0,Tuple{}}(sz)
-        @inline $Typ{T, N}(sz::Tuple{Vararg{<:Integer, N}}) where {T, N} = $Typ{T,N}(oneto.(sz))
-        @inline $Typ{T, N}(sz::Vararg{<:Integer, N}) where {T, N} = $Typ{T,N}(sz)
+        @inline $Typ{T, N}(sz::Tuple{Vararg{Integer, N}}) where {T, N} = $Typ{T,N}(oneto.(sz))
+        @inline $Typ{T, N}(sz::Vararg{Integer, N}) where {T, N} = $Typ{T,N}(sz)
         """ `$($Typ){T}(dims...)` construct lazy version of `$($funcs)(dims...)`"""
         @inline $Typ{T}(sz::Vararg{Integer,N}) where {T, N} = $Typ{T, N}(sz)
         @inline $Typ{T}(sz::SZ) where SZ<:Tuple{Vararg{Any,N}} where {T, N} = $Typ{T, N}(sz)
