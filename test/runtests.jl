@@ -301,19 +301,21 @@ end
 
 # Check that all pair-wise combinations of + / - elements of As and Bs yield the correct
 # type, and produce numerically correct results.
+as_array(x::AbstractArray) = Array(x)
+as_array(x::UniformScaling) = x
 function test_addition_and_subtraction(As, Bs, Tout::Type)
     for A in As, B in Bs
         @test A + B isa Tout{promote_type(eltype(A), eltype(B))}
-        @test Array(A + B) == Array(A) + Array(B)
+        @test as_array(A + B) == as_array(A) + as_array(B)
 
         @test A - B isa Tout{promote_type(eltype(A), eltype(B))}
-        @test Array(A - B) == Array(A) - Array(B)
+        @test as_array(A - B) == as_array(A) - as_array(B)
 
         @test B + A isa Tout{promote_type(eltype(B), eltype(A))}
-        @test Array(B + A) == Array(B) + Array(A)
+        @test as_array(B + A) == as_array(B) + as_array(A)
 
         @test B - A isa Tout{promote_type(eltype(B), eltype(A))}
-        @test Array(B - A) == Array(B) - Array(A)
+        @test as_array(B - A) == as_array(B) - as_array(A)
     end
 end
 
@@ -353,6 +355,33 @@ end
     test_addition_and_subtraction([A_fill, B_fill], (A_ur, B_ur), AbstractRange)
     test_addition_and_subtraction_dim_mismatch(A_fill, 1.0:6.0)
     test_addition_and_subtraction_dim_mismatch(A_fill, 5:10)
+
+    # FillArray + UniformScaling should yield a Matrix in general
+    As_fill_square = (Fill(randn(rng, Float64), 3, 3), Fill(5, 4, 4))
+    Bs_us = (UniformScaling(2.3), UniformScaling(3))
+    test_addition_and_subtraction(As_fill_square, Bs_us, Matrix)
+    As_fill_nonsquare = (Fill(randn(rng, Float64), 3, 2), Fill(5, 3, 4))
+    for A in As_fill_nonsquare, B in Bs_us
+        test_addition_and_subtraction_dim_mismatch(A, B)
+    end
+
+    # Optimizations for Zeros and RectOrDiagonal{<:Any, <:AbstractFill}
+    As_special_square = [
+        Zeros(3, 3), Zeros{Int}(4, 4),
+        Eye(3), Eye{Int}(4), Eye(3, 3), Eye{Int}(4, 4),
+        Diagonal(Fill(randn(rng, Float64), 3)), Diagonal(Fill(3, 4)),
+        RectDiagonal(Fill(randn(rng, Float64), 3), 3, 3), RectDiagonal(Fill(3, 4), 4, 4)
+    ]
+    DiagonalAbstractFill{T} = Diagonal{T, <:AbstractFill{T, 1}}
+    test_addition_and_subtraction(As_special_square, Bs_us, DiagonalAbstractFill)
+    As_special_nonsquare = [
+        Zeros(3, 2), Zeros{Int}(3, 4),
+        Eye(3, 2), Eye{Int}(3, 4),
+        RectDiagonal(Fill(randn(rng, Float64), 2), 3, 2), RectDiagonal(Fill(3, 3), 3, 4)
+    ]
+    for A in As_special_nonsquare, B in Bs_us
+        test_addition_and_subtraction_dim_mismatch(A, B)
+    end
 end
 
 @testset "Other matrix types" begin

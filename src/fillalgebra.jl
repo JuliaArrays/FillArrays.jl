@@ -261,6 +261,33 @@ end
 -(a::AbstractRange{T}, b::Zeros{V, 1}) where {T, V} = a + b
 
 
+function +(a::Zeros{T, 2}, b::UniformScaling{V}) where {T, V<:Number}
+    n = LinearAlgebra.checksquare(a)
+    return Diagonal(Fill{promote_type(T,V)}(b.λ, n))
+end
+function +(a::RectOrDiagonal{T, <:AbstractFill{T, 1}}, b::UniformScaling) where {T}
+    LinearAlgebra.checksquare(a)
+    return Diagonal(a.diag .+ b.λ)
+end
+
+function -(a::UniformScaling{T}, b::Zeros{V, 2}) where {T <: Number, V}
+    n = LinearAlgebra.checksquare(b)
+    return Diagonal(Fill{promote_type(T,V)}(a.λ, n))
+end
+function -(a::UniformScaling, b::RectOrDiagonal{T, <:AbstractFill{T, 1}}) where {T}
+    LinearAlgebra.checksquare(b)
+    return Diagonal(a.λ .- b.diag)
+end
+
+# fix ambiguity errors
+function +(a::Diagonal{T, <:AbstractFill{T, 1}}, b::UniformScaling) where {T<:Number}
+    LinearAlgebra.checksquare(a)
+    return Diagonal(a.diag .+ b.λ)
+end
+function -(a::UniformScaling, b::Diagonal{T, <:AbstractFill{T, 1}}) where {T<:Number}
+    LinearAlgebra.checksquare(b)
+    return Diagonal(a.λ .- b.diag)
+end
 
 ####
 # norm
