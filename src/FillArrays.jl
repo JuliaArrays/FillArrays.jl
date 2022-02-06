@@ -207,6 +207,8 @@ function +(a::Fill{T, 1}, b::AbstractRange) where {T}
     return a.value .+ b
 end
 +(a::AbstractRange, b::AbstractFill) = b + a
+# LinearAlgebra defines `+(a::UniformScaling, b::AbstractMatrix) = b + a`,
+# so the implementation of `+(a::AbstractFill{<:Any,2}, b::UniformScaling)` is sufficient
 function +(a::AbstractFill{<:Any,2}, b::UniformScaling)
     n = LinearAlgebra.checksquare(a)
     return a + Diagonal(Fill(b.λ, n))
@@ -214,6 +216,8 @@ end
 
 -(a::AbstractFill, b::AbstractRange) = a + (-b)
 -(a::AbstractRange, b::AbstractFill) = a + (-b)
+# LinearAlgebra defines `-(a::AbstractMatrix, b::UniformScaling) = a + (-b)`,
+# so the implementation of `-(a::UniformScaling, b::AbstractFill{<:Any,2})` is sufficient
 -(a::UniformScaling, b::AbstractFill{<:Any,2}) = a + (-b)
 
 function fill_reshape(parent, dims::Integer...)
@@ -358,6 +362,16 @@ for f in (:triu, :triu!, :tril, :tril!)
     @eval ($f)(M::RectDiagonal) = M
 end
 
+# Due to default definitions in LinearAlgebra only the following implementations are needed
+# (see above for more details)
+function +(a::RectDiagonal, b::UniformScaling)
+    LinearAlgebra.checksquare(a)
+    return Diagonal(a.diag .+ b.λ)
+end
+function -(a::UniformScaling, b::RectDiagonal)
+    LinearAlgebra.checksquare(b)
+    return Diagonal(a.λ .- b.diag)
+end
 
 Base.replace_in_print_matrix(A::RectDiagonal, i::Integer, j::Integer, s::AbstractString) =
     i == j ? s : Base.replace_with_centered_mark(s)

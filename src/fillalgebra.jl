@@ -260,23 +260,6 @@ function -(a::Zeros{T, 1}, b::AbstractRange{V}) where {T, V}
 end
 -(a::AbstractRange{T}, b::Zeros{V, 1}) where {T, V} = a + b
 
-function +(a::RectOrDiagonal{T, <:AbstractFill{T, 1}}, b::UniformScaling) where {T}
-    LinearAlgebra.checksquare(a)
-    return Diagonal(a.diag .+ b.λ)
-end
-function -(a::UniformScaling, b::RectOrDiagonal{T, <:AbstractFill{T, 1}}) where {T}
-    LinearAlgebra.checksquare(b)
-    return Diagonal(a.λ .- b.diag)
-end
-# fix ambiguity errors
-function +(a::Diagonal{T, <:AbstractFill{T, 1}}, b::UniformScaling) where {T<:Number}
-    LinearAlgebra.checksquare(a)
-    return Diagonal(a.diag .+ b.λ)
-end
-function -(a::UniformScaling, b::Diagonal{T, <:AbstractFill{T, 1}}) where {T<:Number}
-    LinearAlgebra.checksquare(b)
-    return Diagonal(a.λ .- b.diag)
-end
 
 ####
 # norm
