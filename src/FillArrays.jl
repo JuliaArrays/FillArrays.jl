@@ -207,7 +207,10 @@ function +(a::Fill{T, 1}, b::AbstractRange) where {T}
     return a.value .+ b
 end
 +(a::AbstractRange, b::AbstractFill) = b + a
-+(a::AbstractFill{<:Any,2}, b::UniformScaling) = a + Diagonal(Fill(b.λ,(axes(a,1),)))
+function +(a::AbstractFill{<:Any,2}, b::UniformScaling)
+    n = LinearAlgebra.checksquare(a)
+    return a + Diagonal(Fill(b.λ, n))
+end
 
 -(a::AbstractFill, b::AbstractRange) = a + (-b)
 -(a::AbstractRange, b::AbstractFill) = a + (-b)
