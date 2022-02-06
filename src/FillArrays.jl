@@ -207,7 +207,7 @@ function +(a::Fill{T, 1}, b::AbstractRange) where {T}
     return a.value .+ b
 end
 +(a::AbstractRange, b::AbstractFill) = b + a
-+(a::AbstractFill{<:Any,2}, b::UniformScaling) = Array(a) + b
++(a::AbstractFill{<:Any,2}, b::UniformScaling) = a + Diagonal(Fill(b.λ,(axes(a,1),)))
 
 -(a::AbstractFill, b::AbstractRange) = a + (-b)
 -(a::AbstractRange, b::AbstractFill) = a + (-b)
