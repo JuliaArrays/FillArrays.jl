@@ -292,11 +292,7 @@ end
     @test_throws ArgumentError mut[2, 1] = 9
 
     D = RectDiagonal([1.,2.], (Base.OneTo(3),Base.OneTo(2)))
-    if VERSION < v"1.6-"
-        @test stringmime("text/plain", D) == "3×2 RectDiagonal{Float64,Array{Float64,1},Tuple{Base.OneTo{$Int},Base.OneTo{$Int}}}:\n 1.0   ⋅ \n  ⋅   2.0\n  ⋅    ⋅ "
-    else
-        @test stringmime("text/plain", D) == "3×2 RectDiagonal{Float64, Vector{Float64}, Tuple{Base.OneTo{$Int}, Base.OneTo{$Int}}}:\n 1.0   ⋅ \n  ⋅   2.0\n  ⋅    ⋅ "
-    end
+    @test stringmime("text/plain", D) == "3×2 RectDiagonal{Float64, Vector{Float64}, Tuple{Base.OneTo{$Int}, Base.OneTo{$Int}}}:\n 1.0   ⋅ \n  ⋅   2.0\n  ⋅    ⋅ "
 end
 
 # Check that all pair-wise combinations of + / - elements of As and Bs yield the correct
@@ -623,9 +619,7 @@ end
 
     @test diff(Fill(1,10)) ≡ Zeros{Int}(9)
     @test diff(Ones{Float64}(10)) ≡ Zeros{Float64}(9)
-    if VERSION ≥ v"1.0"
-        @test_throws UndefKeywordError cumsum(Fill(1,1,5))
-    end
+    @test_throws UndefKeywordError cumsum(Fill(1,1,5))
 end
 
 @testset "Broadcast" begin
@@ -858,37 +852,29 @@ end
     @test mapreduce(identity, +, Y) == sum(y) == sum(Y)
     @test mapreduce(identity, +, Y, dims=1) == sum(y, dims=1) == sum(Y, dims=1)
 
-    if VERSION >= v"1.4"
-        @test mapreduce(exp, +, Y; dims=(1,), init=5.0) == mapreduce(exp, +, y; dims=(1,), init=5.0)
-    end
+    @test mapreduce(exp, +, Y; dims=(1,), init=5.0) == mapreduce(exp, +, y; dims=(1,), init=5.0)
 
-    if VERSION >= v"1.2" # Vararg mapreduce was added in Julia 1.2
+    # Two arrays
+    @test mapreduce(*, +, x, Y) == mapreduce(*, +, x, y)
+    @test mapreduce(*, +, Y, x) == mapreduce(*, +, y, x)
+    @test mapreduce(*, +, x, O) == mapreduce(*, +, x, y)
+    @test mapreduce(*, +, Y, O) == mapreduce(*, +, y, y)
 
-        # Two arrays
-        @test mapreduce(*, +, x, Y) == mapreduce(*, +, x, y)
-        @test mapreduce(*, +, Y, x) == mapreduce(*, +, y, x)
-        @test mapreduce(*, +, x, O) == mapreduce(*, +, x, y)
-        @test mapreduce(*, +, Y, O) == mapreduce(*, +, y, y)
+    f2(x,y) = 1 + x/y
+    op2(x,y) = x^2 + 3y
+    @test mapreduce(f2, op2, x, Y) == mapreduce(f2, op2, x, y)
 
-        f2(x,y) = 1 + x/y
-        op2(x,y) = x^2 + 3y
-        @test mapreduce(f2, op2, x, Y) == mapreduce(f2, op2, x, y)
+    @test mapreduce(f2, op2, x, Y, dims=1, init=5.0) == mapreduce(f2, op2, x, y, dims=1, init=5.0)
+    @test mapreduce(f2, op2, Y, x, dims=1, init=5.0) == mapreduce(f2, op2, y, x, dims=1, init=5.0)
+    @test mapreduce(f2, op2, x, O, dims=1, init=5.0) == mapreduce(f2, op2, x, y, dims=1, init=5.0)
+    @test mapreduce(f2, op2, Y, O, dims=1, init=5.0) == mapreduce(f2, op2, y, y, dims=1, init=5.0)
 
-        if VERSION >= v"1.4"
-            @test mapreduce(f2, op2, x, Y, dims=1, init=5.0) == mapreduce(f2, op2, x, y, dims=1, init=5.0)
-            @test mapreduce(f2, op2, Y, x, dims=1, init=5.0) == mapreduce(f2, op2, y, x, dims=1, init=5.0)
-            @test mapreduce(f2, op2, x, O, dims=1, init=5.0) == mapreduce(f2, op2, x, y, dims=1, init=5.0)
-            @test mapreduce(f2, op2, Y, O, dims=1, init=5.0) == mapreduce(f2, op2, y, y, dims=1, init=5.0)
-        end
-
-        # More than two
-        @test mapreduce(+, +, x, Y, x) == mapreduce(+, +, x, y, x)
-        @test mapreduce(+, +, Y, x, x) == mapreduce(+, +, y, x, x)
-        @test mapreduce(+, +, x, O, Y) == mapreduce(+, +, x, y, y)
-        @test mapreduce(+, +, Y, O, Y) == mapreduce(+, +, y, y, y)
-        @test mapreduce(+, +, Y, O, Y, x) == mapreduce(+, +, y, y, y, x)
-
-    end
+    # More than two
+    @test mapreduce(+, +, x, Y, x) == mapreduce(+, +, x, y, x)
+    @test mapreduce(+, +, Y, x, x) == mapreduce(+, +, y, x, x)
+    @test mapreduce(+, +, x, O, Y) == mapreduce(+, +, x, y, y)
+    @test mapreduce(+, +, Y, O, Y) == mapreduce(+, +, y, y, y)
+    @test mapreduce(+, +, Y, O, Y, x) == mapreduce(+, +, y, y, y, x)
 end
 
 @testset "Offset indexing" begin
@@ -1272,17 +1258,16 @@ end
 end
 
 @testset "print" begin
-    if VERSION ≥ v"1.5"
-        # 3-arg show, full printing
-        @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64}"
-        @test stringmime("text/plain", Ones(3)) == "3-element Ones{Float64}"
-        @test stringmime("text/plain", Fill(7,2)) == "2-element Fill{$Int}, with entries equal to 7"
-        @test stringmime("text/plain", Zeros(3,2)) == "3×2 Zeros{Float64}"
-        @test stringmime("text/plain", Ones(3,2)) == "3×2 Ones{Float64}"
-        @test stringmime("text/plain", Fill(7,2,3)) == "2×3 Fill{$Int}, with entries equal to 7"
-        @test stringmime("text/plain", Fill(8.0,1)) == "1-element Fill{Float64}, with entry equal to 8.0"
-        @test stringmime("text/plain", Eye(5)) == "5×5 Eye{Float64}"
-    end
+    # 3-arg show, full printing
+    @test stringmime("text/plain", Zeros(3)) == "3-element Zeros{Float64}"
+    @test stringmime("text/plain", Ones(3)) == "3-element Ones{Float64}"
+    @test stringmime("text/plain", Fill(7,2)) == "2-element Fill{$Int}, with entries equal to 7"
+    @test stringmime("text/plain", Zeros(3,2)) == "3×2 Zeros{Float64}"
+    @test stringmime("text/plain", Ones(3,2)) == "3×2 Ones{Float64}"
+    @test stringmime("text/plain", Fill(7,2,3)) == "2×3 Fill{$Int}, with entries equal to 7"
+    @test stringmime("text/plain", Fill(8.0,1)) == "1-element Fill{Float64}, with entry equal to 8.0"
+    @test stringmime("text/plain", Eye(5)) == "5×5 Eye{Float64}"
+
     # 2-arg show, compact printing
     @test repr(Zeros(3)) == "Zeros(3)"
     @test repr(Ones(3,2)) == "Ones(3, 2)"

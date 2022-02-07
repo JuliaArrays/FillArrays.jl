@@ -32,54 +32,46 @@ end
 
 ### mapreduce
 
-if VERSION >= v"1.4"
-    # _InitialValue was introduced after 1.0, before 1.4, not sure exact version.
-    # Without these methods, some reductions will give an Array not a Fill.
-
-    function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, ::Colon)
-        fval = f(getindex_value(A))
-        out = fval
-        for _ in 2:length(A)
-            out = op(out, fval)
-        end
-        out
+function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, ::Colon)
+    fval = f(getindex_value(A))
+    out = fval
+    for _ in 2:length(A)
+        out = op(out, fval)
     end
-
-    function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
-        fval = f(getindex_value(A))
-        red = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
-        out = fval
-        for _ in 2:red
-            out = op(out, fval)
-        end
-        Fill(out, ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
-    end
-
+    out
 end
-if VERSION >= v"1.2" # Vararg mapreduce was added in Julia 1.2
 
-    function mapreduce(f, op, A::AbstractFill, B::AbstractFill; kw...)
-        val(_...) = f(getindex_value(A), getindex_value(B))
-        reduce(op, map(val, A, B); kw...)
+function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
+    fval = f(getindex_value(A))
+    red = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
+    out = fval
+    for _ in 2:red
+        out = op(out, fval)
     end
-
-    # These are particularly useful because mapreduce(*, +, A, B; dims) is slow in Base,
-    # but can be re-written as some mapreduce(g, +, C; dims) which is fast.
-
-    function mapreduce(f, op, A::AbstractFill, B::AbstractArray, Cs::AbstractArray...; kw...)
-        g(b, cs...) = f(getindex_value(A), b, cs...)
-        mapreduce(g, op, B, Cs...; kw...)
-    end
-    function mapreduce(f, op, A::AbstractArray, B::AbstractFill, Cs::AbstractArray...; kw...)
-        h(a, cs...) = f(a, getindex_value(B), cs...)
-        mapreduce(h, op, A, Cs...; kw...)
-    end
-    function mapreduce(f, op, A::AbstractFill, B::AbstractFill, Cs::AbstractArray...; kw...)
-        gh(cs...) = f(getindex_value(A), getindex_value(B), cs...)
-        mapreduce(gh, op, Cs...; kw...)
-    end
-
+    Fill(out, ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
 end
+
+function mapreduce(f, op, A::AbstractFill, B::AbstractFill; kw...)
+    val(_...) = f(getindex_value(A), getindex_value(B))
+    reduce(op, map(val, A, B); kw...)
+end
+
+# These are particularly useful because mapreduce(*, +, A, B; dims) is slow in Base,
+# but can be re-written as some mapreduce(g, +, C; dims) which is fast.
+
+function mapreduce(f, op, A::AbstractFill, B::AbstractArray, Cs::AbstractArray...; kw...)
+    g(b, cs...) = f(getindex_value(A), b, cs...)
+    mapreduce(g, op, B, Cs...; kw...)
+end
+function mapreduce(f, op, A::AbstractArray, B::AbstractFill, Cs::AbstractArray...; kw...)
+    h(a, cs...) = f(a, getindex_value(B), cs...)
+    mapreduce(h, op, A, Cs...; kw...)
+end
+function mapreduce(f, op, A::AbstractFill, B::AbstractFill, Cs::AbstractArray...; kw...)
+    gh(cs...) = f(getindex_value(A), getindex_value(B), cs...)
+    mapreduce(gh, op, Cs...; kw...)
+end
+
 
 ### Unary broadcasting
 

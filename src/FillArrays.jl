@@ -19,11 +19,7 @@ import Statistics: mean, std, var, cov, cor
 
 export Zeros, Ones, Fill, Eye, Trues, Falses
 
-if VERSION < v"1.6-"
-    oneto(n) = Base.OneTo(n)
-else
-    import Base: oneto
-end
+import Base: oneto
 
 """
     AbstractFill{T, N, Axes} <: AbstractArray{T, N}
@@ -522,10 +518,7 @@ end
 sum(x::AbstractFill) = getindex_value(x)*length(x)
 sum(x::Zeros) = getindex_value(x)
 
-# define `sum(::Callable, ::AbstractFill)` to avoid method ambiguity errors on Julia 1.0
-sum(f, x::AbstractFill) = _sum(f, x)
-sum(f::Base.Callable, x::AbstractFill) = _sum(f, x)
-_sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
+sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
 
 cumsum(x::AbstractFill{<:Any,1}) = range(getindex_value(x); step=getindex_value(x),
                                                     length=length(x))
@@ -695,16 +688,14 @@ function Base.show(io::IO, x::AbstractFill)  # for example (Fill(π,3),)
 end
 Base.show(io::IO, x::Eye) = print(io, "Eye(", size(x,1), ")")
 
-if VERSION ≥ v"1.5"
-    Base.array_summary(io::IO, ::Zeros{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
-        print(io, Base.dims2string(length.(inds)), " Zeros{$T}")
-    Base.array_summary(io::IO, ::Ones{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
-        print(io, Base.dims2string(length.(inds)), " Ones{$T}")
-    Base.array_summary(io::IO, a::Fill{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
-        print(io, Base.dims2string(length.(inds)), " Fill{$T}")
-    Base.array_summary(io::IO, a::Eye{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
-        print(io, Base.dims2string(length.(inds)), " Eye{$T}")
-end
+Base.array_summary(io::IO, ::Zeros{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
+    print(io, Base.dims2string(length.(inds)), " Zeros{$T}")
+Base.array_summary(io::IO, ::Ones{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
+    print(io, Base.dims2string(length.(inds)), " Ones{$T}")
+Base.array_summary(io::IO, a::Fill{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
+    print(io, Base.dims2string(length.(inds)), " Fill{$T}")
+Base.array_summary(io::IO, a::Eye{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
+    print(io, Base.dims2string(length.(inds)), " Eye{$T}")
 
 
 ##
