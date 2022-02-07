@@ -416,12 +416,6 @@ function Eye((a,b)::NTuple{2,AbstractUnitRange{Int}})
     RectDiagonal(Ones((ab,)), (a,b))
 end
 
-
-@deprecate Eye{T}(sz::Tuple{Vararg{Integer,2}}) where T Eye{T}(sz...)
-@deprecate Eye(sz::Tuple{Vararg{Integer,2}}) Eye{Float64}(sz...)
-
-
-
 @inline Eye{T}(A::AbstractMatrix) where T = Eye{T}(size(A)...)
 @inline Eye(A::AbstractMatrix) = Eye{eltype(A)}(size(A)...)
 
