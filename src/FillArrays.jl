@@ -19,11 +19,7 @@ import Statistics: mean, std, var, cov, cor
 
 export Zeros, Ones, Fill, Eye, Trues, Falses
 
-if VERSION < v"1.6-"
-    oneto(n) = Base.OneTo(n)
-else
-    import Base: oneto
-end
+import Base: oneto
 
 """
     AbstractFill{T, N, Axes} <: AbstractArray{T, N}
@@ -207,9 +203,18 @@ function +(a::Fill{T, 1}, b::AbstractRange) where {T}
     return a.value .+ b
 end
 +(a::AbstractRange, b::AbstractFill) = b + a
+# LinearAlgebra defines `+(a::UniformScaling, b::AbstractMatrix) = b + a`,
+# so the implementation of `+(a::AbstractFill{<:Any,2}, b::UniformScaling)` is sufficient
+function +(a::AbstractFill{<:Any,2}, b::UniformScaling)
+    n = LinearAlgebra.checksquare(a)
+    return a + Diagonal(Fill(b.λ, n))
+end
 
 -(a::AbstractFill, b::AbstractRange) = a + (-b)
 -(a::AbstractRange, b::AbstractFill) = a + (-b)
+# LinearAlgebra defines `-(a::AbstractMatrix, b::UniformScaling) = a + (-b)`,
+# so the implementation of `-(a::UniformScaling, b::AbstractFill{<:Any,2})` is sufficient
+-(a::UniformScaling, b::AbstractFill{<:Any,2}) = a + (-b)
 
 function fill_reshape(parent, dims::Integer...)
     n = length(parent)
@@ -353,6 +358,16 @@ for f in (:triu, :triu!, :tril, :tril!)
     @eval ($f)(M::RectDiagonal) = M
 end
 
+# Due to default definitions in LinearAlgebra only the following implementations are needed
+# (see above for more details)
+function +(a::RectDiagonal, b::UniformScaling)
+    LinearAlgebra.checksquare(a)
+    return Diagonal(a.diag .+ b.λ)
+end
+function -(a::UniformScaling, b::RectDiagonal)
+    LinearAlgebra.checksquare(b)
+    return Diagonal(a.λ .- b.diag)
+end
 
 Base.replace_in_print_matrix(A::RectDiagonal, i::Integer, j::Integer, s::AbstractString) =
     i == j ? s : Base.replace_with_centered_mark(s)
@@ -400,12 +415,6 @@ function Eye((a,b)::NTuple{2,AbstractUnitRange{Int}})
     ab = length(a) ≤ length(b) ? a : b
     RectDiagonal(Ones((ab,)), (a,b))
 end
-
-
-@deprecate Eye{T}(sz::Tuple{Vararg{Integer,2}}) where T Eye{T}(sz...)
-@deprecate Eye(sz::Tuple{Vararg{Integer,2}}) Eye{Float64}(sz...)
-
-
 
 @inline Eye{T}(A::AbstractMatrix) where T = Eye{T}(size(A)...)
 @inline Eye(A::AbstractMatrix) = Eye{eltype(A)}(size(A)...)
@@ -503,10 +512,7 @@ end
 sum(x::AbstractFill) = getindex_value(x)*length(x)
 sum(x::Zeros) = getindex_value(x)
 
-# define `sum(::Callable, ::AbstractFill)` to avoid method ambiguity errors on Julia 1.0
-sum(f, x::AbstractFill) = _sum(f, x)
-sum(f::Base.Callable, x::AbstractFill) = _sum(f, x)
-_sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
+sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
 
 cumsum(x::AbstractFill{<:Any,1}) = range(getindex_value(x); step=getindex_value(x),
                                                     length=length(x))
@@ -676,16 +682,14 @@ function Base.show(io::IO, x::AbstractFill)  # for example (Fill(π,3),)
 end
 Base.show(io::IO, x::Eye) = print(io, "Eye(", size(x,1), ")")
 
-if VERSION ≥ v"1.5"
-    Base.array_summary(io::IO, ::Zeros{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
-        print(io, Base.dims2string(length.(inds)), " Zeros{$T}")
-    Base.array_summary(io::IO, ::Ones{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
-        print(io, Base.dims2string(length.(inds)), " Ones{$T}")
-    Base.array_summary(io::IO, a::Fill{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
-        print(io, Base.dims2string(length.(inds)), " Fill{$T}")
-    Base.array_summary(io::IO, a::Eye{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
-        print(io, Base.dims2string(length.(inds)), " Eye{$T}")
-end
+Base.array_summary(io::IO, ::Zeros{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
+    print(io, Base.dims2string(length.(inds)), " Zeros{$T}")
+Base.array_summary(io::IO, ::Ones{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
+    print(io, Base.dims2string(length.(inds)), " Ones{$T}")
+Base.array_summary(io::IO, a::Fill{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
+    print(io, Base.dims2string(length.(inds)), " Fill{$T}")
+Base.array_summary(io::IO, a::Eye{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
+    print(io, Base.dims2string(length.(inds)), " Eye{$T}")
 
 
 ##
