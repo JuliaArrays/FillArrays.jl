@@ -201,7 +201,7 @@ for op in (:+, -)
     @eval begin
         function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector{T}, b::Zeros{V,1}) where {T,V}
             broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-            LinearAlgebra.copy_oftype(a, promote_type(T,V))
+            copy(a)
         end
 
         broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFill{T,1}, b::Zeros{V,1}) where {T,V} = 
@@ -211,7 +211,7 @@ end
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{T,1}, b::AbstractVector{V}) where {T,V}
     broadcast_shape(axes(a), axes(b))
-    LinearAlgebra.copy_oftype(b, promote_type(T,V))
+    copy(b)
 end
 
 broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{V,1}, b::AbstractFill{T,1}) where {T,V} = 
