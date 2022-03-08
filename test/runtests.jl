@@ -1053,8 +1053,6 @@ end
 
     @test copy(m) ≡ m
     @test copy(D) ≡ D
-    @test FillArrays.copy_oftype(m, Int) ≡ Eye{Int}(10)
-    @test FillArrays.copy_oftype(D, Float64) ≡ Diagonal(Fill(2.0,10))
 end
 
 @testset "Issue #31" begin

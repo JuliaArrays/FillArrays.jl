@@ -197,14 +197,11 @@ function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b
     return _range_convert(AbstractVector{promote_type(T,V)}, a)
 end
 
-copy_oftype(A::AbstractArray{T}, ::Type{T}) where {T} = copy(A)
-copy_oftype(A::AbstractArray{T,N}, ::Type{S}) where {T,N,S} = convert(AbstractArray{S,N}, A)
-
 for op in (:+, -)
     @eval begin
         function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector{T}, b::Zeros{V,1}) where {T,V}
             broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-            copy_oftype(a, promote_type(T,V))
+            map(promote_type(T, V), a)
         end
 
         broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFill{T,1}, b::Zeros{V,1}) where {T,V} =
@@ -214,7 +211,7 @@ end
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{T,1}, b::AbstractVector{V}) where {T,V}
     broadcast_shape(axes(a), axes(b))
-    copy_oftype(b, promote_type(T,V))
+    map(promote_type(T, V), b)
 end
 
 broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{V,1}, b::AbstractFill{T,1}) where {T,V} = 
