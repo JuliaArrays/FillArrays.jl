@@ -650,7 +650,7 @@ Base.print_matrix_row(io::IO,
                  RectDiagonal,
                  AbstractTriangular{<:Any,<:AbstractFill{<:Any,2}}
                  }, A::Vector,
-        i::Integer, cols::AbstractVector, sep::AbstractString) =
+        i::Integer, cols::AbstractVector, sep::AbstractString, idxlast::Integer=last(axes(X, 2))) =
         axes_print_matrix_row(axes(X), io, X, A, i, cols, sep)
 
 
