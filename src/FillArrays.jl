@@ -639,9 +639,15 @@ Base.replace_in_print_matrix(::Zeros, ::Integer, ::Integer, s::AbstractString) =
 
 # following support blocked fill array printing via
 # BlockArrays.jl
-axes_print_matrix_row(_, io, X, A, i, cols, sep) =
-    Base.invoke(Base.print_matrix_row, Tuple{IO,AbstractVecOrMat,Vector,Integer,AbstractVector,AbstractString},
-                io, X, A, i, cols, sep)
+if VERSION < v"1.8-"
+    axes_print_matrix_row(lay, io, X, A, i, cols, sep) =
+        Base.invoke(Base.print_matrix_row, Tuple{IO,AbstractVecOrMat,Vector,Integer,AbstractVector,AbstractString},
+                    io, X, A, i, cols, sep)
+else
+    axes_print_matrix_row(lay, io, X, A, i, cols, sep, idxlast::Integer=last(axes(X, 2))) =
+        Base.invoke(Base.print_matrix_row, Tuple{IO,AbstractVecOrMat,Vector,Integer,AbstractVector,AbstractString,Integer},
+                    io, X, A, i, cols, sep, idxlast)
+end
 
 Base.print_matrix_row(io::IO,
         X::Union{AbstractFill{<:Any,1},
@@ -650,7 +656,7 @@ Base.print_matrix_row(io::IO,
                  RectDiagonal,
                  AbstractTriangular{<:Any,<:AbstractFill{<:Any,2}}
                  }, A::Vector,
-        i::Integer, cols::AbstractVector, sep::AbstractString) =
+        i::Integer, cols::AbstractVector, sep::AbstractString, idxlast::Integer=last(axes(X, 2))) =
         axes_print_matrix_row(axes(X), io, X, A, i, cols, sep)
 
 
