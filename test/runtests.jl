@@ -839,6 +839,10 @@ end
     @test map(+, x1, x2) === Fill(3.0, 5)
     @test map(+, x2, x2) === x2 .+ x2
     @test_throws DimensionMismatch map(+, x2', x2)
+    
+    # Issue https://github.com/JuliaArrays/FillArrays.jl/issues/179
+    @test map(() -> "ok") == "ok"  # was MethodError: reducing over an empty collection is not allowed
+    @test mapreduce(() -> "ok", *) == "ok"
 end
 
 @testset "mapreduce" begin
