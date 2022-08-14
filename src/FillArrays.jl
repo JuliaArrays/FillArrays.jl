@@ -121,7 +121,7 @@ Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
 @inline Fill{T,N,Axes}(F::Fill{T,N,Axes}) where {T,N,Axes} = F
 
 @inline axes(F::Fill) = F.axes
-@inline size(F::Fill) = length.(F.axes)
+@inline size(F::Fill) = map(length, F.axes)
 
 @inline getindex_value(F::Fill) = F.value
 
@@ -182,6 +182,12 @@ Base.@propagate_inbounds @inline Base._unsafe_getindex(::IndexStyle, F::Abstract
 
 getindex(A::AbstractFill, kr::AbstractVector{Bool}) = _fill_getindex(A, kr)
 getindex(A::AbstractFill, kr::AbstractArray{Bool}) = _fill_getindex(A, kr)
+
+@inline Base.iterate(F::AbstractFill) = length(F) == 0 ? nothing : (v = getindex_value(F); (v, (v, 1)))
+@inline function Base.iterate(F::AbstractFill, (v, n))
+    n > length(F) && return nothing
+    v, (v, n+1)
+end
 
 sort(a::AbstractFill; kwds...) = a
 sort!(a::AbstractFill; kwds...) = a
@@ -509,10 +515,7 @@ end
 # Cumsum
 #########
 
-sum(x::AbstractFill) = getindex_value(x)*length(x)
 sum(x::Zeros) = getindex_value(x)
-
-sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
 
 cumsum(x::AbstractFill{<:Any,1}) = range(getindex_value(x); step=getindex_value(x),
                                                     length=length(x))
