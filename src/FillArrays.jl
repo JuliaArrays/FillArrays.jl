@@ -185,7 +185,7 @@ getindex(A::AbstractFill, kr::AbstractArray{Bool}) = _fill_getindex(A, kr)
 
 @inline Base.iterate(F::AbstractFill) = length(F) == 0 ? nothing : (v = getindex_value(F); (v, (v, 1)))
 @inline function Base.iterate(F::AbstractFill, (v, n))
-    n > length(F) && return nothing
+    n >= length(F) && return nothing
     v, (v, n+1)
 end
 
