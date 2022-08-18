@@ -2,18 +2,18 @@
 
 map(f::Function, r::AbstractFill) = Fill(f(getindex_value(r)), axes(r))
 
-function map(f::Function, vs::AbstractFill{<:Any,1}...)
-    stop = mapreduce(length, min, vs)
-    val = f(map(getindex_value, vs)...)
+function map(f::Function, v::AbstractFill{<:Any,1}, ws::AbstractFill{<:Any,1}...)
+    stop = mapreduce(length, min, (v, ws...))
+    val = f(map(getindex_value, (v, ws...))...)
     Fill(val, stop)
 end
 
-function map(f::Function, rs::AbstractFill...)
-    if _maplinear(rs...)
-        map(f, map(vec, rs)...)
+function map(f::Function, q::AbstractFill, rs::AbstractFill...)
+    if _maplinear(q, rs...)
+        map(f, map(vec, (q, rs...))...)
     else
-        val = f(map(getindex_value, rs)...)
-        Fill(val, axes(first(rs)))
+        val = f(map(getindex_value, (q, rs...))...)
+        Fill(val, axes(q))
     end
 end
 
