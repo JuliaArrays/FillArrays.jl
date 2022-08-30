@@ -623,7 +623,7 @@ end
     @test_throws UndefKeywordError cumsum(Fill(1,1,5))
 
     @testset "infinite arrays" begin
-        A = Ones((InfiniteArrays.OneToInf(),))
+        A = Ones((OneToInf(),))
         @test isinf(sum(A))
         @test sum(A) == length(A)
     end
