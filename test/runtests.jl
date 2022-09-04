@@ -627,6 +627,7 @@ end
         A = Ones{Int}((InfiniteArrays.OneToInf(),))
         @test isinf(sum(A))
         @test sum(A) == length(A)
+        @test sum(x->x^2, A) == length(A)
     end
 end
 
