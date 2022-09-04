@@ -13,9 +13,8 @@ julia = "1.6"
 
 [extras]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
-InfiniteArrays = "4858937d-0d70-526a-a4dd-2d5cb5dd786c"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Base64", "InfiniteArrays", "StaticArrays"]
+test = ["Test", "Base64", "StaticArrays"]
