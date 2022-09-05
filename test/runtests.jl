@@ -1,6 +1,8 @@
 using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, Random, Base64, Test, Statistics
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
+include("infinitearrays.jl")
+
 @testset "fill array constructors and convert" begin
     for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
         @eval begin
@@ -620,6 +622,13 @@ end
     @test diff(Fill(1,10)) ≡ Zeros{Int}(9)
     @test diff(Ones{Float64}(10)) ≡ Zeros{Float64}(9)
     @test_throws UndefKeywordError cumsum(Fill(1,1,5))
+
+    @testset "infinite arrays" begin
+        A = Ones{Int}((InfiniteArrays.OneToInf(),))
+        @test isinf(sum(A))
+        @test sum(A) == length(A)
+        @test sum(x->x^2, A) == sum(A.^2)
+    end
 end
 
 @testset "Broadcast" begin
