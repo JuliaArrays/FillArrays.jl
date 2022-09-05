@@ -398,6 +398,15 @@ end
     @test convert(Diagonal{Int}, Eye(5)) == Diagonal(ones(Int,5))
 end
 
+@testset "one" begin
+    @testset for A in Any[Eye(4), Zeros(4,4), Ones(4,4), Fill(3,4,4)]
+        B = one(A)
+        @test B * A == A * B == A
+    end
+    @test_throws ArgumentError one(Ones(3,4))
+    @test_throws ArgumentError one(Ones((3:5,4:5)))
+end
+
 @testset "Sparse vectors and matrices" begin
     @test SparseVector(Zeros(5)) ==
             SparseVector{Float64}(Zeros(5)) ==
