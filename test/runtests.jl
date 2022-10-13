@@ -1,6 +1,11 @@
 using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, Random, Base64, Test, Statistics
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
+using Aqua
+@testset "Project quality" begin
+    Aqua.test_all(FillArrays, ambiguities=false)
+end
+
 include("infinitearrays.jl")
 
 @testset "fill array constructors and convert" begin
