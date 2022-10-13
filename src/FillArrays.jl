@@ -433,17 +433,12 @@ end
 
 
 ## Array
-convert(::Type{Array}, F::AbstractFill) = fill(getindex_value(F), size(F))
-convert(::Type{Array{T}}, F::AbstractFill) where T = fill(convert(T, getindex_value(F)), size(F))
-convert(::Type{Array{T,N}}, F::AbstractFill{V,N}) where {T,V,N} = fill(convert(T, getindex_value(F)), size(F))
-
+Base.Array{T,N}(F::AbstractFill{V,N}) where {T,V,N} = fill(convert(T, getindex_value(F)), size(F))
 
 # These are in case `zeros` or `ones` are ever faster than `fill`
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     @eval begin
-        convert(::Type{Array}, F::$Typ{T}) where T = $funcs(T, size(F))
-        convert(::Type{Array{T}}, F::$Typ{T}) where T = $funcs(T, size(F))
-        convert(::Type{Array{T,N}}, F::$Typ{V,N}) where {T,V,N} = $funcs(T,size(F))
+        Base.Array{T,N}(F::$Typ{V,N}) where {T,V,N} = $funcs(T,size(F))
     end
 end
 
