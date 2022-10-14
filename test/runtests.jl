@@ -372,11 +372,11 @@ end
     )
     DiagonalAbstractFill{T} = Diagonal{T, <:AbstractFill{T, 1}}
     test_addition_and_subtraction(As_special_square, Bs_us, DiagonalAbstractFill)
-    As_special_nonsquare = [
+    As_special_nonsquare = (
         Zeros(3, 2), Zeros{Int}(3, 4),
         Eye(3, 2), Eye{Int}(3, 4),
         RectDiagonal(Fill(randn(rng, Float64), 2), 3, 2), RectDiagonal(Fill(3, 3), 3, 4)
-    ]
+    )
     for A in As_special_nonsquare, B in Bs_us
         test_addition_and_subtraction_dim_mismatch(A, B)
     end
