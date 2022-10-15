@@ -345,17 +345,17 @@ end
     @test -A_fill === Fill(-A_fill.value, 5)
 
     # FillArray +/- FillArray should construct a new FillArray.
-    test_addition_and_subtraction([A_fill, B_fill], [A_fill, B_fill], Fill)
+    test_addition_and_subtraction((A_fill, B_fill), (A_fill, B_fill), Fill)
     test_addition_and_subtraction_dim_mismatch(A_fill, Fill(randn(rng), 5, 2))
 
     # FillArray + Array (etc) should construct a new Array using `getindex`.
     A_dense, B_dense = randn(rng, 5), [5, 4, 3, 2, 1]
-    test_addition_and_subtraction([A_fill, B_fill], [A_dense, B_dense], Array)
+    test_addition_and_subtraction((A_fill, B_fill), (A_dense, B_dense), Array)
     test_addition_and_subtraction_dim_mismatch(A_fill, randn(rng, 5, 2))
 
     # FillArray + StepLenRange / UnitRange (etc) should yield an AbstractRange.
     A_ur, B_ur = 1.0:5.0, 6:10
-    test_addition_and_subtraction([A_fill, B_fill], (A_ur, B_ur), AbstractRange)
+    test_addition_and_subtraction((A_fill, B_fill), (A_ur, B_ur), AbstractRange)
     test_addition_and_subtraction_dim_mismatch(A_fill, 1.0:6.0)
     test_addition_and_subtraction_dim_mismatch(A_fill, 5:10)
 
@@ -369,19 +369,19 @@ end
     end
 
     # Optimizations for Zeros and RectOrDiagonal{<:Any, <:AbstractFill}
-    As_special_square = [
+    As_special_square = (
         Zeros(3, 3), Zeros{Int}(4, 4),
         Eye(3), Eye{Int}(4), Eye(3, 3), Eye{Int}(4, 4),
         Diagonal(Fill(randn(rng, Float64), 3)), Diagonal(Fill(3, 4)),
         RectDiagonal(Fill(randn(rng, Float64), 3), 3, 3), RectDiagonal(Fill(3, 4), 4, 4)
-    ]
+    )
     DiagonalAbstractFill{T} = Diagonal{T, <:AbstractFill{T, 1}}
     test_addition_and_subtraction(As_special_square, Bs_us, DiagonalAbstractFill)
-    As_special_nonsquare = [
+    As_special_nonsquare = (
         Zeros(3, 2), Zeros{Int}(3, 4),
         Eye(3, 2), Eye{Int}(3, 4),
         RectDiagonal(Fill(randn(rng, Float64), 2), 3, 2), RectDiagonal(Fill(3, 3), 3, 4)
-    ]
+    )
     for A in As_special_nonsquare, B in Bs_us
         test_addition_and_subtraction_dim_mismatch(A, B)
     end
@@ -532,13 +532,13 @@ end
         @test +(z1) === z1
         @test -(z1) === z1
 
-        test_addition_and_subtraction([z1, z2], [z1, z2], Zeros)
+        test_addition_and_subtraction((z1, z2), (z1, z2), Zeros)
         test_addition_and_subtraction_dim_mismatch(z1, Zeros{Float64}(4, 2))
     end
 
     # `Zeros` +/- `Fill`s should yield `Fills`.
     fill1, fill2 = Fill(5.0, 4), Fill(5, 4)
-    test_addition_and_subtraction([z1, z2], [fill1, fill2], Fill)
+    test_addition_and_subtraction((z1, z2), (fill1, fill2), Fill)
     test_addition_and_subtraction_dim_mismatch(z1, Fill(5, 5))
 
     X = randn(3, 5)
