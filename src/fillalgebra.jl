@@ -89,11 +89,11 @@ end
 *(a::Zeros{<:Any,2}, b::Diagonal) = mult_zeros(a, b)
 *(a::Diagonal, b::Zeros{<:Any,1}) = mult_zeros(a, b)
 *(a::Diagonal, b::Zeros{<:Any,2}) = mult_zeros(a, b)
-function *(a::Diagonal, b::AbstractFill{<:Any,2}) 
+function *(a::Diagonal, b::AbstractFill{<:Any,2})
     size(a,2) == size(b,1) || throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
     a.diag .* b # use special broadcast
 end
-function *(a::AbstractFill{<:Any,2}, b::Diagonal) 
+function *(a::AbstractFill{<:Any,2}, b::Diagonal)
     size(a,2) == size(b,1) || throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
     a .* permutedims(b.diag) # use special broadcast
 end
