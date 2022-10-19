@@ -414,11 +414,11 @@ inv(IM::Diagonal{<:Any,<:AbstractFill}) = Diagonal(map(inv, IM.diag))
 Eye(n::Integer, m::Integer) = RectDiagonal(Ones(min(n,m)), n, m)
 Eye{T}(n::Integer, m::Integer) where T = RectDiagonal{T}(Ones{T}(min(n,m)), n, m)
 function Eye{T}((a,b)::NTuple{2,AbstractUnitRange{Int}}) where T
-    ab = length(a) ≤ length(b) ? a : b
+    ab = length(a) ≤ length(b) ? a : b
     RectDiagonal{T}(Ones{T}((ab,)), (a,b))
 end
 function Eye((a,b)::NTuple{2,AbstractUnitRange{Int}})
-    ab = length(a) ≤ length(b) ? a : b
+    ab = length(a) ≤ length(b) ? a : b
     RectDiagonal(Ones((ab,)), (a,b))
 end
 
@@ -586,7 +586,7 @@ function all(f::Function, IM::Eye{T}) where T
 end
 
 # In particular, these make iszero(Eye(n))  efficient.
-# use any/all on scalar to get Boolean error message
+# use any/all on scalar to get Boolean error message
 any(f::Function, x::AbstractFill) = isempty(x) || any(f(getindex_value(x)))
 all(f::Function, x::AbstractFill) = isempty(x) || all(f(getindex_value(x)))
 any(x::AbstractFill) = isempty(x) || any(getindex_value(x))
@@ -613,18 +613,18 @@ end
 mean(A::AbstractFill; dims=(:)) = mean(identity, A; dims=dims)
 function mean(f::Union{Function, Type}, A::AbstractFill; dims=(:))
     val = float(f(getindex_value(A)))
-    dims isa Colon ? val : 
+    dims isa Colon ? val :
         Fill(val, ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
 end
 
 
 function var(A::AbstractFill{T}; corrected::Bool=true, mean=nothing, dims=(:)) where {T<:Number}
-    dims isa Colon ? zero(float(T)) : 
+    dims isa Colon ? zero(float(T)) :
         Zeros{float(T)}(ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
 end
 
 cov(A::AbstractFill{T,1}; corrected::Bool=true) where {T<:Number} = zero(float(T))
-cov(A::AbstractFill{T,2}; corrected::Bool=true, dims::Integer=1) where {T<:Number} = 
+cov(A::AbstractFill{T,2}; corrected::Bool=true, dims::Integer=1) where {T<:Number} =
     Zeros{float(T)}(size(A, 3-dims), size(A, 3-dims))
 
 cor(A::AbstractFill{T,1}) where {T<:Number} = one(float(T))

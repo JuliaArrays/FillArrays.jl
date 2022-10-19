@@ -488,9 +488,9 @@ end
     @test Zeros(3, 4) * randn(4) == Zeros(3, 4) * Zeros(4) == Zeros(3)
     @test Zeros(3, 4) * Zeros(4, 5) === Zeros(3, 5)
 
-    @test_throws MethodError [1,2,3]*Zeros(1) # Not defined for [1,2,3]*[0] either
+    @test_throws MethodError [1,2,3]*Zeros(1) # Not defined for [1,2,3]*[0] either
     @test [1,2,3]*Zeros(1,3) ≡ Zeros(3,3)
-    @test_throws MethodError [1,2,3]*Zeros(3) # Not defined for [1,2,3]*[0,0,0] either
+    @test_throws MethodError [1,2,3]*Zeros(3) # Not defined for [1,2,3]*[0,0,0] either
 
     @testset "Check multiplication by Adjoint vectors works as expected." begin
         @test randn(4, 3)' * Zeros(4) === Zeros(3)
@@ -499,7 +499,7 @@ end
         @test [SVector(1,2)', SVector(2,3)', SVector(3,4)']' * Zeros{Int}(3) === SVector(0,0)
         @test_throws DimensionMismatch randn(4)' * Zeros(3)
         @test Zeros(5)' * randn(5,3) ≡ Zeros(5)'*Zeros(5,3) ≡ Zeros(5)'*Ones(5,3) ≡ Zeros(3)'
-        @test Zeros(5)' * randn(5) ≡ Zeros(5)' * Zeros(5) ≡ Zeros(5)' * Ones(5) ≡ 0.0 
+        @test Zeros(5)' * randn(5) ≡ Zeros(5)' * Zeros(5) ≡ Zeros(5)' * Ones(5) ≡ 0.0
         @test Zeros(5) * Zeros(6)' ≡ Zeros(5,1) * Zeros(6)' ≡ Zeros(5,6)
         @test randn(5) * Zeros(6)' ≡ randn(5,1) * Zeros(6)' ≡ Zeros(5,6)
         @test Zeros(5) * randn(6)' ≡ Zeros(5,6)
@@ -514,7 +514,7 @@ end
         @test transpose([1, 2, 3]) * Zeros{Int}(3) === zero(Int)
         @test_throws DimensionMismatch transpose(randn(4)) * Zeros(3)
         @test transpose(Zeros(5)) * randn(5,3) ≡ transpose(Zeros(5))*Zeros(5,3) ≡ transpose(Zeros(5))*Ones(5,3) ≡ transpose(Zeros(3))
-        @test transpose(Zeros(5)) * randn(5) ≡ transpose(Zeros(5)) * Zeros(5) ≡ transpose(Zeros(5)) * Ones(5) ≡ 0.0 
+        @test transpose(Zeros(5)) * randn(5) ≡ transpose(Zeros(5)) * Zeros(5) ≡ transpose(Zeros(5)) * Ones(5) ≡ 0.0
         @test randn(5) * transpose(Zeros(6)) ≡ randn(5,1) * transpose(Zeros(6)) ≡ Zeros(5,6)
         @test Zeros(5) * transpose(randn(6)) ≡ Zeros(5,6)
         @test transpose(randn(5)) * Zeros(5) ≡ 0.0
@@ -862,7 +862,7 @@ end
     @test map(+, x1, x2) === Fill(3.0, 5)
     @test map(+, x2, x2) === x2 .+ x2
     @test_throws DimensionMismatch map(+, x2', x2)
-    
+
     # Issue https://github.com/JuliaArrays/FillArrays.jl/issues/179
     @test map(() -> "ok") == "ok"  # was MethodError: reducing over an empty collection is not allowed
     @test mapreduce(() -> "ok", *) == "ok"
@@ -1065,7 +1065,7 @@ end
 @testset "Eye identity ops" begin
     m = Eye(10)
     D = Diagonal(Fill(2,10))
-    
+
     for op in (permutedims, inv)
         @test op(m) === m
     end
@@ -1232,8 +1232,8 @@ end
 @testset "count" begin
     @test count(Ones{Bool}(10)) == count(Fill(true,10)) == 10
     @test count(Zeros{Bool}(10)) == count(Fill(false,10)) == 0
-    @test count(x -> 1 ≤ x < 2, Fill(1.3,10)) == 10
-    @test count(x -> 1 ≤ x < 2, Fill(2.0,10)) == 0
+    @test count(x -> 1 ≤ x < 2, Fill(1.3,10)) == 10
+    @test count(x -> 1 ≤ x < 2, Fill(2.0,10)) == 0
 end
 
 @testset "norm" begin

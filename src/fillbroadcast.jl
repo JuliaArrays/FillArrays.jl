@@ -219,7 +219,7 @@ function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{T,1}, b::Abst
     _copy_oftype(b, promote_type(T,V))
 end
 
-broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{V,1}, b::AbstractFill{T,1}) where {T,V} = 
+broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{V,1}, b::AbstractFill{T,1}) where {T,V} =
             Base.invoke(broadcasted, Tuple{DefaultArrayStyle, typeof(+), AbstractFill, AbstractFill}, DefaultArrayStyle{1}(), +, a, b)
 
 # Need to prevent array-valued fills from broadcasting over entry
