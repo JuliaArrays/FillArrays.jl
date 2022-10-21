@@ -62,8 +62,7 @@ issymmetric(F::AbstractFill{<:Any, 2}) = axes(F,1) == axes(F,2)
 ishermitian(F::AbstractFill{<:Any, 2}) = issymmetric(F) && iszero(imag(getindex_value(F)))
 
 """
-    Fill{T, N, Axes}
-    where `Axes <: Tuple{Vararg{AbstractUnitRange,N}}`
+    Fill{T, N, Axes} where {T,N,Axes<:Tuple{Vararg{AbstractUnitRange,N}}}
 
 A lazy representation of an array of dimension `N`
 whose entries are all equal to a constant of type `T`,
