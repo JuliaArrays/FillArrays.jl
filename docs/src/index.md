@@ -6,7 +6,7 @@ end
 
 # Introduction
 
-`FillArrays` allows one to lazily represent arrays filled with a single entry, as well as identity matrices. This package exports the following types: `Eye`, `Fill`, `Ones`, `Zeros`, `Trues` and `Falses`.
+`FillArrays` allows one to lazily represent arrays filled with a single entry, as well as identity matrices. This package exports the following types: `Eye`, `Fill`, `Ones`, `Zeros`, `Trues` and `Falses`. Among these, the [`FillArrays.AbstractFill`](@ref) types represent lazy versions of dense arrays where all elements have the same value. `Eye`, on the other hand, represents a `Diagonal` matrix with ones along the principal diagonal. All these types accept sizes or axes as arguments, so one may create arrays of arbitrary sizes and dimensions. A rectangular `Eye` matrix may be created analogously by passing the size along each axis to `Eye`.
 
 ## Quick Start
 
@@ -131,6 +131,14 @@ julia> sparse(id)
   ⋅   1.0   ⋅    ⋅
   ⋅    ⋅   1.0   ⋅
   ⋅    ⋅    ⋅   1.0
+
+julia> idrect = Eye(2,5) # rectangular matrix
+2×5 Eye{Float64}
+
+julia> sparse(idrect)
+2×5 SparseMatrixCSC{Float64, Int64} with 2 stored entries:
+ 1.0   ⋅    ⋅    ⋅    ⋅
+  ⋅   1.0   ⋅    ⋅    ⋅
 ```
 
 Note that an `Eye` actually returns a `Diagonal` matrix, where the diagonal is a `Ones` vector.
@@ -150,24 +158,24 @@ julia> println.(Fill(pi, 10))
 
 Notice that this will only match the behaviour of a dense matrix from `fill` if the function is pure. And that this shortcut is taken before any other fused broadcast:
 
-```julia
+```jldoctest; setup=:(using Random; Random.seed!(1234))
 julia> map(_ -> rand(), Fill("pi", 2,5))  # not a pure function!
-2×5 Fill{Float64, with entries equal to 0.7201617100284206
+2×5 Fill{Float64}, with entries equal to 0.32597672886359486
 
 julia> map(_ -> rand(), fill("4", 2,5))  # 10 evaluations, different answer!
 2×5 Matrix{Float64}:
- 0.43675   0.270809  0.56536   0.0948089  0.24655
- 0.959363  0.79598   0.238662  0.401909   0.317716
+ 0.549051  0.894245  0.394255  0.795547  0.748415
+ 0.218587  0.353112  0.953125  0.49425   0.578232
 
 julia> ones(1,5) .+ (_ -> rand()).(Fill("vec", 2))  # Fill broadcast is done first
 2×5 Matrix{Float64}:
- 1.51796  1.51796  1.51796  1.51796  1.51796
- 1.51796  1.51796  1.51796  1.51796  1.51796
+ 1.72794  1.72794  1.72794  1.72794  1.72794
+ 1.72794  1.72794  1.72794  1.72794  1.72794
 
 julia> ones(1,5) .+ (_ -> rand()).(fill("vec", 2))  # fused, 10 evaluations
 2×5 Matrix{Float64}:
- 1.51337  1.17578  1.19815  1.43035  1.2987
- 1.30253  1.21909  1.61755  1.02645  1.77681
+ 1.00745  1.43924  1.95674  1.99667  1.11008
+ 1.19938  1.68253  1.64786  1.74919  1.49138
 ```
 
 # API
