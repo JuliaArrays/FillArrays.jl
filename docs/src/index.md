@@ -6,7 +6,7 @@ end
 
 # Introduction
 
-`FillArrays` allows one to lazily represent arrays filled with a single entry, as well as identity matrices. This package exports the following types: `Eye`, `Fill`, `Ones`, `Zeros`, `Trues` and `Falses`. Among these, the [`FillArrays.AbstractFill`](@ref) types represent lazy versions of dense arrays where all elements have the same value. `Eye`, on the other hand, represents a `Diagonal` matrix with ones along the principal diagonal. All these types accept sizes or axes as arguments, so one may create arrays of arbitrary sizes and dimensions. A rectangular `Eye` matrix may be created analogously by passing the size along each axis to `Eye`.
+`FillArrays` allows one to lazily represent arrays filled with a single entry, as well as identity matrices. This package exports the following types: `Eye`, `Fill`, `Ones`, `Zeros`, `Trues` and `Falses`. Among these, the [`FillArrays.AbstractFill`](@ref) types represent lazy versions of dense arrays where all elements have the same value. `Eye`, on the other hand, represents a `Diagonal` matrix with ones along the principal diagonal. All these types accept sizes or axes as arguments, so one may create arrays of arbitrary sizes and dimensions. A rectangular `Eye` matrix may be constructed analogously, by passing the size of the matrix to `Eye`.
 
 ## Quick Start
 
