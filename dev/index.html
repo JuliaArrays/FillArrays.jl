@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Home · FillArrays.jl</title><script data-outdated-warner src="assets/warner.js"></script><link rel="canonical" href="https://JuliaArrays.github.io/FillArrays.jl/stable/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href>FillArrays.jl</a></span></div><form class="docs-search" action="search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>Home</a><ul class="internal"><li><a class="tocitem" href="#Quick-Start"><span>Quick Start</span></a></li><li><a class="tocitem" href="#Warning-about-map-and-broadcasting"><span>Warning about map and broadcasting</span></a></li><li class="toplevel"><a class="tocitem" href="#API"><span>API</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Home</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Home</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/JuliaArrays/FillArrays.jl/blob/master/docs/src/index.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Introduction"><a class="docs-heading-anchor" href="#Introduction">Introduction</a><a id="Introduction-1"></a><a class="docs-heading-anchor-permalink" href="#Introduction" title="Permalink"></a></h1><p><code>FillArrays</code> allows one to lazily represent arrays filled with a single entry, as well as identity matrices. This package exports the following types: <code>Eye</code>, <code>Fill</code>, <code>Ones</code>, <code>Zeros</code>, <code>Trues</code> and <code>Falses</code>. Among these, the <a href="#FillArrays.AbstractFill"><code>FillArrays.AbstractFill</code></a> types represent lazy versions of dense arrays where all elements have the same value. <code>Eye</code>, on the other hand, represents a <code>Diagonal</code> matrix with ones along the principal diagonal. All these types accept sizes or axes as arguments, so one may create arrays of arbitrary sizes and dimensions. A rectangular <code>Eye</code> matrix may be constructed analogously, by passing the size of the matrix to <code>Eye</code>.</p><h2 id="Quick-Start"><a class="docs-heading-anchor" href="#Quick-Start">Quick Start</a><a id="Quick-Start-1"></a><a class="docs-heading-anchor-permalink" href="#Quick-Start" title="Permalink"></a></h2><p>Create a 2x2 zero matrix</p><pre><code class="language-julia-repl hljs">julia&gt; z = Zeros(2,2)
+2×2 Zeros{Float64}
+
+julia&gt; Array(z)
+2×2 Matrix{Float64}:
+ 0.0  0.0
+ 0.0  0.0</code></pre><p>We may specify the element type as</p><pre><code class="language-julia-repl hljs">julia&gt; z = Zeros{Int}(2,2)
+2×2 Zeros{Int64}
+
+julia&gt; Array(z)
+2×2 Matrix{Int64}:
+ 0  0
+ 0  0</code></pre><p>We may create arrays with any number of dimensions. A <code>Vector</code> of ones may be created as</p><pre><code class="language-julia-repl hljs">julia&gt; a = Ones(4)
+4-element Ones{Float64}
+
+julia&gt; Array(a)
+4-element Vector{Float64}:
+ 1.0
+ 1.0
+ 1.0
+ 1.0</code></pre><p>Similarly, a <code>2x3x2</code> array, where every element is equal to <code>10</code>, may be created as</p><pre><code class="language-julia-repl hljs">julia&gt; f = Fill(10, 2,3,2)
+2×3×2 Fill{Int64}, with entries equal to 10
+
+julia&gt; Array(f)
+2×3×2 Array{Int64, 3}:
+[:, :, 1] =
+ 10  10  10
+ 10  10  10
+
+[:, :, 2] =
+ 10  10  10
+ 10  10  10</code></pre><p>The elements of a <code>Fill</code> array don&#39;t need to be restricted to numbers, and these may be any Julia object. For example, we may construct an array of strings using</p><pre><code class="language-julia-repl hljs">julia&gt; f = Fill(&quot;hello&quot;, 2,5)
+2×5 Fill{String}, with entries equal to hello
+
+julia&gt; Array(f)
+2×5 Matrix{String}:
+ &quot;hello&quot;  &quot;hello&quot;  &quot;hello&quot;  &quot;hello&quot;  &quot;hello&quot;
+ &quot;hello&quot;  &quot;hello&quot;  &quot;hello&quot;  &quot;hello&quot;  &quot;hello&quot;</code></pre><h3 id="Conversion-to-a-sparse-form"><a class="docs-heading-anchor" href="#Conversion-to-a-sparse-form">Conversion to a sparse form</a><a id="Conversion-to-a-sparse-form-1"></a><a class="docs-heading-anchor-permalink" href="#Conversion-to-a-sparse-form" title="Permalink"></a></h3><p>These <code>Fill</code> array types may be converted to sparse arrays as well, which might be useful in certain cases</p><pre><code class="language-julia-repl hljs">julia&gt; using SparseArrays
+
+julia&gt; z = Zeros{Int}(2,2)
+2×2 Zeros{Int64}
+
+julia&gt; sparse(z)
+2×2 SparseMatrixCSC{Int64, Int64} with 0 stored entries:
+ ⋅  ⋅
+ ⋅  ⋅</code></pre><p>Note, however, that most <code>Fill</code> arrays are not sparse, despite being lazily evaluated.</p><p>These types have methods that perform many operations efficiently, including elementary algebra operations like multiplication and addition, as well as linear algebra methods like <code>norm</code>, <code>adjoint</code>, <code>transpose</code> and <code>vec</code>.</p><h3 id="Custom-axes"><a class="docs-heading-anchor" href="#Custom-axes">Custom axes</a><a id="Custom-axes-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-axes" title="Permalink"></a></h3><p>The various <code>Fill</code> equivalents all support offset or custom axes, where instead of the size, one may pass a <code>Tuple</code> of axes. So, for example, one may use a <code>SOneTo</code> axis from <a href="https://github.com/JuliaArrays/StaticArrays.jl"><code>StaticArrays.jl</code></a> to construct a statically sized <code>Fill</code>.</p><pre><code class="language-julia-repl hljs">julia&gt; using StaticArrays
+
+julia&gt; f = Fill(2, (SOneTo(4), SOneTo(5)))
+4×5 Fill{Int64, 2, Tuple{SOneTo{4}, SOneTo{5}}} with indices SOneTo(4)×SOneTo(5), with entries equal to 2</code></pre><p>The size of such an array would be known at compile time, permitting compiler optimizations.</p><p>We may construct infinite fill arrays by passing infinite-sized axes, see <a href="https://github.com/JuliaArrays/InfiniteArrays.jl"><code>InfiniteArrays.jl</code></a>.</p><h3 id="Other-lazy-types"><a class="docs-heading-anchor" href="#Other-lazy-types">Other lazy types</a><a id="Other-lazy-types-1"></a><a class="docs-heading-anchor-permalink" href="#Other-lazy-types" title="Permalink"></a></h3><p>A lazy representation of an identity matrix may be constructured using <code>Eye</code>. For example, a <code>4x4</code> identity matrix with <code>Float32</code> elements may be constructed as</p><pre><code class="language-julia-repl hljs">julia&gt; id = Eye{Float32}(4)
+4×4 Eye{Float32}
+
+julia&gt; Array(id)
+4×4 Matrix{Float32}:
+ 1.0  0.0  0.0  0.0
+ 0.0  1.0  0.0  0.0
+ 0.0  0.0  1.0  0.0
+ 0.0  0.0  0.0  1.0
+
+julia&gt; sparse(id)
+4×4 SparseMatrixCSC{Float32, Int64} with 4 stored entries:
+ 1.0   ⋅    ⋅    ⋅
+  ⋅   1.0   ⋅    ⋅
+  ⋅    ⋅   1.0   ⋅
+  ⋅    ⋅    ⋅   1.0
+
+julia&gt; idrect = Eye(2,5) # rectangular matrix
+2×5 Eye{Float64}
+
+julia&gt; sparse(idrect)
+2×5 SparseMatrixCSC{Float64, Int64} with 2 stored entries:
+ 1.0   ⋅    ⋅    ⋅    ⋅
+  ⋅   1.0   ⋅    ⋅    ⋅</code></pre><p>Note that an <code>Eye</code> actually returns a <code>Diagonal</code> matrix, where the diagonal is a <code>Ones</code> vector.</p><h2 id="Warning-about-map-and-broadcasting"><a class="docs-heading-anchor" href="#Warning-about-map-and-broadcasting">Warning about map and broadcasting</a><a id="Warning-about-map-and-broadcasting-1"></a><a class="docs-heading-anchor-permalink" href="#Warning-about-map-and-broadcasting" title="Permalink"></a></h2><p>Broadcasting operations, and <code>map</code> and <code>mapreduce</code>, are also done efficiently, by evaluating the function being applied only once:</p><pre><code class="language-julia-repl hljs">julia&gt; map(sqrt, Fill(4, 2,5))  # one evaluation, not 10, to save time
+2×5 Fill{Float64}, with entries equal to 2.0
+
+julia&gt; println.(Fill(pi, 10))
+π
+10-element Fill{Nothing}, with entries equal to nothing</code></pre><p>Notice that this will only match the behaviour of a dense matrix from <code>fill</code> if the function is pure. And that this shortcut is taken before any other fused broadcast:</p><pre><code class="language-julia-repl hljs">julia&gt; map(_ -&gt; rand(), Fill(&quot;pi&quot;, 2,5))  # not a pure function!
+2×5 Fill{Float64}, with entries equal to 0.32597672886359486
+
+julia&gt; map(_ -&gt; rand(), fill(&quot;4&quot;, 2,5))  # 10 evaluations, different answer!
+2×5 Matrix{Float64}:
+ 0.549051  0.894245  0.394255  0.795547  0.748415
+ 0.218587  0.353112  0.953125  0.49425   0.578232
+
+julia&gt; ones(1,5) .+ (_ -&gt; rand()).(Fill(&quot;vec&quot;, 2))  # Fill broadcast is done first
+2×5 Matrix{Float64}:
+ 1.72794  1.72794  1.72794  1.72794  1.72794
+ 1.72794  1.72794  1.72794  1.72794  1.72794
+
+julia&gt; ones(1,5) .+ (_ -&gt; rand()).(fill(&quot;vec&quot;, 2))  # fused, 10 evaluations
+2×5 Matrix{Float64}:
+ 1.00745  1.43924  1.95674  1.99667  1.11008
+ 1.19938  1.68253  1.64786  1.74919  1.49138</code></pre><h1 id="API"><a class="docs-heading-anchor" href="#API">API</a><a id="API-1"></a><a class="docs-heading-anchor-permalink" href="#API" title="Permalink"></a></h1><article class="docstring"><header><a class="docstring-binding" id="FillArrays.FillArrays" href="#FillArrays.FillArrays"><code>FillArrays.FillArrays</code></a> — <span class="docstring-category">Module</span></header><section><div><p><code>FillArrays</code> module to lazily represent matrices with a single value </p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaArrays/FillArrays.jl/blob/e8ed0686f2b5e74aace1e83ae77ca75929b99585/src/FillArrays.jl#L1">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="FillArrays.AbstractFill" href="#FillArrays.AbstractFill"><code>FillArrays.AbstractFill</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia hljs">AbstractFill{T, N, Axes} &lt;: AbstractArray{T, N}</code></pre><p>Supertype for lazy array types whose entries are all equal to constant.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaArrays/FillArrays.jl/blob/e8ed0686f2b5e74aace1e83ae77ca75929b99585/src/FillArrays.jl#L24-L28">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="FillArrays.Falses" href="#FillArrays.Falses"><code>FillArrays.Falses</code></a> — <span class="docstring-category">Type</span></header><section><div><p><code>Falses = Zeros{Bool, N, Axes}</code> (see <code>Trues</code>) </p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaArrays/FillArrays.jl/blob/e8ed0686f2b5e74aace1e83ae77ca75929b99585/src/trues.jl#L20">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="FillArrays.Fill" href="#FillArrays.Fill"><code>FillArrays.Fill</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia hljs">Fill{T, N, Axes} where {T,N,Axes&lt;:Tuple{Vararg{AbstractUnitRange,N}}}</code></pre><p>A lazy representation of an array of dimension <code>N</code> whose entries are all equal to a constant of type <code>T</code>, with axes of type <code>Axes</code>. Typically created by <code>Fill</code> or <code>Zeros</code> or <code>Ones</code></p><p><strong>Examples</strong></p><pre><code class="language-julia-repl hljs">julia&gt; Fill(7, (2,3))
+2×3 Fill{Int64,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}:
+ 7  7  7
+ 7  7  7
+
+julia&gt; Fill{Float64, 1, Tuple{UnitRange{Int64}}}(7., (1:2,))
+2-element Fill{Float64,1,Tuple{UnitRange{Int64}}} with indices 1:2:
+ 7.0
+ 7.0</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaArrays/FillArrays.jl/blob/e8ed0686f2b5e74aace1e83ae77ca75929b99585/src/FillArrays.jl#L64-L85">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="FillArrays.Fill-Union{Tuple{N}, Tuple{T}, Tuple{T, Tuple{Vararg{Any, N}}}} where {T, N}" href="#FillArrays.Fill-Union{Tuple{N}, Tuple{T}, Tuple{T, Tuple{Vararg{Any, N}}}} where {T, N}"><code>FillArrays.Fill</code></a> — <span class="docstring-category">Method</span></header><section><div><p><code>Fill(x, dims)</code> construct lazy version of <code>fill(x, dims)</code> </p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaArrays/FillArrays.jl/blob/e8ed0686f2b5e74aace1e83ae77ca75929b99585/src/FillArrays.jl#L114">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="FillArrays.Fill-Union{Tuple{N}, Tuple{T}, Tuple{T, Vararg{Integer, N}}} where {T, N}" href="#FillArrays.Fill-Union{Tuple{N}, Tuple{T}, Tuple{T, Vararg{Integer, N}}} where {T, N}"><code>FillArrays.Fill</code></a> — <span class="docstring-category">Method</span></header><section><div><p><code>Fill(x, dims...)</code> construct lazy version of <code>fill(x, dims...)</code> </p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaArrays/FillArrays.jl/blob/e8ed0686f2b5e74aace1e83ae77ca75929b99585/src/FillArrays.jl#L112">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="FillArrays.Ones" href="#FillArrays.Ones"><code>FillArrays.Ones</code></a> — <span class="docstring-category">Type</span></header><section><div><p><code>Ones{T, N, Axes} &lt;: AbstractFill{T, N, Axes}</code> (lazy <code>ones</code> with axes)</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaArrays/FillArrays.jl/blob/e8ed0686f2b5e74aace1e83ae77ca75929b99585/src/FillArrays.jl#L249">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="FillArrays.Ones-Union{Tuple{Vararg{Integer, N}}, Tuple{N}, Tuple{T}} where {T, N}" href="#FillArrays.Ones-Union{Tuple{Vararg{Integer, N}}, Tuple{N}, Tuple{T}} where {T, N}"><code>FillArrays.Ones</code></a> — <span class="docstring-category">Method</span></header><section><div><p><code>Ones{T}(dims...)</code> construct lazy version of <code>ones(dims...)</code></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaArrays/FillArrays.jl/blob/e8ed0686f2b5e74aace1e83ae77ca75929b99585/src/FillArrays.jl#L263">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="FillArrays.Trues" href="#FillArrays.Trues"><code>FillArrays.Trues</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia hljs">Trues = Ones{Bool, N, Axes} where {N, Axes}</code></pre><p>Lazy version of <code>trues</code> with axes. Typically created using <code>Trues(dims)</code> or <code>Trues(dims...)</code></p><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; Trues(1,3)
+1×3 Ones{Bool,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}} = true
+
+julia&gt; Trues((2,3))
+2×3 Ones{Bool,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}} = true</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaArrays/FillArrays.jl/blob/e8ed0686f2b5e74aace1e83ae77ca75929b99585/src/trues.jl#L2-L16">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="FillArrays.Zeros" href="#FillArrays.Zeros"><code>FillArrays.Zeros</code></a> — <span class="docstring-category">Type</span></header><section><div><p><code>Zeros{T, N, Axes} &lt;: AbstractFill{T, N, Axes}</code> (lazy <code>zeros</code> with axes)</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaArrays/FillArrays.jl/blob/e8ed0686f2b5e74aace1e83ae77ca75929b99585/src/FillArrays.jl#L249">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="FillArrays.Zeros-Union{Tuple{Vararg{Integer, N}}, Tuple{N}, Tuple{T}} where {T, N}" href="#FillArrays.Zeros-Union{Tuple{Vararg{Integer, N}}, Tuple{N}, Tuple{T}} where {T, N}"><code>FillArrays.Zeros</code></a> — <span class="docstring-category">Method</span></header><section><div><p><code>Zeros{T}(dims...)</code> construct lazy version of <code>zeros(dims...)</code></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaArrays/FillArrays.jl/blob/e8ed0686f2b5e74aace1e83ae77ca75929b99585/src/FillArrays.jl#L263">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="FillArrays.fillsimilar-Union{Tuple{T}, Tuple{Ones{T}, Vararg{Any}}} where T" href="#FillArrays.fillsimilar-Union{Tuple{T}, Tuple{Ones{T}, Vararg{Any}}} where T"><code>FillArrays.fillsimilar</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">fillsimilar(a::AbstractFill, axes)</code></pre><p>creates a fill object that has the same fill value as <code>a</code> but with the specified axes. For example, if <code>a isa Zeros</code> then so is the returned object.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaArrays/FillArrays.jl/blob/e8ed0686f2b5e74aace1e83ae77ca75929b99585/src/FillArrays.jl#L296-L302">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="FillArrays.unique_value-Tuple{AbstractArray}" href="#FillArrays.unique_value-Tuple{AbstractArray}"><code>FillArrays.unique_value</code></a> — <span class="docstring-category">Method</span></header><section><div><p>Throws an error if <code>arr</code> does not contain one and only one unique value. </p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaArrays/FillArrays.jl/blob/e8ed0686f2b5e74aace1e83ae77ca75929b99585/src/FillArrays.jl#L142">source</a></section></article></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Thursday 10 November 2022 10:32">Thursday 10 November 2022</span>. Using Julia version 1.8.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
