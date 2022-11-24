@@ -1,6 +1,7 @@
 # FillArrays.jl
 
-
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://JuliaArrays.github.io/FillArrays.jl/stable)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaArrays.github.io/FillArrays.jl/dev)
 [![Build Status](https://github.com/JuliaArrays/FillArrays.jl/workflows/CI/badge.svg)](https://github.com/JuliaArrays/FillArrays.jl/actions)
 [![codecov](https://codecov.io/gh/JuliaArrays/FillArrays.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaArrays/FillArrays.jl)
 [![deps](https://juliahub.com/docs/FillArrays/deps.svg)](https://juliahub.com/ui/Packages/FillArrays/2Dg1l?t=2)
