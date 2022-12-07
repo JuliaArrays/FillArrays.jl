@@ -26,6 +26,9 @@ function permutedims(B::AbstractFill, perm)
     fillsimilar(B, dimsP)
 end
 
+reverse(A::AbstractFill, start::Integer=firstindex(A), stop::Integer=lastindex(A)) = A
+reverse(A::AbstractFill; dims=:) = A
+
 ## Algebraic identities
 
 

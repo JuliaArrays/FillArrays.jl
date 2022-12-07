@@ -1113,6 +1113,15 @@ end
     @test permutedims(Fill(2.0,2,4,5), [3,2,1]) ≡ Fill(2.0,5,4,2)
 end
 
+@testset "reverse" begin
+    for A in (Zeros{Int}(6), Ones(2,3), Fill("abc", 2, 3, 4))
+        @test reverse(A) == reverse(Array(A))
+        @test reverse(A, dims=1) == reverse(Array(A), dims=1)
+    end
+    A = Ones{Int}(6)
+    @test reverse(A, 2, 4) == reverse(Array(A), 2, 4)
+end
+
 @testset "setindex!/fill!" begin
     F = Fill(1,10)
     @test (F[1] = 1) == 1
