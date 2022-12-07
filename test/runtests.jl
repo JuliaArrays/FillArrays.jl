@@ -1120,6 +1120,7 @@ end
     end
     A = Ones{Int}(6)
     @test reverse(A, 2, 4) == reverse(Array(A), 2, 4)
+    @test_throws BoundsError reverse(A, 1, 10)
 end
 
 @testset "setindex!/fill!" begin
