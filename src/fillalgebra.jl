@@ -26,9 +26,9 @@ function permutedims(B::AbstractFill, perm)
     fillsimilar(B, dimsP)
 end
 
-function reverse(A::AbstractFill, start::Integer=firstindex(A), stop::Integer=lastindex(A))
-    checkbounds(A, start)
-    checkbounds(A, stop)
+Base.@propagate_inbounds function reverse(A::AbstractFill, start::Integer, stop::Integer=lastindex(A))
+    @boundscheck checkbounds(A, start)
+    @boundscheck checkbounds(A, stop)
     A
 end
 reverse(A::AbstractFill; dims=:) = A
