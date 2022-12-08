@@ -1120,8 +1120,6 @@ end
     end
     A = Ones{Int}(6)
     @test reverse(A, 2, 4) == reverse(Array(A), 2, 4)
-    #test bounds-cheking elision
-    @test (A -> @inbounds reverse(A, 2, 10))(A) == A
     @test_throws BoundsError reverse(A, 1, 10)
 end
 
