@@ -1044,6 +1044,7 @@ end
 
         @test all(Fill(2,0))
         @test !any(Fill(2,0))
+        @test any(Trues(2,0)) == any(trues(2,0))
     end
 
     @testset "Error" begin
