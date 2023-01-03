@@ -1043,7 +1043,8 @@ end
         @test any(b -> ndims(b) ==  1, Fill([1,2],10))
 
         @test all(Fill(2,0))
-        @test any(Fill(2,0))
+        @test !any(Fill(2,0))
+        @test any(Trues(2,0)) == any(trues(2,0))
     end
 
     @testset "Error" begin
