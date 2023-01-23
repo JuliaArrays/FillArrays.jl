@@ -61,6 +61,12 @@ IndexStyle(::Type{<:AbstractFill{<:Any,N,<:NTuple{N,Base.OneTo{Int}}}}) where N 
 issymmetric(F::AbstractFill{<:Any, 2}) = axes(F,1) == axes(F,2)
 ishermitian(F::AbstractFill{<:Any, 2}) = issymmetric(F) && iszero(imag(getindex_value(F)))
 
+axestype(::Type{<:AbstractFill{<:Any,<:Any,Axes}}) where {Axes} = Axes
+
+Base.IteratorSize(::Type{A}) where {A<:AbstractFill} =
+    Base.IteratorSize(Iterators.ProductIterator{axestype(A)})
+
+
 """
     Fill{T, N, Axes} where {T,N,Axes<:Tuple{Vararg{AbstractUnitRange,N}}}
 
