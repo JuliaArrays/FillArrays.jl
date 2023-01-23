@@ -644,13 +644,13 @@ end
         @test sum(A) == length(A)
         @test sum(x->x^2, A) == sum(A.^2)
         @testset "IteratorSize" begin
-            @test Base.IteratorSize(Ones()) == Base.IteratorSize(ones())
-            @test Base.IteratorSize(Ones(2)) == Base.IteratorSize(ones(2))
-            @test Base.IteratorSize(Ones(r)) == Base.IsInfinite()
-            @test Base.IteratorSize(Fill(2, (1:2, 1:2))) == Base.HasShape{2}()
-            @test Base.IteratorSize(Fill(2, (1:2, r))) == Base.IsInfinite()
-            @test Base.IteratorSize(Fill(2, (r, 1:2))) == Base.IsInfinite()
-            @test Base.IteratorSize(Fill(2, (r, r))) == Base.IsInfinite()
+            @test (@inferred Base.IteratorSize(Ones())) == Base.IteratorSize(ones())
+            @test (@inferred Base.IteratorSize(Ones(2))) == Base.IteratorSize(ones(2))
+            @test (@inferred Base.IteratorSize(Ones(r))) == Base.IsInfinite()
+            @test (@inferred Base.IteratorSize(Fill(2, (1:2, 1:2)))) == Base.HasShape{2}()
+            @test (@inferred Base.IteratorSize(Fill(2, (1:2, r)))) == Base.IsInfinite()
+            @test (@inferred Base.IteratorSize(Fill(2, (r, 1:2)))) == Base.IsInfinite()
+            @test (@inferred Base.IteratorSize(Fill(2, (r, r)))) == Base.IsInfinite()
         end
     end
 end
