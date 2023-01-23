@@ -638,10 +638,13 @@ end
     @test_throws UndefKeywordError cumsum(Fill(1,1,5))
 
     @testset "infinite arrays" begin
-        A = Ones{Int}((InfiniteArrays.OneToInf(),))
+        r = InfiniteArrays.OneToInf()
+        A = Ones{Int}((r,))
         @test isinf(sum(A))
         @test sum(A) == length(A)
         @test sum(x->x^2, A) == sum(A.^2)
+        @test Base.IteratorSize(A) == Base.IsInfinite()
+        @test Base.IteratorSize(Fill(2, (1:2, r))) == Base.IsInfinite()
     end
 end
 

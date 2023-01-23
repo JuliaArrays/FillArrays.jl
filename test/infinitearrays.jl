@@ -35,6 +35,8 @@ module InfiniteArrays
     Base.last(r::AbstractInfUnitRange) = Infinity()
     Base.axes(r::AbstractInfUnitRange) = (OneToInf(),)
 
+    Base.IteratorSize(::Type{<:AbstractInfUnitRange}) = Base.IsInfinite()
+
     """
         OneToInf(n)
     Define an `AbstractInfUnitRange` that behaves like `1:∞`, with the added
