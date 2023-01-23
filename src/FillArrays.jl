@@ -64,8 +64,8 @@ ishermitian(F::AbstractFill{<:Any, 2}) = issymmetric(F) && iszero(imag(getindex_
 Base.IteratorSize(::Type{<:AbstractFill{T,N,Axes}}) where {T,N,Axes} = _IteratorSize(Axes)
 _IteratorSize(::Type{Tuple{}}) = Base.HasShape{0}()
 _IteratorSize(::Type{Tuple{T}}) where {T} = Base.IteratorSize(T)
-# Julia Base has an optimized any for Tuples for versions >= v1.9
-# For lower versions, a recursive implementation might be easier for type-inference
+# Julia Base has an optimized any for Tuples on versions >= v1.9
+# On lower versions, a recursive implementation helps with type-inference
 if VERSION >= v"1.9.0-beta3"
     _any(f, t::Tuple) = any(f, t)
 else
