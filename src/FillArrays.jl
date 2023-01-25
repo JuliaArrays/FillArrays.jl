@@ -61,6 +61,24 @@ IndexStyle(::Type{<:AbstractFill{<:Any,N,<:NTuple{N,Base.OneTo{Int}}}}) where N 
 issymmetric(F::AbstractFill{<:Any, 2}) = axes(F,1) == axes(F,2)
 ishermitian(F::AbstractFill{<:Any, 2}) = issymmetric(F) && iszero(imag(getindex_value(F)))
 
+Base.IteratorSize(::Type{<:AbstractFill{T,N,Axes}}) where {T,N,Axes} = _IteratorSize(Axes)
+_IteratorSize(::Type{Tuple{}}) = Base.HasShape{0}()
+_IteratorSize(::Type{Tuple{T}}) where {T} = Base.IteratorSize(T)
+# Julia Base has an optimized any for Tuples on versions >= v1.9
+# On lower versions, a recursive implementation helps with type-inference
+if VERSION >= v"1.9.0-beta3"
+    _any(f, t::Tuple) = any(f, t)
+else
+    _any(f, ::Tuple{}) = false
+    _any(f, t::Tuple) = f(t[1]) || _any(f, Base.tail(t))
+end
+function _IteratorSize(::Type{T}) where {T<:Tuple}
+    N = fieldcount(T)
+    s = ntuple(i-> Base.IteratorSize(fieldtype(T, i)), N)
+    _any(x -> x isa Base.IsInfinite, s) ? Base.IsInfinite() : Base.HasShape{N}()
+end
+
+
 """
     Fill{T, N, Axes} where {T,N,Axes<:Tuple{Vararg{AbstractUnitRange,N}}}
 
