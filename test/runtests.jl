@@ -146,9 +146,9 @@ include("infinitearrays.jl")
         y = x + x
         @test y isa Fill{Int,1}
         @test y[1] == 2
-        @test x + Zeros{Bool}(5) ≡ x
-        @test x - Zeros{Bool}(5) ≡ x
-        @test Zeros{Bool}(5) + x ≡ x
+        @test x + Zeros{Bool}(5) ≡ Ones{Int}(5)
+        @test x - Zeros{Bool}(5) ≡ Ones{Int}(5)
+        @test Zeros{Bool}(5) + x ≡ Ones{Int}(5)
         @test -x ≡ Fill(-1,5)
     end
 
@@ -392,10 +392,10 @@ end
 
     @test Diagonal(Zeros(8,5)) == Diagonal(zeros(5))
     @test convert(Diagonal, Zeros(5,5)) == Diagonal(zeros(5))
-    @test_throws BoundsError convert(Diagonal, Zeros(8,5))
+    @test_throws DimensionMismatch convert(Diagonal, Zeros(8,5))
 
     @test convert(Diagonal{Int}, Zeros(5,5)) == Diagonal(zeros(Int,5))
-    @test_throws BoundsError convert(Diagonal{Int}, Zeros(8,5))
+    @test_throws DimensionMismatch convert(Diagonal{Int}, Zeros(8,5))
 
 
     @test Diagonal(Eye(8,5)) == Diagonal(ones(5))

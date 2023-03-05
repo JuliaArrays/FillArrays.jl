@@ -7,16 +7,15 @@ vec(a::Fill{T}) where T = Fill{T}(a.value,length(a))
 ## Transpose/Adjoint
 # cannot do this for vectors since that would destroy scalar dot product
 
+for fun in (:transpose,:adjoint)
+    for TYPE in (:Ones,:Zeros)
+        @eval $fun(a::$TYPE{T,2}) where T = $TYPE{T}(reverse(a.axes))
+    end
+    @eval $fun(a::FillMatrix) where T = Fill{T}($fun(a.value), reverse(a.axes))
+end
 
-transpose(a::Ones{T,2}) where T = Ones{T}(reverse(a.axes))
-adjoint(a::Ones{T,2}) where T = Ones{T}(reverse(a.axes))
-transpose(a::Zeros{T,2}) where T = Zeros{T}(reverse(a.axes))
-adjoint(a::Zeros{T,2}) where T = Zeros{T}(reverse(a.axes))
-transpose(a::Fill{T,2}) where T = Fill{T}(transpose(a.value), reverse(a.axes))
-adjoint(a::Fill{T,2}) where T = Fill{T}(adjoint(a.value), reverse(a.axes))
-
-permutedims(a::AbstractFill{<:Any,1}) = fillsimilar(a, (1, length(a)))
-permutedims(a::AbstractFill{<:Any,2}) = fillsimilar(a, reverse(a.axes))
+permutedims(a::AbstractFillVector) = fillsimilar(a, (1, length(a)))
+permutedims(a::AbstractFillMatrix) = fillsimilar(a, reverse(a.axes))
 
 function permutedims(B::AbstractFill, perm)
     dimsB = size(B)
@@ -34,74 +33,51 @@ end
 reverse(A::AbstractFill; dims=:) = A
 
 ## Algebraic identities
+@inline checkdimensionmismatch(a::AbstractVecOrMat, b::AbstractVecOrMat) = axes(a, 2) ≠ axes(b, 1) && throw(DimensionMismatch("A has axes $(axes(a)) but B has axes $(axes(b))"))
+@inline productaxes(a::AbstractVecOrMat, b::AbstractVector) = (axes(a, 1),)
+@inline productaxes(a::AbstractVecOrMat, b::AbstractMatrix) = (axes(a, 1), axes(b, 2))
 
-
-function mult_fill(a::AbstractFill, b::AbstractFill{<:Any,2})
-    axes(a, 2) ≠ axes(b, 1) &&
-        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
-    return Fill(getindex_value(a)*getindex_value(b)*size(a,2), (axes(a, 1), axes(b, 2)))
-end
-
-function mult_fill(a::AbstractFill, b::AbstractFill{<:Any,1})
-    axes(a, 2) ≠ axes(b, 1) &&
-        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
-    return Fill(getindex_value(a)*getindex_value(b)*size(a,2), (axes(a, 1),))
+function mult_fill(a::AbstractFill, b::AbstractFillVecOrMat)
+    checkdimensionmismatch(a,b)
+    return Fill(getindex_value(a)*getindex_value(b)*size(a,2), productaxes(a,b))
 end
 
 function mult_ones(a::AbstractVector, b::AbstractMatrix)
-    axes(a, 2) ≠ axes(b, 1) &&
-        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
-    return Ones{promote_type(eltype(a), eltype(b))}((axes(a, 1), axes(b, 2)))
+    checkdimensionmismatch(a,b)
+    return Ones{promote_type(eltype(a), eltype(b))}(productaxes(a,b))
 end
 
-function mult_zeros(a, b::AbstractMatrix)
-    axes(a, 2) ≠ axes(b, 1) &&
-        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
-    return Zeros{promote_type(eltype(a), eltype(b))}((axes(a, 1), axes(b, 2)))
-end
-function mult_zeros(a, b::AbstractVector)
-    axes(a, 2) ≠ axes(b, 1) &&
-        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
-    return Zeros{promote_type(eltype(a), eltype(b))}((axes(a, 1),))
+function mult_zeros(a, b::AbstractVecOrMat)
+    checkdimensionmismatch(a,b)
+    return Zeros{promote_type(eltype(a), eltype(b))}(productaxes(a,b))
 end
 
-*(a::AbstractFill{<:Any,1}, b::AbstractFill{<:Any,2}) = mult_fill(a,b)
-*(a::AbstractFill{<:Any,2}, b::AbstractFill{<:Any,2}) = mult_fill(a,b)
-*(a::AbstractFill{<:Any,2}, b::AbstractFill{<:Any,1}) = mult_fill(a,b)
+*(a::ZerosVector, b::AdjOrTransAbsVec) = mult_zeros(a, b)
 
-*(a::Ones{<:Any,1}, b::Ones{<:Any,2}) = mult_ones(a, b)
+# Matrix * VecOrMat. 
+# For Vector*Matrix, LinearAlgebra reshapes the vector to matrix automatically. 
+# See *(a::AbstractVector, B::AbstractMatrix) at matmul.jl
+*(a::AbstractFillMatrix, b::AbstractFillVecOrMat) = mult_fill(a,b)
+*(a::ZerosMatrix, b::ZerosVector) = mult_zeros(a, b)
+*(a::ZerosMatrix, b::ZerosMatrix) = mult_zeros(a, b)
+*(a::OnesVector, b::OnesMatrix) = mult_ones(a, b)
+for TYPE in (AbstractFillMatrix, AbstractMatrix, Diagonal)
+    @eval begin
+        *(a::ZerosMatrix, b::$TYPE) = mult_zeros(a,b)
+        *(a::$TYPE, b::ZerosVector) = mult_zeros(a,b)
+        *(a::$TYPE, b::ZerosMatrix) = mult_zeros(a,b)
+    end
+end
+for TYPE in (:AbstractFillVector, :AbstractVector)
+    @eval *(a::ZerosMatrix, b::$TYPE) = mult_zeros(a,b)
+end
 
-*(a::Zeros{<:Any,1}, b::Zeros{<:Any,2}) = mult_zeros(a, b)
-*(a::Zeros{<:Any,2}, b::Zeros{<:Any,2}) = mult_zeros(a, b)
-*(a::Zeros{<:Any,2}, b::Zeros{<:Any,1}) = mult_zeros(a, b)
-
-*(a::Zeros{<:Any,1}, b::AbstractFill{<:Any,2}) = mult_zeros(a, b)
-*(a::Zeros{<:Any,2}, b::AbstractFill{<:Any,2}) = mult_zeros(a, b)
-*(a::Zeros{<:Any,2}, b::AbstractFill{<:Any,1}) = mult_zeros(a, b)
-*(a::AbstractFill{<:Any,1}, b::Zeros{<:Any,2}) = mult_zeros(a,b)
-*(a::AbstractFill{<:Any,2}, b::Zeros{<:Any,2}) = mult_zeros(a,b)
-*(a::AbstractFill{<:Any,2}, b::Zeros{<:Any,1}) = mult_zeros(a,b)
-
-*(a::Zeros{<:Any,1}, b::AbstractMatrix) = mult_zeros(a, b)
-*(a::Zeros{<:Any,2}, b::AbstractMatrix) = mult_zeros(a, b)
-*(a::AbstractMatrix, b::Zeros{<:Any,1}) = mult_zeros(a, b)
-*(a::AbstractMatrix, b::Zeros{<:Any,2}) = mult_zeros(a, b)
-*(a::Zeros{<:Any,1}, b::AbstractVector) = mult_zeros(a, b)
-*(a::Zeros{<:Any,2}, b::AbstractVector) = mult_zeros(a, b)
-*(a::AbstractVector, b::Zeros{<:Any,2}) = mult_zeros(a, b)
-
-*(a::Zeros{<:Any,1}, b::AdjOrTransAbsVec) = mult_zeros(a, b)
-
-*(a::Zeros{<:Any,1}, b::Diagonal) = mult_zeros(a, b)
-*(a::Zeros{<:Any,2}, b::Diagonal) = mult_zeros(a, b)
-*(a::Diagonal, b::Zeros{<:Any,1}) = mult_zeros(a, b)
-*(a::Diagonal, b::Zeros{<:Any,2}) = mult_zeros(a, b)
 function *(a::Diagonal, b::AbstractFill{<:Any,2})
-    size(a,2) == size(b,1) || throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
+    checkdimensionmismatch(a,b)
     a.diag .* b # use special broadcast
 end
 function *(a::AbstractFill{<:Any,2}, b::Diagonal)
-    size(a,2) == size(b,1) || throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
+    checkdimensionmismatch(a,b)
     a .* permutedims(b.diag) # use special broadcast
 end
 
@@ -134,64 +110,48 @@ function _adjvec_mul_zeros(a, b)
     return zero(Base.promote_op(*, eltype(a), eltype(b)))
 end
 
-*(a::AdjointAbsVec{<:Any,<:Zeros{<:Any,1}}, b::AbstractMatrix) = (b' * a')'
-*(a::AdjointAbsVec{<:Any,<:Zeros{<:Any,1}}, b::Zeros{<:Any,2}) = (b' * a')'
-*(a::TransposeAbsVec{<:Any,<:Zeros{<:Any,1}}, b::AbstractMatrix) = transpose(transpose(b) * transpose(a))
-*(a::TransposeAbsVec{<:Any,<:Zeros{<:Any,1}}, b::Zeros{<:Any,2}) = transpose(transpose(b) * transpose(a))
+# AdjOrTrans{ZerosVector} * Matrix
+*(a::AdjointAbsVec{<:Any,<:ZerosVector}, b::AbstractMatrix) = (b' * a')'
+*(a::AdjointAbsVec{<:Any,<:ZerosVector}, b::ZerosMatrix) = (b' * a')'
+*(a::TransposeAbsVec{<:Any,<:ZerosVector}, b::AbstractMatrix) = transpose(transpose(b) * transpose(a))
+*(a::TransposeAbsVec{<:Any,<:ZerosVector}, b::ZerosMatrix) = transpose(transpose(b) * transpose(a))
 
-*(a::AbstractVector, b::AdjOrTransAbsVec{<:Any,<:Zeros{<:Any,1}}) = a * permutedims(parent(b))
-*(a::AbstractMatrix, b::AdjOrTransAbsVec{<:Any,<:Zeros{<:Any,1}}) = a * permutedims(parent(b))
-*(a::Zeros{<:Any,1}, b::AdjOrTransAbsVec{<:Any,<:Zeros{<:Any,1}}) = a * permutedims(parent(b))
-*(a::Zeros{<:Any,2}, b::AdjOrTransAbsVec{<:Any,<:Zeros{<:Any,1}}) = a * permutedims(parent(b))
+# VecOrMat * AdjOrTrans{ZerosVector}
+for TYPE in (:AbstractVector, :AbstractMatrix, :ZerosVector, :ZerosMatrix)
+    @eval *(a::$TYPE, b::AdjOrTransAbsVec{<:Any,<:ZerosVector}) = a * permutedims(parent(b))
+end
 
-*(a::AdjointAbsVec, b::Zeros{<:Any, 1}) = _adjvec_mul_zeros(a, b)
-*(a::AdjointAbsVec{<:Number}, b::Zeros{<:Number, 1}) = _adjvec_mul_zeros(a, b)
-*(a::TransposeAbsVec, b::Zeros{<:Any, 1}) = _adjvec_mul_zeros(a, b)
-*(a::TransposeAbsVec{<:Number}, b::Zeros{<:Number, 1}) = _adjvec_mul_zeros(a, b)
+# AdjOrTrans{Vector} * ZerosVector
+for T1 in (:AdjointAbsVec, :TransposeAbsVec), T2 in (:Any, :Number)
+    @eval *(a::$T1{<:$T2}, b::ZerosVector{<:$T2}) = _adjvec_mul_zeros(a, b)
+end
 
-*(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::Zeros{<:Any, 1}) = mult_zeros(a, b)
+*(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::ZerosVector) = mult_zeros(a, b)
 
-function *(a::Transpose{T, <:AbstractVector{T}}, b::Zeros{T, 1}) where T<:Real
+function *(a::Transpose{T, <:AbstractVector{T}}, b::ZerosVector{T}) where T<:Real
     la, lb = length(a), length(b)
     if la ≠ lb
         throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))
     end
     return zero(T)
 end
-*(a::Transpose{T, <:AbstractMatrix{T}}, b::Zeros{T, 1}) where T<:Real = mult_zeros(a, b)
+*(a::Transpose{T, <:AbstractMatrix{T}}, b::ZerosVector) where T<:Real = mult_zeros(a, b)
 
 # treat zero separately to support ∞-vectors
-function _zero_dot(a, b)
+function _fill_dot(a::AbstractVector, b::AbstractVector)
     axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
-    zero(promote_type(eltype(a),eltype(b)))
+    if iszero(a) || iszero(b)
+        zero(promote_type(eltype(a),eltype(b)))
+    elseif isa(a,AbstractFill)
+        getindex_value(a)sum(b)
+    else
+        getindex_value(b)sum(a)
+    end
 end
 
-_fill_dot(a::Zeros, b::Zeros) = _zero_dot(a, b)
-_fill_dot(a::Zeros, b) = _zero_dot(a, b)
-_fill_dot(a, b::Zeros) = _zero_dot(a, b)
-_fill_dot(a::Zeros, b::AbstractFill) = _zero_dot(a, b)
-_fill_dot(a::AbstractFill, b::Zeros) = _zero_dot(a, b)
-
-function _fill_dot(a::AbstractFill, b::AbstractFill)
-    axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
-    getindex_value(a)getindex_value(b)*length(b)
-end
-
-# support types with fast sum
-function _fill_dot(a::AbstractFill, b)
-    axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
-    getindex_value(a)sum(b)
-end
-
-function _fill_dot(a, b::AbstractFill)
-    axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
-    sum(a)getindex_value(b)
-end
-
-
-dot(a::AbstractFill{<:Any,1}, b::AbstractFill{<:Any,1}) = _fill_dot(a, b)
-dot(a::AbstractFill{<:Any,1}, b::AbstractVector) = _fill_dot(a, b)
-dot(a::AbstractVector, b::AbstractFill{<:Any,1}) = _fill_dot(a, b)
+dot(a::AbstractFillVector, b::AbstractFillVector) = _fill_dot(a, b)
+dot(a::AbstractFillVector, b::AbstractVector) = _fill_dot(a, b)
+dot(a::AbstractVector, b::AbstractFillVector) = _fill_dot(a, b)
 
 function dot(u::AbstractVector, E::Eye, v::AbstractVector)
     length(u) == size(E,1) && length(v) == size(E,2) ||
@@ -211,63 +171,25 @@ function dot(u::AbstractVector{T}, D::Diagonal{U,<:Zeros}, v::AbstractVector{V})
     zero(promote_type(T,U,V))
 end
 
-+(a::Zeros) = a
--(a::Zeros) = a
-
 # Zeros +/- Zeros
 function +(a::Zeros{T}, b::Zeros{V}) where {T, V}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     return Zeros{promote_type(T,V)}(size(a)...)
 end
--(a::Zeros, b::Zeros) = -(a + b)
--(a::Ones, b::Ones) = Zeros(a)+Zeros(b)
 
-# Zeros +/- Fill and Fill +/- Zeros
-function +(a::AbstractFill{T}, b::Zeros{V}) where {T, V}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return convert(AbstractFill{promote_type(T, V)}, a)
-end
-+(a::Zeros, b::AbstractFill) = b + a
--(a::AbstractFill, b::Zeros) = a + b
--(a::Zeros, b::AbstractFill) = a + (-b)
-
-# Zeros +/- Array and Array +/- Zeros
-function +(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return AbstractArray{promote_type(T,V),N}(b)
-end
-function +(a::Array{T, N}, b::Zeros{V, N}) where {T, V, N}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return AbstractArray{promote_type(T,V),N}(a)
+for (TYPE) in (:AbstractArray, :AbstractFill, :AbstractRange)
+    @eval begin
+        function +(a::$TYPE, b::Zeros)
+            size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
+            return $TYPE{typeof(zero(eltype(a))+zero(eltype(b)))}(a)
+        end
+        +(a::Zeros, b::$TYPE) = b + a
+    end
 end
 
-function -(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return -b + a
-end
--(a::Array{T, N}, b::Zeros{V, N}) where {T, V, N} = a + b
-
-
-+(a::AbstractRange, b::Zeros) = b + a
-
-function +(a::Zeros{T, 1}, b::AbstractRange) where {T}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    Tout = promote_type(T, eltype(b))
-    return convert(Tout, first(b)):convert(Tout, step(b)):convert(Tout, last(b))
-end
-function +(a::Zeros{T, 1}, b::UnitRange) where {T}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    Tout = promote_type(T, eltype(b))
-    return convert(Tout, first(b)):convert(Tout, last(b))
-end
-
-function -(a::Zeros{T, 1}, b::AbstractRange{V}) where {T, V}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return -b + a
-end
--(a::AbstractRange{T}, b::Zeros{V, 1}) where {T, V} = a + b
-
-
+# temporary patch. should be a PR(#48894) to julia base.
+AbstractRange{T}(r::AbstractUnitRange) where {T<:Integer} = AbstractUnitRange{T}(r)
+AbstractRange{T}(r::AbstractRange) where T = T(first(r)):T(step(r)):T(last(r))
 
 ####
 # norm

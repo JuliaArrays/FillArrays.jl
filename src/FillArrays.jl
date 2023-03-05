@@ -10,7 +10,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular, AdjointAbsVec, TransposeAbsVec,
-    issymmetric, ishermitian, AdjOrTransAbsVec
+    issymmetric, ishermitian, AdjOrTransAbsVec, checksquare
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
@@ -146,14 +146,7 @@ AbstractArray{T}(F::Fill{T}) where T = F
 AbstractArray{T,N}(F::Fill{T,N}) where {T,N} = F
 AbstractArray{T}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 AbstractArray{T,N}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
-
-convert(::Type{AbstractArray{T}}, F::Fill{T}) where T = F
-convert(::Type{AbstractArray{T,N}}, F::Fill{T,N}) where {T,N} = F
-convert(::Type{AbstractArray{T}}, F::Fill) where {T} = AbstractArray{T}(F)
-convert(::Type{AbstractArray{T,N}}, F::Fill) where {T,N} = AbstractArray{T,N}(F)
-convert(::Type{AbstractFill}, F::AbstractFill) = F
-convert(::Type{AbstractFill{T}}, F::AbstractFill) where T = convert(AbstractArray{T}, F)
-convert(::Type{AbstractFill{T,N}}, F::AbstractFill) where {T,N} = convert(AbstractArray{T,N}, F)
+AbstractFill{T}(F::AbstractFill) where T = AbstractArray{T}(F)
 
 copy(F::Fill) = Fill(F.value, F.axes)
 
@@ -210,15 +203,11 @@ sort(a::AbstractFill; kwds...) = a
 sort!(a::AbstractFill; kwds...) = a
 svdvals!(a::AbstractFill{<:Any,2}) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(min(size(a)...)-1)]
 
-+(a::AbstractFill) = a
--(a::AbstractFill) = Fill(-getindex_value(a), size(a))
-
 # Fill +/- Fill
 function +(a::AbstractFill{T, N}, b::AbstractFill{V, N}) where {T, V, N}
     axes(a) ≠ axes(b) && throw(DimensionMismatch("dimensions must match."))
     return Fill(getindex_value(a) + getindex_value(b), axes(a))
 end
--(a::AbstractFill, b::AbstractFill) = a + (-b)
 
 function +(a::Fill{T, 1}, b::AbstractRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
@@ -299,14 +288,22 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         AbstractArray{T,N}(F::$Typ{T,N}) where {T,N} = F
         AbstractArray{T}(F::$Typ) where T = $Typ{T}(F.axes)
         AbstractArray{T,N}(F::$Typ{V,N}) where {T,V,N} = $Typ{T}(F.axes)
-        convert(::Type{AbstractArray{T}}, F::$Typ{T}) where T = AbstractArray{T}(F)
-        convert(::Type{AbstractArray{T,N}}, F::$Typ{T,N}) where {T,N} = AbstractArray{T,N}(F)
-        convert(::Type{AbstractArray{T}}, F::$Typ) where T = AbstractArray{T}(F)
-        convert(::Type{AbstractArray{T,N}}, F::$Typ) where {T,N} = AbstractArray{T,N}(F)
 
         copy(F::$Typ) = F
 
         getindex(F::$Typ{T,0}) where T = getindex_value(F)
+    end
+end
+
+for TYPE in (:Fill, :AbstractFill, :Ones, :Zeros)
+    @eval begin
+        @inline AbstractFill{T}(F::$TYPE{T}) where T = F
+        @inline AbstractFill{T,N}(F::$TYPE{T,N}) where {T,N} = F
+        @inline AbstractFill{T,N,Axes}(F::$TYPE{T,N,Axes}) where {T,N,Axes} = F
+
+        const $(Symbol(TYPE,"Vector")){T} = $TYPE{T,1}
+        const $(Symbol(TYPE,"Matrix")){T} = $TYPE{T,2}
+        const $(Symbol(TYPE,"VecOrMat")){T} = Union{$TYPE{T,1},$TYPE{T,2}}
     end
 end
 
@@ -459,16 +456,11 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     end
 end
 
-function convert(::Type{Diagonal}, Z::Zeros{T,2}) where T
-    n,m = size(Z)
-    n ≠ m && throw(BoundsError(Z))
-    Diagonal(zeros(T, n))
-end
-
-function convert(::Type{Diagonal{T}}, Z::Zeros{V,2}) where {T,V}
-    n,m = size(Z)
-    n ≠ m && throw(BoundsError(Z))
-    Diagonal(zeros(T, n))
+# temporary patch. should be a PR(#48895) to LinearAlgebra
+Diagonal{T}(A::AbstractMatrix) where T = Diagonal{T}(diag(A))
+function convert(::Type{T}, A::AbstractMatrix) where T<:Diagonal 
+    checksquare(A)
+    isdiag(A) ? T(A) : throw(InexactError(:convert, T, A))
 end
 
 ## Sparse arrays
@@ -539,7 +531,7 @@ cumsum(x::Zeros{<:Any,1}) = x
 cumsum(x::Zeros{Bool,1}) = x
 cumsum(x::Ones{II,1}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
 cumsum(x::Ones{Bool,1}) = oneto(length(x))
-cumsum(x::AbstractFill{Bool,1}) = cumsum(convert(AbstractFill{Int}, x))
+cumsum(x::AbstractFill{Bool,1}) = cumsum(AbstractFill{Int}(x))
 
 
 #########
@@ -560,8 +552,7 @@ allunique(x::AbstractFill) = length(x) < 2
 #########
 
 zero(r::Zeros{T,N}) where {T,N} = r
-zero(r::Ones{T,N}) where {T,N} = Zeros{T,N}(r.axes)
-zero(r::Fill{T,N}) where {T,N} = Zeros{T,N}(r.axes)
+zero(r::AbstractFill{T,N}) where {T,N} = Zeros{T,N}(r)
 
 #########
 # oneunit
