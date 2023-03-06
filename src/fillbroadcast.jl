@@ -202,11 +202,16 @@ _copy_oftype(A::AbstractArray{T,N}, ::Type{S}) where {T,N,S} = convert(AbstractA
 _copy_oftype(A::AbstractRange{T}, ::Type{T}) where T = copy(A)
 _copy_oftype(A::AbstractRange{T}, ::Type{S}) where {T,S} = map(S, A)
 
-for op in (:+, -)
+for op in (:+, :-)
     @eval begin
-        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector{T}, b::ZerosVector{V}) where {T,V}
+        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractRange{T}, b::ZerosVector{V}) where {T,V}
             broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
             _copy_oftype(a, promote_type(T,V))
+        end
+        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector{T}, b::Zeros{V,1}) where {T,V}
+            broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
+            TT = promote_type(T,V)
+            broadcasted(TT∘$op, a)
         end
 
         broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFill{T,1}, b::ZerosVector) where T =
@@ -214,9 +219,11 @@ for op in (:+, -)
     end
 end
 
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector{T}, b::AbstractVector{V}) where {T,V}
-    broadcast_shape(axes(a), axes(b))
-    _copy_oftype(b, promote_type(T,V))
+function broadcasted(S::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector, b::AbstractRange)
+    broadcasted(S, +, b, a)
+end
+function broadcasted(S::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector, b::AbstractVector)
+    broadcasted(S, +, b, a)
 end
 
 broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector, b::AbstractFillVector) =
