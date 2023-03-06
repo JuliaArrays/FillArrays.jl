@@ -112,6 +112,9 @@ struct Fill{T, N, Axes} <: AbstractFill{T, N, Axes}
         new{T,N,Axes}(x,sz)
     Fill{T,0,Tuple{}}(x::T, sz::Tuple{}) where T = new{T,0,Tuple{}}(x,sz)
 end
+const FillVector{T} = Fill{T,1}
+const FillMatrix{T} = Fill{T,2}
+const FillVecOrMat{T} = Union{FillVector{T},FillMatrix{T}}
 
 Fill{T,N,Axes}(x, sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
     Fill{T,N,Axes}(convert(T, x)::T, sz)
@@ -276,6 +279,9 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
                 new{T,N,Axes}(sz)
             @inline $Typ{T,0,Tuple{}}(sz::Tuple{}) where T = new{T,0,Tuple{}}(sz)
         end
+        const $(Symbol(Typ,"Vector")){T} = $Typ{T,1}
+        const $(Symbol(Typ,"Matrix")){T} = $Typ{T,2}
+        const $(Symbol(Typ,"VecOrMat")){T} = Union{$Typ{T,1},$Typ{T,2}}
 
 
         @inline $Typ{T, 0}(sz::Tuple{}) where {T} = $Typ{T,0,Tuple{}}(sz)
@@ -312,15 +318,6 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         getindex(F::$Typ{T,0}) where T = getindex_value(F)
     end
 end
-
-for TYPE in (:Fill, :Ones, :Zeros)
-    @eval begin
-        const $(Symbol(TYPE,"Vector")){T} = $TYPE{T,1}
-        const $(Symbol(TYPE,"Matrix")){T} = $TYPE{T,2}
-        const $(Symbol(TYPE,"VecOrMat")){T} = Union{$TYPE{T,1},$TYPE{T,2}}
-    end
-end
-
 
 """
     fillsimilar(a::AbstractFill, axes)
