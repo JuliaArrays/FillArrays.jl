@@ -58,8 +58,8 @@ end
 rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
 IndexStyle(::Type{<:AbstractFill{<:Any,N,<:NTuple{N,Base.OneTo{Int}}}}) where N = IndexLinear()
 
-issymmetric(F::AbstractFill{<:Any, 2}) = axes(F,1) == axes(F,2)
-ishermitian(F::AbstractFill{<:Any, 2}) = issymmetric(F) && iszero(imag(getindex_value(F)))
+issymmetric(F::AbstractFillMatrix) = axes(F,1) == axes(F,2)
+ishermitian(F::AbstractFillMatrix) = issymmetric(F) && iszero(imag(getindex_value(F)))
 
 Base.IteratorSize(::Type{<:AbstractFill{T,N,Axes}}) where {T,N,Axes} = _IteratorSize(Axes)
 _IteratorSize(::Type{Tuple{}}) = Base.HasShape{0}()
@@ -208,7 +208,7 @@ end
 
 sort(a::AbstractFill; kwds...) = a
 sort!(a::AbstractFill; kwds...) = a
-svdvals!(a::AbstractFill{<:Any,2}) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(min(size(a)...)-1)]
+svdvals!(a::AbstractFillMatrix) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(min(size(a)...)-1)]
 
 +(a::AbstractFill) = a
 -(a::AbstractFill) = Fill(-getindex_value(a), size(a))
@@ -220,7 +220,7 @@ function +(a::AbstractFill{T, N}, b::AbstractFill{V, N}) where {T, V, N}
 end
 -(a::AbstractFill, b::AbstractFill) = a + (-b)
 
-function +(a::Fill{T, 1}, b::AbstractRange) where {T}
+function +(a::FillVector{T}, b::AbstractRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
     return a.value .+ b
@@ -228,7 +228,7 @@ end
 +(a::AbstractRange, b::AbstractFill) = b + a
 # LinearAlgebra defines `+(a::UniformScaling, b::AbstractMatrix) = b + a`,
 # so the implementation of `+(a::AbstractFill{<:Any,2}, b::UniformScaling)` is sufficient
-function +(a::AbstractFill{<:Any,2}, b::UniformScaling)
+function +(a::AbstractFillMatrix, b::UniformScaling)
     n = LinearAlgebra.checksquare(a)
     return a + Diagonal(Fill(b.λ, n))
 end
@@ -237,7 +237,7 @@ end
 -(a::AbstractRange, b::AbstractFill) = a + (-b)
 # LinearAlgebra defines `-(a::AbstractMatrix, b::UniformScaling) = a + (-b)`,
 # so the implementation of `-(a::UniformScaling, b::AbstractFill{<:Any,2})` is sufficient
--(a::UniformScaling, b::AbstractFill{<:Any,2}) = a + (-b)
+-(a::UniformScaling, b::AbstractFillMatrix) = a + (-b)
 
 function fill_reshape(parent, dims::Integer...)
     n = length(parent)
@@ -467,13 +467,13 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     end
 end
 
-function convert(::Type{Diagonal}, Z::Zeros{T,2}) where T
+function convert(::Type{Diagonal}, Z::ZerosMatrix{T}) where T
     n,m = size(Z)
     n ≠ m && throw(BoundsError(Z))
     Diagonal(zeros(T, n))
 end
 
-function convert(::Type{Diagonal{T}}, Z::Zeros{V,2}) where {T,V}
+function convert(::Type{Diagonal{T}}, Z::ZerosMatrix) where T
     n,m = size(Z)
     n ≠ m && throw(BoundsError(Z))
     Diagonal(zeros(T, n))
@@ -481,21 +481,21 @@ end
 
 ## Sparse arrays
 
-convert(::Type{SparseVector}, Z::Zeros{T,1}) where T = spzeros(T, length(Z))
-convert(::Type{SparseVector{Tv}}, Z::Zeros{T,1}) where {T,Tv} = spzeros(Tv, length(Z))
-convert(::Type{SparseVector{Tv,Ti}}, Z::Zeros{T,1}) where {T,Tv,Ti} = spzeros(Tv, Ti, length(Z))
+convert(::Type{SparseVector}, Z::ZerosVector{T}) where T = spzeros(T, length(Z))
+convert(::Type{SparseVector{T}}, Z::ZerosVector) where T = spzeros(T, length(Z))
+convert(::Type{SparseVector{Tv,Ti}}, Z::ZerosVector) where {Tv,Ti} = spzeros(Tv, Ti, length(Z))
 
-convert(::Type{AbstractSparseVector}, Z::Zeros{T,1}) where T = spzeros(T, length(Z))
-convert(::Type{AbstractSparseVector{Tv}}, Z::Zeros{T,1}) where {Tv,T}= spzeros(Tv, length(Z))
+convert(::Type{AbstractSparseVector}, Z::ZerosVector{T}) where T = spzeros(T, length(Z))
+convert(::Type{AbstractSparseVector{T}}, Z::ZerosVector) where T= spzeros(T, length(Z))
 
-convert(::Type{SparseMatrixCSC}, Z::Zeros{T,2}) where T = spzeros(T, size(Z)...)
-convert(::Type{SparseMatrixCSC{Tv}}, Z::Zeros{T,2}) where {T,Tv} = spzeros(Tv, size(Z)...)
-convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Zeros{T,2}) where {T,Tv,Ti} = spzeros(Tv, Ti, size(Z)...)
+convert(::Type{SparseMatrixCSC}, Z::ZerosMatrix{T}) where T = spzeros(T, size(Z)...)
+convert(::Type{SparseMatrixCSC{T}}, Z::ZerosMatrix) where T = spzeros(T, size(Z)...)
+convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::ZerosMatrix) where {Tv,Ti} = spzeros(Tv, Ti, size(Z)...)
 convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Zeros{T,2,Axes}) where {Tv,Ti<:Integer,T,Axes} =
     spzeros(Tv, Ti, size(Z)...)
 
-convert(::Type{AbstractSparseMatrix}, Z::Zeros{T,2}) where {T} = spzeros(T, size(Z)...)
-convert(::Type{AbstractSparseMatrix{Tv}}, Z::Zeros{T,2}) where {T,Tv} = spzeros(Tv, size(Z)...)
+convert(::Type{AbstractSparseMatrix}, Z::ZerosMatrix{T}) where T = spzeros(T, size(Z)...)
+convert(::Type{AbstractSparseMatrix{T}}, Z::ZerosMatrix) where T = spzeros(T, size(Z)...)
 
 convert(::Type{AbstractSparseArray}, Z::Zeros{T}) where T = spzeros(T, size(Z)...)
 convert(::Type{AbstractSparseArray{Tv}}, Z::Zeros{T}) where {T,Tv} = spzeros(Tv, size(Z)...)
@@ -543,18 +543,18 @@ sum(x::Zeros) = getindex_value(x)
 cumsum(x::AbstractFill{<:Any,1}) = range(getindex_value(x); step=getindex_value(x),
                                                     length=length(x))
 
-cumsum(x::Zeros{<:Any,1}) = x
-cumsum(x::Zeros{Bool,1}) = x
-cumsum(x::Ones{II,1}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
-cumsum(x::Ones{Bool,1}) = oneto(length(x))
-cumsum(x::AbstractFill{Bool,1}) = cumsum(convert(AbstractFill{Int}, x))
+cumsum(x::ZerosVector) = x
+cumsum(x::ZerosVector{Bool}) = x
+cumsum(x::OnesVector{II}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
+cumsum(x::OnesVector{Bool}) = oneto(length(x))
+cumsum(x::AbstractFillVector{Bool}) = cumsum(convert(AbstractFill{Int}, x))
 
 
 #########
 # Diff
 #########
 
-diff(x::AbstractFill{T,1}) where T = Zeros{T}(length(x)-1)
+diff(x::AbstractFillVector{T}) where T = Zeros{T}(length(x)-1)
 
 #########
 # unique
@@ -575,7 +575,7 @@ zero(r::Fill{T,N}) where {T,N} = Zeros{T,N}(r.axes)
 # oneunit
 #########
 
-function one(A::AbstractFill{T,2}) where {T}
+function one(A::AbstractFillMatrix{T}) where {T}
     Base.require_one_based_indexing(A)
     m, n = size(A)
     m == n || throw(ArgumentError("multiplicative identity defined only for square matrices"))
@@ -586,7 +586,7 @@ end
 # any/all/isone/iszero
 #########
 
-function isone(AF::AbstractFill{<:Any,2})
+function isone(AF::AbstractFillMatrix)
     isone(getindex_value(AF)) || return false
     (n,m) = size(AF)
     n != m && return false
@@ -648,12 +648,12 @@ function var(A::AbstractFill{T}; corrected::Bool=true, mean=nothing, dims=(:)) w
         Zeros{float(T)}(ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
 end
 
-cov(A::AbstractFill{T,1}; corrected::Bool=true) where {T<:Number} = zero(float(T))
-cov(A::AbstractFill{T,2}; corrected::Bool=true, dims::Integer=1) where {T<:Number} =
+cov(A::AbstractFillVector{T}; corrected::Bool=true) where {T<:Number} = zero(float(T))
+cov(A::AbstractFillMatrix{T}; corrected::Bool=true, dims::Integer=1) where {T<:Number} =
     Zeros{float(T)}(size(A, 3-dims), size(A, 3-dims))
 
-cor(A::AbstractFill{T,1}) where {T<:Number} = one(float(T))
-function cor(A::AbstractFill{T,2}; dims::Integer=1) where {T<:Number}
+cor(A::AbstractFillVector{T}) where {T<:Number} = one(float(T))
+function cor(A::AbstractFillMatrix{T}; dims::Integer=1) where {T<:Number}
     out = fill(float(T)(NaN), size(A, 3-dims), size(A, 3-dims))
     out[LinearAlgebra.diagind(out)] .= 1
     out
@@ -687,11 +687,11 @@ else
 end
 
 Base.print_matrix_row(io::IO,
-        X::Union{AbstractFill{<:Any,1},
-                 AbstractFill{<:Any,2},
-                 Diagonal{<:Any,<:AbstractFill{<:Any,1}},
+        X::Union{AbstractFillVector,
+                 AbstractFillMatrix,
+                 Diagonal{<:Any,<:AbstractFillVector},
                  RectDiagonal,
-                 AbstractTriangular{<:Any,<:AbstractFill{<:Any,2}}
+                 AbstractTriangular{<:Any,<:AbstractFillMatrix}
                  }, A::Vector,
         i::Integer, cols::AbstractVector, sep::AbstractString, idxlast::Integer=last(axes(X, 2))) =
         axes_print_matrix_row(axes(X), io, X, A, i, cols, sep)
