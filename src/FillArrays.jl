@@ -27,6 +27,9 @@ import Base: oneto
 Supertype for lazy array types whose entries are all equal to constant.
 """
 abstract type AbstractFill{T, N, Axes} <: AbstractArray{T, N} end
+const AbstractFillVector{T} = AbstractFill{T,1}
+const AbstractFillMatrix{T} = AbstractFill{T,2}
+const AbstractFillVecOrMat{T} = Union{AbstractFillVector{T},AbstractFillMatrix{T}}
 
 ==(a::AbstractFill, b::AbstractFill) = axes(a) == axes(b) && getindex_value(a) == getindex_value(b)
 
@@ -310,7 +313,7 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     end
 end
 
-for TYPE in (:Fill, :AbstractFill, :Ones, :Zeros)
+for TYPE in (:Fill, :Ones, :Zeros)
     @eval begin
         const $(Symbol(TYPE,"Vector")){T} = $TYPE{T,1}
         const $(Symbol(TYPE,"Matrix")){T} = $TYPE{T,2}
