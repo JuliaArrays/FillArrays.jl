@@ -8,12 +8,12 @@ vec(a::Fill{T}) where T = Fill{T}(a.value,length(a))
 # cannot do this for vectors since that would destroy scalar dot product
 
 
-transpose(a::OnesMatrix) = Ones{T}(reverse(a.axes))
-adjoint(a::OnesMatrix) = Ones{T}(reverse(a.axes))
-transpose(a::ZerosMatrix) = Zeros{T}(reverse(a.axes))
-adjoint(a::ZerosMatrix) = Zeros{T}(reverse(a.axes))
-transpose(a::FillMatrix) = Fill{T}(transpose(a.value), reverse(a.axes))
-adjoint(a::FillMatrix) = Fill{T}(adjoint(a.value), reverse(a.axes))
+transpose(a::OnesMatrix{T}) where T = Ones{T}(reverse(a.axes))
+adjoint(a::OnesMatrix{T}) where T = Ones{T}(reverse(a.axes))
+transpose(a::ZerosMatrix{T}) where T = Zeros{T}(reverse(a.axes))
+adjoint(a::ZerosMatrix{T}) where T = Zeros{T}(reverse(a.axes))
+transpose(a::FillMatrix{T}) where T = Fill{T}(transpose(a.value), reverse(a.axes))
+adjoint(a::FillMatrix{T}) where T = Fill{T}(adjoint(a.value), reverse(a.axes))
 
 permutedims(a::AbstractFillVector) = fillsimilar(a, (1, length(a)))
 permutedims(a::AbstractFillMatrix) = fillsimilar(a, reverse(a.axes))
@@ -105,23 +105,23 @@ function *(a::AbstractFillMatrix, b::Diagonal)
     a .* permutedims(b.diag) # use special broadcast
 end
 
-*(a::Adjoint{T, <:StridedMatrix{T}},   b::FillVector) where T = reshape(sum(conj.(parent(a)); dims=1) .* b.value, size(parent(a), 2))
-*(a::Transpose{T, <:StridedMatrix{T}}, b::FillVector) where T = reshape(sum(parent(a); dims=1) .* b.value, size(parent(a), 2))
-*(a::StridedMatrix{T}, b::FillVector) where T         = reshape(sum(a; dims=2) .* b.value, size(a, 1))
+*(a::Adjoint{T, <:StridedMatrix{T}},   b::FillVector{T}) where T = reshape(sum(conj.(parent(a)); dims=1) .* b.value, size(parent(a), 2))
+*(a::Transpose{T, <:StridedMatrix{T}}, b::FillVector{T}) where T = reshape(sum(parent(a); dims=1) .* b.value, size(parent(a), 2))
+*(a::StridedMatrix{T}, b::FillVector{T}) where T         = reshape(sum(a; dims=2) .* b.value, size(a, 1))
 
-function *(a::Adjoint{T, <:StridedMatrix{T}}, b::FillMatrix) where T
+function *(a::Adjoint{T, <:StridedMatrix{T}}, b::FillMatrix{T}) where T
     fB = similar(parent(a), size(b, 1), size(b, 2))
     fill!(fB, b.value)
     return a*fB
 end
 
-function *(a::Transpose{T, <:StridedMatrix{T}}, b::FillMatrix) where T
+function *(a::Transpose{T, <:StridedMatrix{T}}, b::FillMatrix{T}) where T
     fB = similar(parent(a), size(b, 1), size(b, 2))
     fill!(fB, b.value)
     return a*fB
 end
 
-function *(a::StridedMatrix{T}, b::FillMatrix) where T
+function *(a::StridedMatrix{T}, b::FillMatrix{T}) where T
     fB = similar(a, size(b, 1), size(b, 2))
     fill!(fB, b.value)
     return a*fB
@@ -151,14 +151,14 @@ end
 
 *(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::Zeros{<:Any, 1}) = mult_zeros(a, b)
 
-function *(a::Transpose{T, <:AbstractVector{T}}, b::ZerosVector) where T<:Real
+function *(a::Transpose{T, <:AbstractVector{T}}, b::ZerosVector{T}) where T<:Real
     la, lb = length(a), length(b)
     if la ≠ lb
         throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))
     end
     return zero(T)
 end
-*(a::Transpose{T, <:AbstractMatrix{T}}, b::ZerosVector) where T<:Real = mult_zeros(a, b)
+*(a::Transpose{T, <:AbstractMatrix{T}}, b::ZerosVector{T}) where T<:Real = mult_zeros(a, b)
 
 # treat zero separately to support ∞-vectors
 function _zero_dot(a, b)
@@ -250,22 +250,22 @@ end
 
 +(a::AbstractRange, b::Zeros) = b + a
 
-function +(a::ZerosVector, b::AbstractRange) where {T}
+function +(a::ZerosVector{T}, b::AbstractRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
     return convert(Tout, first(b)):convert(Tout, step(b)):convert(Tout, last(b))
 end
-function +(a::ZerosVector, b::UnitRange) where {T}
+function +(a::ZerosVector{T}, b::UnitRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
     return convert(Tout, first(b)):convert(Tout, last(b))
 end
 
-function -(a::ZerosVector, b::AbstractRange{V}) where {T, V}
+function -(a::ZerosVector, b::AbstractRange)
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     return -b + a
 end
--(a::AbstractRange{T}, b::Zeros{V, 1}) where {T, V} = a + b
+-(a::AbstractRange, b::ZerosVector) = a + b
 
 
 
