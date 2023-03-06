@@ -310,6 +310,14 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     end
 end
 
+for TYPE in (:Fill, :AbstractFill, :Ones, :Zeros)
+    @eval begin
+        const $(Symbol(TYPE,"Vector")){T} = $TYPE{T,1}
+        const $(Symbol(TYPE,"Matrix")){T} = $TYPE{T,2}
+        const $(Symbol(TYPE,"VecOrMat")){T} = Union{$TYPE{T,1},$TYPE{T,2}}
+    end
+end
+
 
 """
     fillsimilar(a::AbstractFill, axes)
