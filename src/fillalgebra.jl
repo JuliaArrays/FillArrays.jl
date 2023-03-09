@@ -267,7 +267,9 @@ function -(a::ZerosVector, b::AbstractRange)
 end
 -(a::AbstractRange, b::ZerosVector) = a + b
 
-
+# temporary patch. should be a PR(#48894) to julia base.
+AbstractRange{T}(r::AbstractUnitRange) where {T<:Integer} = AbstractUnitRange{T}(r)
+AbstractRange{T}(r::AbstractRange) where T = T(first(r)):T(step(r)):T(last(r))
 
 ####
 # norm
