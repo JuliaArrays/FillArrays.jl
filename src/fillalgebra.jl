@@ -11,7 +11,7 @@ for fun in (:transpose,:adjoint)
     for TYPE in (:Ones,:Zeros)
         @eval $fun(a::$TYPE{T,2}) where T = $TYPE{T}(reverse(a.axes))
     end
-    @eval $fun(a::FillMatrix) where T = Fill{T}($fun(a.value), reverse(a.axes))
+    @eval $fun(a::FillMatrix{T}) where T = Fill{T}($fun(a.value), reverse(a.axes))
 end
 
 permutedims(a::AbstractFillVector) = fillsimilar(a, (1, length(a)))
