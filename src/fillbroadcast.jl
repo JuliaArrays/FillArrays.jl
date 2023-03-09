@@ -2,7 +2,7 @@
 
 map(f::Function, r::AbstractFill) = Fill(f(getindex_value(r)), axes(r))
 
-function map(f::Function, v::AbstractFill{<:Any,1}, ws::AbstractFill{<:Any,1}...)
+function map(f::Function, v::AbstractFillVector, ws::AbstractFillVector...)
     stop = mapreduce(length, min, (v, ws...))
     val = f(map(getindex_value, (v, ws...))...)
     Fill(val, stop)
@@ -114,12 +114,12 @@ broadcasted(::DefaultArrayStyle, ::typeof(-), a::Zeros, b::Zeros) = _broadcasted
 broadcasted(::DefaultArrayStyle, ::typeof(-), a::Ones, b::Zeros) = _broadcasted_ones(-, a, b)
 broadcasted(::DefaultArrayStyle, ::typeof(-), a::Ones, b::Ones) = _broadcasted_zeros(-, a, b)
 
-broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{<:Any,1}, b::Zeros{<:Any,1}) = _broadcasted_zeros(+, a, b)
-broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Ones{<:Any,1}, b::Zeros{<:Any,1}) = _broadcasted_ones(+, a, b)
-broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{<:Any,1}, b::Ones{<:Any,1}) = _broadcasted_ones(+, a, b)
+broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector, b::ZerosVector) = _broadcasted_zeros(+, a, b)
+broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::OnesVector, b::ZerosVector) = _broadcasted_ones(+, a, b)
+broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector, b::OnesVector) = _broadcasted_ones(+, a, b)
 
-broadcasted(::DefaultArrayStyle{1}, ::typeof(-), a::Zeros{<:Any,1}, b::Zeros{<:Any,1}) = _broadcasted_zeros(-, a, b)
-broadcasted(::DefaultArrayStyle{1}, ::typeof(-), a::Ones{<:Any,1}, b::Zeros{<:Any,1}) = _broadcasted_ones(-, a, b)
+broadcasted(::DefaultArrayStyle{1}, ::typeof(-), a::ZerosVector, b::ZerosVector) = _broadcasted_zeros(-, a, b)
+broadcasted(::DefaultArrayStyle{1}, ::typeof(-), a::OnesVector, b::ZerosVector) = _broadcasted_ones(-, a, b)
 
 
 broadcasted(::DefaultArrayStyle, ::typeof(*), a::Zeros, b::Zeros) = _broadcasted_zeros(*, a, b)
@@ -187,12 +187,12 @@ _range_convert(::Type{AbstractVector{T}}, a::AbstractRange) where T = convert(T,
 #     end
 # end
 
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::Ones{T,1}, b::AbstractRange{V}) where {T,V}
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::OnesVector{T}, b::AbstractRange{V}) where {T,V}
     broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
     return _range_convert(AbstractVector{promote_type(T,V)}, b)
 end
 
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b::Ones{T,1}) where {T,V}
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b::OnesVector{T}) where {T,V}
     broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
     return _range_convert(AbstractVector{promote_type(T,V)}, a)
 end
@@ -204,22 +204,22 @@ _copy_oftype(A::AbstractRange{T}, ::Type{S}) where {T,S} = map(S, A)
 
 for op in (:+, -)
     @eval begin
-        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector{T}, b::Zeros{V,1}) where {T,V}
+        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector{T}, b::ZerosVector{V}) where {T,V}
             broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
             _copy_oftype(a, promote_type(T,V))
         end
 
-        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFill{T,1}, b::Zeros{V,1}) where {T,V} =
+        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFill{T,1}, b::ZerosVector) where T =
             Base.invoke(broadcasted, Tuple{DefaultArrayStyle, typeof($op), AbstractFill, AbstractFill}, DefaultArrayStyle{1}(), $op, a, b)
     end
 end
 
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{T,1}, b::AbstractVector{V}) where {T,V}
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector{T}, b::AbstractVector{V}) where {T,V}
     broadcast_shape(axes(a), axes(b))
     _copy_oftype(b, promote_type(T,V))
 end
 
-broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::Zeros{V,1}, b::AbstractFill{T,1}) where {T,V} =
+broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector, b::AbstractFillVector) =
             Base.invoke(broadcasted, Tuple{DefaultArrayStyle, typeof(+), AbstractFill, AbstractFill}, DefaultArrayStyle{1}(), +, a, b)
 
 # Need to prevent array-valued fills from broadcasting over entry

@@ -81,23 +81,23 @@ function *(a::AbstractFill{<:Any,2}, b::Diagonal)
     a .* permutedims(b.diag) # use special broadcast
 end
 
-*(a::Adjoint{T, <:StridedMatrix{T}},   b::Fill{T, 1}) where T = reshape(sum(conj.(parent(a)); dims=1) .* b.value, size(parent(a), 2))
-*(a::Transpose{T, <:StridedMatrix{T}}, b::Fill{T, 1}) where T = reshape(sum(parent(a); dims=1) .* b.value, size(parent(a), 2))
-*(a::StridedMatrix{T}, b::Fill{T, 1}) where T         = reshape(sum(a; dims=2) .* b.value, size(a, 1))
+*(a::Adjoint{T, <:StridedMatrix{T}},   b::FillVector{T}) where T = reshape(sum(conj.(parent(a)); dims=1) .* b.value, size(parent(a), 2))
+*(a::Transpose{T, <:StridedMatrix{T}}, b::FillVector{T}) where T = reshape(sum(parent(a); dims=1) .* b.value, size(parent(a), 2))
+*(a::StridedMatrix{T}, b::FillVector{T}) where T         = reshape(sum(a; dims=2) .* b.value, size(a, 1))
 
-function *(a::Adjoint{T, <:StridedMatrix{T}}, b::Fill{T, 2}) where T
+function *(a::Adjoint{T, <:StridedMatrix{T}}, b::FillMatrix{T}) where T
     fB = similar(parent(a), size(b, 1), size(b, 2))
     fill!(fB, b.value)
     return a*fB
 end
 
-function *(a::Transpose{T, <:StridedMatrix{T}}, b::Fill{T, 2}) where T
+function *(a::Transpose{T, <:StridedMatrix{T}}, b::FillMatrix{T}) where T
     fB = similar(parent(a), size(b, 1), size(b, 2))
     fill!(fB, b.value)
     return a*fB
 end
 
-function *(a::StridedMatrix{T}, b::Fill{T, 2}) where T
+function *(a::StridedMatrix{T}, b::FillMatrix{T}) where T
     fB = similar(a, size(b, 1), size(b, 2))
     fill!(fB, b.value)
     return a*fB
@@ -135,7 +135,7 @@ function *(a::Transpose{T, <:AbstractVector{T}}, b::ZerosVector{T}) where T<:Rea
     end
     return zero(T)
 end
-*(a::Transpose{T, <:AbstractMatrix{T}}, b::ZerosVector) where T<:Real = mult_zeros(a, b)
+*(a::Transpose{T, <:AbstractMatrix{T}}, b::ZerosVector{T}) where T<:Real = mult_zeros(a, b)
 
 # treat zero separately to support ∞-vectors
 function _fill_dot(a::AbstractVector, b::AbstractVector)
