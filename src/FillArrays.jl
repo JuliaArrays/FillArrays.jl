@@ -152,14 +152,7 @@ AbstractArray{T}(F::Fill{T}) where T = F
 AbstractArray{T,N}(F::Fill{T,N}) where {T,N} = F
 AbstractArray{T}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 AbstractArray{T,N}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
-
-convert(::Type{AbstractArray{T}}, F::Fill{T}) where T = F
-convert(::Type{AbstractArray{T,N}}, F::Fill{T,N}) where {T,N} = F
-convert(::Type{AbstractArray{T}}, F::Fill) where {T} = AbstractArray{T}(F)
-convert(::Type{AbstractArray{T,N}}, F::Fill) where {T,N} = AbstractArray{T,N}(F)
-convert(::Type{AbstractFill}, F::AbstractFill) = F
-convert(::Type{AbstractFill{T}}, F::AbstractFill) where T = convert(AbstractArray{T}, F)
-convert(::Type{AbstractFill{T,N}}, F::AbstractFill) where {T,N} = convert(AbstractArray{T,N}, F)
+AbstractFill{T}(F::AbstractFill) where T = AbstractArray{T}(F)
 
 copy(F::Fill) = Fill(F.value, F.axes)
 
@@ -308,14 +301,18 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         AbstractArray{T,N}(F::$Typ{T,N}) where {T,N} = F
         AbstractArray{T}(F::$Typ) where T = $Typ{T}(F.axes)
         AbstractArray{T,N}(F::$Typ{V,N}) where {T,V,N} = $Typ{T}(F.axes)
-        convert(::Type{AbstractArray{T}}, F::$Typ{T}) where T = AbstractArray{T}(F)
-        convert(::Type{AbstractArray{T,N}}, F::$Typ{T,N}) where {T,N} = AbstractArray{T,N}(F)
-        convert(::Type{AbstractArray{T}}, F::$Typ) where T = AbstractArray{T}(F)
-        convert(::Type{AbstractArray{T,N}}, F::$Typ) where {T,N} = AbstractArray{T,N}(F)
 
         copy(F::$Typ) = F
 
         getindex(F::$Typ{T,0}) where T = getindex_value(F)
+    end
+end
+                                        
+for TYPE in (:Fill, :AbstractFill, :Ones, :Zeros)
+    @eval begin
+        @inline AbstractFill{T}(F::$TYPE{T}) where T = F
+        @inline AbstractFill{T,N}(F::$TYPE{T,N}) where {T,N} = F
+        @inline AbstractFill{T,N,Axes}(F::$TYPE{T,N,Axes}) where {T,N,Axes} = F
     end
 end
 
@@ -467,16 +464,11 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     end
 end
 
-function convert(::Type{Diagonal}, Z::ZerosMatrix{T}) where T
-    n,m = size(Z)
-    n ≠ m && throw(BoundsError(Z))
-    Diagonal(zeros(T, n))
-end
-
-function convert(::Type{Diagonal{T}}, Z::ZerosMatrix) where T
-    n,m = size(Z)
-    n ≠ m && throw(BoundsError(Z))
-    Diagonal(zeros(T, n))
+# temporary patch. should be a PR(#48895) to LinearAlgebra
+Diagonal{T}(A::AbstractMatrix) where T = Diagonal{T}(diag(A))
+function convert(::Type{T}, A::AbstractMatrix) where T<:Diagonal 
+    checksquare(A)
+    isdiag(A) ? T(A) : throw(InexactError(:convert, T, A))
 end
 
 ## Sparse arrays
@@ -547,7 +539,7 @@ cumsum(x::ZerosVector) = x
 cumsum(x::ZerosVector{Bool}) = x
 cumsum(x::OnesVector{II}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
 cumsum(x::OnesVector{Bool}) = oneto(length(x))
-cumsum(x::AbstractFillVector{Bool}) = cumsum(convert(AbstractFill{Int}, x))
+cumsum(x::AbstractFillVector{Bool}) = cumsum(AbstractFill{Int}(x))
 
 
 #########
