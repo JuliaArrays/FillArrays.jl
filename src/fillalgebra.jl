@@ -225,7 +225,7 @@ end
 # Zeros +/- Fill and Fill +/- Zeros
 function +(a::AbstractFill{T}, b::Zeros{V}) where {T, V}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return convert(AbstractFill{promote_type(T, V)}, a)
+    return AbstractFill{promote_type(T, V)}(a)
 end
 +(a::Zeros, b::AbstractFill) = b + a
 -(a::AbstractFill, b::Zeros) = a + b
