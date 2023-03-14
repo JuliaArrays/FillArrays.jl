@@ -470,17 +470,16 @@ end
 ## Sparse arrays
 
 convert(::Type{SparseVector}, Z::ZerosVector{T}) where T = spzeros(T, length(Z))
-convert(::Type{SparseVector{T}}, Z::ZerosVector) where T = spzeros(T, length(Z))
-convert(::Type{SparseVector{Tv,Ti}}, Z::ZerosVector) where {Tv,Ti} = spzeros(Tv, Ti, length(Z))
+SparseVector{T}(Z::ZerosVector) where T = spzeros(T, length(Z))
+SparseVector{Tv,Ti}(Z::ZerosVector) where {Tv,Ti} = spzeros(Tv, Ti, length(Z))
 
 convert(::Type{AbstractSparseVector}, Z::ZerosVector{T}) where T = spzeros(T, length(Z))
 convert(::Type{AbstractSparseVector{T}}, Z::ZerosVector) where T= spzeros(T, length(Z))
 
+#SparseMatrixCSC(Z::ZerosMatrix) = spzeros(eltype(Z), size(Z)...)
 convert(::Type{SparseMatrixCSC}, Z::ZerosMatrix{T}) where T = spzeros(T, size(Z)...)
-convert(::Type{SparseMatrixCSC{T}}, Z::ZerosMatrix) where T = spzeros(T, size(Z)...)
-convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::ZerosMatrix) where {Tv,Ti} = spzeros(Tv, Ti, size(Z)...)
-convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Zeros{T,2,Axes}) where {Tv,Ti<:Integer,T,Axes} =
-    spzeros(Tv, Ti, size(Z)...)
+SparseMatrixCSC{T}(Z::ZerosMatrix) where T = spzeros(T, size(Z)...)
+SparseMatrixCSC{Tv,Ti}(Z::Zeros{T,2,Axes}) where {Tv,Ti<:Integer,T,Axes} = spzeros(Tv, Ti, size(Z)...)
 
 convert(::Type{AbstractSparseMatrix}, Z::ZerosMatrix{T}) where T = spzeros(T, size(Z)...)
 convert(::Type{AbstractSparseMatrix{T}}, Z::ZerosMatrix) where T = spzeros(T, size(Z)...)
@@ -492,9 +491,9 @@ convert(::Type{AbstractSparseArray{Tv,Ti,N}}, Z::Zeros{T,N}) where {T,Tv,Ti,N} =
 
 
 convert(::Type{SparseMatrixCSC}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
-convert(::Type{SparseMatrixCSC{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
+SparseMatrixCSC{Tv}(Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
 # works around missing `speye`:
-convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti<:Integer} =
+SparseMatrixCSC{Tv,Ti}(Z::Eye{T}) where {T,Tv,Ti<:Integer} =
     convert(SparseMatrixCSC{Tv,Ti}, SparseMatrixCSC{Tv}(I, size(Z)...))
 
 convert(::Type{AbstractSparseMatrix}, Z::Eye{T}) where {T} = SparseMatrixCSC{T}(I, size(Z)...)
