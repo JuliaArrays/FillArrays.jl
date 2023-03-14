@@ -414,6 +414,7 @@ end
 
 @testset "Sparse vectors and matrices" begin
     @test SparseVector(Zeros(5)) ==
+            SparseVector{Int}(Zeros(5)) ==
             SparseVector{Float64}(Zeros(5)) ==
             SparseVector{Float64,Int}(Zeros(5)) ==
             convert(AbstractSparseArray,Zeros(5)) ==
@@ -426,6 +427,7 @@ end
     for (Mat, SMat) in ((Zeros(5,5), spzeros(5,5)), (Zeros(6,5), spzeros(6,5)),
                         (Eye(5), sparse(I,5,5)), (Eye(6,5), sparse(I,6,5)))
         @test SparseMatrixCSC(Mat) ==
+                SparseMatrixCSC{Int}(Mat) ==
                 SparseMatrixCSC{Float64}(Mat) ==
                 SparseMatrixCSC{Float64,Int}(Mat) ==
                 convert(AbstractSparseArray,Mat) ==
