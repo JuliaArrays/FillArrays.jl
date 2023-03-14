@@ -10,7 +10,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular, AdjointAbsVec, TransposeAbsVec,
-    issymmetric, ishermitian, AdjOrTransAbsVec
+    issymmetric, ishermitian, AdjOrTransAbsVec, checksquare
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
@@ -148,18 +148,9 @@ Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
 
 @inline getindex_value(F::Fill) = F.value
 
-AbstractArray{T}(F::Fill{T}) where T = F
-AbstractArray{T,N}(F::Fill{T,N}) where {T,N} = F
 AbstractArray{T}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 AbstractArray{T,N}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
-
-convert(::Type{AbstractArray{T}}, F::Fill{T}) where T = F
-convert(::Type{AbstractArray{T,N}}, F::Fill{T,N}) where {T,N} = F
-convert(::Type{AbstractArray{T}}, F::Fill) where {T} = AbstractArray{T}(F)
-convert(::Type{AbstractArray{T,N}}, F::Fill) where {T,N} = AbstractArray{T,N}(F)
-convert(::Type{AbstractFill}, F::AbstractFill) = F
-convert(::Type{AbstractFill{T}}, F::AbstractFill) where T = convert(AbstractArray{T}, F)
-convert(::Type{AbstractFill{T,N}}, F::AbstractFill) where {T,N} = convert(AbstractArray{T,N}, F)
+AbstractFill{T}(F::AbstractFill) where T = AbstractArray{T}(F)
 
 copy(F::Fill) = Fill(F.value, F.axes)
 
@@ -304,18 +295,20 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         @inline size(Z::$Typ) = length.(Z.axes)
         @inline getindex_value(Z::$Typ{T}) where T = $func(T)
 
-        AbstractArray{T}(F::$Typ{T}) where T = F
-        AbstractArray{T,N}(F::$Typ{T,N}) where {T,N} = F
         AbstractArray{T}(F::$Typ) where T = $Typ{T}(F.axes)
         AbstractArray{T,N}(F::$Typ{V,N}) where {T,V,N} = $Typ{T}(F.axes)
-        convert(::Type{AbstractArray{T}}, F::$Typ{T}) where T = AbstractArray{T}(F)
-        convert(::Type{AbstractArray{T,N}}, F::$Typ{T,N}) where {T,N} = AbstractArray{T,N}(F)
-        convert(::Type{AbstractArray{T}}, F::$Typ) where T = AbstractArray{T}(F)
-        convert(::Type{AbstractArray{T,N}}, F::$Typ) where {T,N} = AbstractArray{T,N}(F)
 
         copy(F::$Typ) = F
 
         getindex(F::$Typ{T,0}) where T = getindex_value(F)
+    end
+end
+
+# conversions
+for TYPE in (:Fill, :AbstractFill, :Ones, :Zeros), STYPE in (:AbstractArray, :AbstractFill)
+    @eval begin
+        @inline $STYPE{T}(F::$TYPE{T}) where T = F
+        @inline $STYPE{T,N}(F::$TYPE{T,N}) where {T,N} = F
     end
 end
 
@@ -467,32 +460,22 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
     end
 end
 
-function convert(::Type{Diagonal}, Z::ZerosMatrix{T}) where T
-    n,m = size(Z)
-    n ≠ m && throw(BoundsError(Z))
-    Diagonal(zeros(T, n))
-end
-
-function convert(::Type{Diagonal{T}}, Z::ZerosMatrix) where T
-    n,m = size(Z)
-    n ≠ m && throw(BoundsError(Z))
-    Diagonal(zeros(T, n))
+# temporary patch. should be a PR(#48895) to LinearAlgebra
+Diagonal{T}(A::AbstractMatrix) where T = Diagonal{T}(diag(A))
+function convert(::Type{T}, A::AbstractMatrix) where T<:Diagonal 
+    checksquare(A)
+    isdiag(A) ? T(A) : throw(InexactError(:convert, T, A))
 end
 
 ## Sparse arrays
-
-convert(::Type{SparseVector}, Z::ZerosVector{T}) where T = spzeros(T, length(Z))
-convert(::Type{SparseVector{T}}, Z::ZerosVector) where T = spzeros(T, length(Z))
-convert(::Type{SparseVector{Tv,Ti}}, Z::ZerosVector) where {Tv,Ti} = spzeros(Tv, Ti, length(Z))
+SparseVector{T}(Z::ZerosVector) where T = spzeros(T, length(Z))
+SparseVector{Tv,Ti}(Z::ZerosVector) where {Tv,Ti} = spzeros(Tv, Ti, length(Z))
 
 convert(::Type{AbstractSparseVector}, Z::ZerosVector{T}) where T = spzeros(T, length(Z))
 convert(::Type{AbstractSparseVector{T}}, Z::ZerosVector) where T= spzeros(T, length(Z))
 
-convert(::Type{SparseMatrixCSC}, Z::ZerosMatrix{T}) where T = spzeros(T, size(Z)...)
-convert(::Type{SparseMatrixCSC{T}}, Z::ZerosMatrix) where T = spzeros(T, size(Z)...)
-convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::ZerosMatrix) where {Tv,Ti} = spzeros(Tv, Ti, size(Z)...)
-convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Zeros{T,2,Axes}) where {Tv,Ti<:Integer,T,Axes} =
-    spzeros(Tv, Ti, size(Z)...)
+SparseMatrixCSC{T}(Z::ZerosMatrix) where T = spzeros(T, size(Z)...)
+SparseMatrixCSC{Tv,Ti}(Z::Zeros{T,2,Axes}) where {Tv,Ti<:Integer,T,Axes} = spzeros(Tv, Ti, size(Z)...)
 
 convert(::Type{AbstractSparseMatrix}, Z::ZerosMatrix{T}) where T = spzeros(T, size(Z)...)
 convert(::Type{AbstractSparseMatrix{T}}, Z::ZerosMatrix) where T = spzeros(T, size(Z)...)
@@ -502,11 +485,9 @@ convert(::Type{AbstractSparseArray{Tv}}, Z::Zeros{T}) where {T,Tv} = spzeros(Tv,
 convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Zeros{T}) where {T,Tv,Ti} = spzeros(Tv, Ti, size(Z)...)
 convert(::Type{AbstractSparseArray{Tv,Ti,N}}, Z::Zeros{T,N}) where {T,Tv,Ti,N} = spzeros(Tv, Ti, size(Z)...)
 
-
-convert(::Type{SparseMatrixCSC}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
-convert(::Type{SparseMatrixCSC{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
+SparseMatrixCSC{Tv}(Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
 # works around missing `speye`:
-convert(::Type{SparseMatrixCSC{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti<:Integer} =
+SparseMatrixCSC{Tv,Ti}(Z::Eye{T}) where {T,Tv,Ti<:Integer} =
     convert(SparseMatrixCSC{Tv,Ti}, SparseMatrixCSC{Tv}(I, size(Z)...))
 
 convert(::Type{AbstractSparseMatrix}, Z::Eye{T}) where {T} = SparseMatrixCSC{T}(I, size(Z)...)
@@ -547,7 +528,7 @@ cumsum(x::ZerosVector) = x
 cumsum(x::ZerosVector{Bool}) = x
 cumsum(x::OnesVector{II}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
 cumsum(x::OnesVector{Bool}) = oneto(length(x))
-cumsum(x::AbstractFillVector{Bool}) = cumsum(convert(AbstractFill{Int}, x))
+cumsum(x::AbstractFillVector{Bool}) = cumsum(AbstractFill{Int}(x))
 
 
 #########
