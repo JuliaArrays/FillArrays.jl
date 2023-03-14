@@ -468,16 +468,12 @@ function convert(::Type{T}, A::AbstractMatrix) where T<:Diagonal
 end
 
 ## Sparse arrays
-
-convert(::Type{SparseVector}, Z::ZerosVector{T}) where T = spzeros(T, length(Z))
 SparseVector{T}(Z::ZerosVector) where T = spzeros(T, length(Z))
 SparseVector{Tv,Ti}(Z::ZerosVector) where {Tv,Ti} = spzeros(Tv, Ti, length(Z))
 
 convert(::Type{AbstractSparseVector}, Z::ZerosVector{T}) where T = spzeros(T, length(Z))
 convert(::Type{AbstractSparseVector{T}}, Z::ZerosVector) where T= spzeros(T, length(Z))
 
-#SparseMatrixCSC(Z::ZerosMatrix) = spzeros(eltype(Z), size(Z)...)
-convert(::Type{SparseMatrixCSC}, Z::ZerosMatrix{T}) where T = spzeros(T, size(Z)...)
 SparseMatrixCSC{T}(Z::ZerosMatrix) where T = spzeros(T, size(Z)...)
 SparseMatrixCSC{Tv,Ti}(Z::Zeros{T,2,Axes}) where {Tv,Ti<:Integer,T,Axes} = spzeros(Tv, Ti, size(Z)...)
 
@@ -489,8 +485,6 @@ convert(::Type{AbstractSparseArray{Tv}}, Z::Zeros{T}) where {T,Tv} = spzeros(Tv,
 convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Zeros{T}) where {T,Tv,Ti} = spzeros(Tv, Ti, size(Z)...)
 convert(::Type{AbstractSparseArray{Tv,Ti,N}}, Z::Zeros{T,N}) where {T,Tv,Ti,N} = spzeros(Tv, Ti, size(Z)...)
 
-
-convert(::Type{SparseMatrixCSC}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
 SparseMatrixCSC{Tv}(Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
 # works around missing `speye`:
 SparseMatrixCSC{Tv,Ti}(Z::Eye{T}) where {T,Tv,Ti<:Integer} =
