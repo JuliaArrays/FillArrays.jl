@@ -253,12 +253,12 @@ end
 function +(a::ZerosVector{T}, b::AbstractRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
-    return T(first(b)):T(step(b)):T(last(b))
+    return Tout(first(b)):Tout(step(b)):Tout(last(b))
 end
 function +(a::ZerosVector{T}, b::UnitRange) where {T<:Integer}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
-    return AbstractUnitRange{T}(b)
+    return AbstractUnitRange{Tout}(b)
 end
 
 function -(a::ZerosVector, b::AbstractRange)
