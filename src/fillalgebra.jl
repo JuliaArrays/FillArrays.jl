@@ -253,12 +253,12 @@ end
 function +(a::ZerosVector{T}, b::AbstractRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
-    return AbstractRange{Tout}(b)
+    return T(first(b)):T(step(b)):T(last(b))
 end
-function +(a::ZerosVector{T}, b::UnitRange) where {T}
+function +(a::ZerosVector{T}, b::UnitRange) where {T<:Integer}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
-    return AbstractRange{Tout}(b)
+    return AbstractUnitRange{T}(b)
 end
 
 function -(a::ZerosVector, b::AbstractRange)
@@ -266,10 +266,6 @@ function -(a::ZerosVector, b::AbstractRange)
     return -b + a
 end
 -(a::AbstractRange, b::ZerosVector) = a + b
-
-# temporary patch. should be a PR(#48894) to julia base.
-AbstractRange{T}(r::AbstractUnitRange) where {T<:Integer} = AbstractUnitRange{T}(r)
-AbstractRange{T}(r::AbstractRange) where T = T(first(r)):T(step(r)):T(last(r))
 
 ####
 # norm
