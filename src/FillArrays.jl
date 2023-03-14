@@ -148,8 +148,6 @@ Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
 
 @inline getindex_value(F::Fill) = F.value
 
-AbstractArray{T}(F::Fill{T}) where T = F
-AbstractArray{T,N}(F::Fill{T,N}) where {T,N} = F
 AbstractArray{T}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 AbstractArray{T,N}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 AbstractFill{T}(F::AbstractFill) where T = AbstractArray{T}(F)
@@ -297,8 +295,6 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         @inline size(Z::$Typ) = length.(Z.axes)
         @inline getindex_value(Z::$Typ{T}) where T = $func(T)
 
-        AbstractArray{T}(F::$Typ{T}) where T = F
-        AbstractArray{T,N}(F::$Typ{T,N}) where {T,N} = F
         AbstractArray{T}(F::$Typ) where T = $Typ{T}(F.axes)
         AbstractArray{T,N}(F::$Typ{V,N}) where {T,V,N} = $Typ{T}(F.axes)
 
@@ -307,12 +303,12 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         getindex(F::$Typ{T,0}) where T = getindex_value(F)
     end
 end
-                                        
-for TYPE in (:Fill, :AbstractFill, :Ones, :Zeros)
+
+# conversions
+for TYPE in (:Fill, :AbstractFill, :Ones, :Zeros), STYPE in (:AbstractArray, :AbstractFill)
     @eval begin
-        @inline AbstractFill{T}(F::$TYPE{T}) where T = F
-        @inline AbstractFill{T,N}(F::$TYPE{T,N}) where {T,N} = F
-        @inline AbstractFill{T,N,Axes}(F::$TYPE{T,N,Axes}) where {T,N,Axes} = F
+        @inline $STYPE{T}(F::$TYPE{T}) where T = F
+        @inline $STYPE{T,N}(F::$TYPE{T,N}) where {T,N} = F
     end
 end
 
