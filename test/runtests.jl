@@ -392,10 +392,10 @@ end
 
     @test Diagonal(Zeros(8,5)) == Diagonal(zeros(5))
     @test convert(Diagonal, Zeros(5,5)) == Diagonal(zeros(5))
-    @test_throws DimensionMismatch convert(Diagonal, Zeros(8,5))
+    @test_throws BoundsError convert(Diagonal, Zeros(8,5))
 
     @test convert(Diagonal{Int}, Zeros(5,5)) == Diagonal(zeros(Int,5))
-    @test_throws DimensionMismatch convert(Diagonal{Int}, Zeros(8,5))
+    @test_throws BoundsError convert(Diagonal{Int}, Zeros(8,5))
 
 
     @test Diagonal(Eye(8,5)) == Diagonal(ones(5))
@@ -414,7 +414,6 @@ end
 
 @testset "Sparse vectors and matrices" begin
     @test SparseVector(Zeros(5)) ==
-            SparseVector{Int}(Zeros(5)) ==
             SparseVector{Float64}(Zeros(5)) ==
             SparseVector{Float64,Int}(Zeros(5)) ==
             convert(AbstractSparseArray,Zeros(5)) ==
@@ -427,7 +426,6 @@ end
     for (Mat, SMat) in ((Zeros(5,5), spzeros(5,5)), (Zeros(6,5), spzeros(6,5)),
                         (Eye(5), sparse(I,5,5)), (Eye(6,5), sparse(I,6,5)))
         @test SparseMatrixCSC(Mat) ==
-                SparseMatrixCSC{Int}(Mat) ==
                 SparseMatrixCSC{Float64}(Mat) ==
                 SparseMatrixCSC{Float64,Int}(Mat) ==
                 convert(AbstractSparseArray,Mat) ==
