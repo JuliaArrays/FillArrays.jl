@@ -225,7 +225,7 @@ end
 # Zeros +/- Fill and Fill +/- Zeros
 function +(a::AbstractFill{T}, b::Zeros{V}) where {T, V}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return AbstractFill{promote_type(T, V)}(a)
+    return convert(AbstractFill{promote_type(T, V)}, a)
 end
 +(a::Zeros, b::AbstractFill) = b + a
 -(a::AbstractFill, b::Zeros) = a + b
@@ -253,12 +253,12 @@ end
 function +(a::ZerosVector{T}, b::AbstractRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
-    return AbstractRange{Tout}(b)
+    return convert(Tout, first(b)):convert(Tout, step(b)):convert(Tout, last(b))
 end
 function +(a::ZerosVector{T}, b::UnitRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
-    return AbstractRange{Tout}(b)
+    return convert(Tout, first(b)):convert(Tout, last(b))
 end
 
 function -(a::ZerosVector, b::AbstractRange)
@@ -267,9 +267,7 @@ function -(a::ZerosVector, b::AbstractRange)
 end
 -(a::AbstractRange, b::ZerosVector) = a + b
 
-# temporary patch. should be a PR(#48894) to julia base.
-AbstractRange{T}(r::AbstractUnitRange) where {T<:Integer} = AbstractUnitRange{T}(r)
-AbstractRange{T}(r::AbstractRange) where T = T(first(r)):T(step(r)):T(last(r))
+
 
 ####
 # norm
