@@ -223,9 +223,11 @@ for TYPE in (:AbstractArray, :AbstractFill) # AbstractFill for disambiguity
     end
     @eval +(a::Zeros, b::$TYPE) = b + a
 end
-function +(a::ZerosMatrix{T}, b::UniformScaling) where {T}
+
+# for VERSION other than 1.6, could use ZerosMatrix only
+function +(a::AbstractFillMatrix{T}, b::UniformScaling) where {T}
     n = checksquare(a)
-    return Diagonal(Fill(zero(T) + b.λ, n))
+    return a + Diagonal(Fill(zero(T) + b.λ, n))
 end
 
 # LinearAlgebra defines `-(a::AbstractMatrix, b::UniformScaling) = a + (-b)`,
