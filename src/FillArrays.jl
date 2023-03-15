@@ -9,8 +9,9 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     show, view, in, mapreduce, one, reverse
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
-    dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular, AdjointAbsVec, TransposeAbsVec,
+    dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
     issymmetric, ishermitian, AdjOrTransAbsVec, checksquare
+
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
@@ -348,10 +349,13 @@ end
 @inline RectDiagonal{T}(A::V, args...) where {T,V} = RectDiagonal{T,V}(A, args...)
 @inline RectDiagonal(A::V, args...) where {V} = RectDiagonal{eltype(V),V}(A, args...)
 
+const UpperOrUnitUpperTriangular{T,S} = Union{UpperTriangular{T,S}, UnitUpperTriangular{T,S}}
+const LowerOrUnitLowerTriangular{T,S} = Union{LowerTriangular{T,S}, UnitLowerTriangular{T,S}}
+const UpperOrLowerTriangular{T,S} = Union{UpperOrUnitUpperTriangular{T,S}, LowerOrUnitLowerTriangular{T,S}}
 
 # patch missing overload from Base
 axes(rd::Diagonal{<:Any,<:AbstractFill}) = (axes(rd.diag,1),axes(rd.diag,1))
-axes(T::AbstractTriangular{<:Any,<:AbstractFill}) = axes(parent(T))
+axes(T::UpperOrLowerTriangular{<:Any,<:AbstractFill}) = axes(parent(T))
 
 axes(rd::RectDiagonal) = rd.axes
 size(rd::RectDiagonal) = map(length, rd.axes)
@@ -672,7 +676,7 @@ Base.print_matrix_row(io::IO,
                  AbstractFillMatrix,
                  Diagonal{<:Any,<:AbstractFillVector},
                  RectDiagonal,
-                 AbstractTriangular{<:Any,<:AbstractFillMatrix}
+                 UpperOrLowerTriangular{<:Any,<:AbstractFillMatrix}
                  }, A::Vector,
         i::Integer, cols::AbstractVector, sep::AbstractString, idxlast::Integer=last(axes(X, 2))) =
         axes_print_matrix_row(axes(X), io, X, A, i, cols, sep)
