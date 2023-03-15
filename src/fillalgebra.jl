@@ -187,10 +187,6 @@ for (TYPE) in (:AbstractArray, :AbstractFill, :AbstractRange)
     end
 end
 
-# temporary patch. should be a PR(#48894) to julia base.
-AbstractRange{T}(r::AbstractUnitRange) where {T<:Integer} = AbstractUnitRange{T}(r)
-AbstractRange{T}(r::AbstractRange) where T = T(first(r)):T(step(r)):T(last(r))
-
 ####
 # norm
 ####

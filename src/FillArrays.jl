@@ -457,8 +457,8 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
 end
 
 # temporary patch. should be a PR(#48895) to LinearAlgebra
-Diagonal{T}(A::AbstractMatrix) where T = Diagonal{T}(diag(A))
-function convert(::Type{T}, A::AbstractMatrix) where T<:Diagonal 
+Diagonal{T}(A::AbstractFillMatrix) where T = Diagonal{T}(diag(A))
+function convert(::Type{T}, A::AbstractFillMatrix) where T<:Diagonal 
     checksquare(A)
     isdiag(A) ? T(A) : throw(InexactError(:convert, T, A))
 end
