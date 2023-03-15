@@ -211,61 +211,45 @@ function dot(u::AbstractVector{T}, D::Diagonal{U,<:Zeros}, v::AbstractVector{V})
     zero(promote_type(T,U,V))
 end
 
-+(a::Zeros) = a
--(a::Zeros) = a
-
-# Zeros +/- Zeros
-function +(a::Zeros{T}, b::Zeros{V}) where {T, V}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return Zeros{promote_type(T,V)}(size(a)...)
+# Addition and Subtraction
+function +(a::Zeros{T}, b::Zeros{V}) where {T, V} # for disambiguity
+    promote_shape(a,b)
+    return elconvert(promote_op(+,T,V),a)
 end
--(a::Zeros, b::Zeros) = -(a + b)
--(a::Ones, b::Ones) = Zeros(a)+Zeros(b)
-
-# Zeros +/- Fill and Fill +/- Zeros
-function +(a::AbstractFill{T}, b::Zeros{V}) where {T, V}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return AbstractFill{promote_type(T, V)}(a)
+for TYPE in (:AbstractArray, :AbstractFill) # AbstractFill for disambiguity
+    @eval function +(a::$TYPE{T}, b::Zeros{V}) where {T, V}
+        promote_shape(a,b)
+        return elconvert(promote_op(+,T,V),a)
+    end
+    @eval +(a::Zeros, b::$TYPE) = b + a
 end
-+(a::Zeros, b::AbstractFill) = b + a
--(a::AbstractFill, b::Zeros) = a + b
--(a::Zeros, b::AbstractFill) = a + (-b)
-
-# Zeros +/- Array and Array +/- Zeros
-function +(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return AbstractArray{promote_type(T,V),N}(b)
-end
-function +(a::Array{T, N}, b::Zeros{V, N}) where {T, V, N}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return AbstractArray{promote_type(T,V),N}(a)
+function +(a::ZerosMatrix{T}, b::UniformScaling) where {T}
+    n = checksquare(a)
+    return Diagonal(Fill(zero(T) + b.λ, n))
 end
 
-function -(a::Zeros{T, N}, b::AbstractArray{V, N}) where {T, V, N}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return -b + a
-end
--(a::Array{T, N}, b::Zeros{V, N}) where {T, V, N} = a + b
+# LinearAlgebra defines `-(a::AbstractMatrix, b::UniformScaling) = a + (-b)`,
+# so the implementation of `-(a::UniformScaling, b::AbstractFill{<:Any,2})` is sufficient
+-(a::UniformScaling, b::AbstractFill) = -b + a # @test I-Zeros(3,3) === Diagonal(Ones(3))
 
+-(a::Ones, b::Ones) = Zeros(a) + Zeros(b)
 
-+(a::AbstractRange, b::Zeros) = b + a
+# necessary for AbstractRange, Diagonal, etc
++(a::AbstractFill, b::AbstractFill) = fill_add(a, b)
++(a::AbstractFill, b::AbstractArray) = fill_add(b, a)
++(a::AbstractArray, b::AbstractFill) = fill_add(a, b)
+-(a::AbstractFill, b::AbstractFill) = a + (-b)
+-(a::AbstractFill, b::AbstractArray) = a + (-b)
+-(a::AbstractArray, b::AbstractFill) = a + (-b)
 
-function +(a::ZerosVector{T}, b::AbstractRange) where {T}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    Tout = promote_type(T, eltype(b))
-    return Tout(first(b)):Tout(step(b)):Tout(last(b))
-end
-function +(a::ZerosVector{T}, b::UnitRange) where {T<:Integer}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    Tout = promote_type(T, eltype(b))
-    return AbstractUnitRange{Tout}(b)
+@inline function fill_add(a, b::AbstractFill)
+    promote_shape(a, b)
+    a .+ getindex_value(b)
 end
 
-function -(a::ZerosVector, b::AbstractRange)
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return -b + a
-end
--(a::AbstractRange, b::ZerosVector) = a + b
+@inline elconvert(::Type{T}, A::AbstractRange) where T = T(first(A)):T(step(A)):T(last(A))
+@inline elconvert(::Type{T}, A::AbstractUnitRange) where T<:Integer = AbstractUnitRange{T}(A)
+@inline elconvert(::Type{T}, A::AbstractArray) where T = AbstractArray{T}(A)
 
 ####
 # norm
