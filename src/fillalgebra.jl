@@ -225,7 +225,7 @@ end
 # Zeros +/- Fill and Fill +/- Zeros
 function +(a::AbstractFill{T}, b::Zeros{V}) where {T, V}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return convert(AbstractFill{promote_type(T, V)}, a)
+    return AbstractFill{promote_type(T, V)}(a)
 end
 +(a::Zeros, b::AbstractFill) = b + a
 -(a::AbstractFill, b::Zeros) = a + b
@@ -253,12 +253,12 @@ end
 function +(a::ZerosVector{T}, b::AbstractRange) where {T}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
-    return convert(Tout, first(b)):convert(Tout, step(b)):convert(Tout, last(b))
+    return Tout(first(b)):Tout(step(b)):Tout(last(b))
 end
-function +(a::ZerosVector{T}, b::UnitRange) where {T}
+function +(a::ZerosVector{T}, b::UnitRange) where {T<:Integer}
     size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
     Tout = promote_type(T, eltype(b))
-    return convert(Tout, first(b)):convert(Tout, last(b))
+    return AbstractUnitRange{Tout}(b)
 end
 
 function -(a::ZerosVector, b::AbstractRange)
@@ -266,8 +266,6 @@ function -(a::ZerosVector, b::AbstractRange)
     return -b + a
 end
 -(a::AbstractRange, b::ZerosVector) = a + b
-
-
 
 ####
 # norm
