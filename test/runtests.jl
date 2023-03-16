@@ -146,9 +146,9 @@ include("infinitearrays.jl")
         y = x + x
         @test y isa Fill{Int,1}
         @test y[1] == 2
-        @test x + Zeros{Bool}(5) ≡ x
-        @test x - Zeros{Bool}(5) ≡ x
-        @test Zeros{Bool}(5) + x ≡ x
+        @test x + Zeros{Bool}(5) ≡ Ones{Int}(5)
+        @test x - Zeros{Bool}(5) ≡ Ones{Int}(5)
+        @test Zeros{Bool}(5) + x ≡ Ones{Int}(5)
         @test -x ≡ Fill(-1,5)
     end
 
