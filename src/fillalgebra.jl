@@ -171,21 +171,48 @@ function dot(u::AbstractVector{T}, D::Diagonal{U,<:Zeros}, v::AbstractVector{V})
     zero(promote_type(T,U,V))
 end
 
-# Zeros +/- Zeros
-function +(a::Zeros{T}, b::Zeros{V}) where {T, V}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    return Zeros{promote_type(T,V)}(size(a)...)
+# Addition and Subtraction
+function +(a::Zeros{T}, b::Zeros{V}) where {T, V} # for disambiguity
+    promote_shape(a,b)
+    return elconvert(promote_op(+,T,V),a)
+end
+for TYPE in (:AbstractArray, :AbstractFill) # AbstractFill for disambiguity
+    @eval function +(a::$TYPE{T}, b::Zeros{V}) where {T, V}
+        promote_shape(a,b)
+        return elconvert(promote_op(+,T,V),a)
+    end
+    @eval +(a::Zeros, b::$TYPE) = b + a
 end
 
-for (TYPE) in (:AbstractArray, :AbstractFill, :AbstractRange)
-    @eval begin
-        function +(a::$TYPE, b::Zeros)
-            size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-            return $TYPE{typeof(zero(eltype(a))+zero(eltype(b)))}(a)
-        end
-        +(a::Zeros, b::$TYPE) = b + a
-    end
+# for VERSION other than 1.6, could use ZerosMatrix only
+function +(a::AbstractFillMatrix{T}, b::UniformScaling) where {T}
+    n = checksquare(a)
+    return a + Diagonal(Fill(zero(T) + b.λ, n))
 end
+
+# LinearAlgebra defines `-(a::AbstractMatrix, b::UniformScaling) = a + (-b)`,
+# so the implementation of `-(a::UniformScaling, b::AbstractFill{<:Any,2})` is sufficient
+-(a::UniformScaling, b::AbstractFill) = -b + a # @test I-Zeros(3,3) === Diagonal(Ones(3))
+
+-(a::Ones, b::Ones) = Zeros(a) + Zeros(b)
+
+# necessary for AbstractRange, Diagonal, etc
++(a::AbstractFill, b::AbstractFill) = fill_add(a, b)
++(a::AbstractFill, b::AbstractArray) = fill_add(b, a)
++(a::AbstractArray, b::AbstractFill) = fill_add(a, b)
+-(a::AbstractFill, b::AbstractFill) = a + (-b)
+-(a::AbstractFill, b::AbstractArray) = a + (-b)
+-(a::AbstractArray, b::AbstractFill) = a + (-b)
+
+@inline function fill_add(a, b::AbstractFill)
+    promote_shape(a, b)
+    a .+ getindex_value(b)
+end
+
+# following needed since as of Julia v1.8 convert(AbstractArray{T}, ::AbstractRange) might return a Vector
+@inline elconvert(::Type{T}, A::AbstractRange) where T = T(first(A)):T(step(A)):T(last(A))
+@inline elconvert(::Type{T}, A::AbstractUnitRange) where T<:Integer = AbstractUnitRange{T}(A)
+@inline elconvert(::Type{T}, A::AbstractArray) where T = AbstractArray{T}(A)
 
 ####
 # norm

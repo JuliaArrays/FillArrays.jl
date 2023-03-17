@@ -6,11 +6,12 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero,
-    show, view, in, mapreduce, one, reverse
+    show, view, in, mapreduce, one, reverse, promote_op
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
-    dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AbstractTriangular, AdjointAbsVec, TransposeAbsVec,
+    dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
     issymmetric, ishermitian, AdjOrTransAbsVec, checksquare
+
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 
@@ -207,31 +208,6 @@ sort(a::AbstractFill; kwds...) = a
 sort!(a::AbstractFill; kwds...) = a
 svdvals!(a::AbstractFillMatrix) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(min(size(a)...)-1)]
 
-# Fill +/- Fill
-function +(a::AbstractFill{T, N}, b::AbstractFill{V, N}) where {T, V, N}
-    axes(a) ≠ axes(b) && throw(DimensionMismatch("dimensions must match."))
-    return Fill(getindex_value(a) + getindex_value(b), axes(a))
-end
-
-function +(a::FillVector{T}, b::AbstractRange) where {T}
-    size(a) ≠ size(b) && throw(DimensionMismatch("dimensions must match."))
-    Tout = promote_type(T, eltype(b))
-    return a.value .+ b
-end
-+(a::AbstractRange, b::AbstractFill) = b + a
-# LinearAlgebra defines `+(a::UniformScaling, b::AbstractMatrix) = b + a`,
-# so the implementation of `+(a::AbstractFill{<:Any,2}, b::UniformScaling)` is sufficient
-function +(a::AbstractFillMatrix, b::UniformScaling)
-    n = LinearAlgebra.checksquare(a)
-    return a + Diagonal(Fill(b.λ, n))
-end
-
--(a::AbstractFill, b::AbstractRange) = a + (-b)
--(a::AbstractRange, b::AbstractFill) = a + (-b)
-# LinearAlgebra defines `-(a::AbstractMatrix, b::UniformScaling) = a + (-b)`,
-# so the implementation of `-(a::UniformScaling, b::AbstractFill{<:Any,2})` is sufficient
--(a::UniformScaling, b::AbstractFillMatrix) = a + (-b)
-
 function fill_reshape(parent, dims::Integer...)
     n = length(parent)
     prod(dims) == n || _throw_dmrs(n, "size", dims)
@@ -344,10 +320,13 @@ end
 @inline RectDiagonal{T}(A::V, args...) where {T,V} = RectDiagonal{T,V}(A, args...)
 @inline RectDiagonal(A::V, args...) where {V} = RectDiagonal{eltype(V),V}(A, args...)
 
+const UpperOrUnitUpperTriangular{T,S} = Union{UpperTriangular{T,S}, UnitUpperTriangular{T,S}}
+const LowerOrUnitLowerTriangular{T,S} = Union{LowerTriangular{T,S}, UnitLowerTriangular{T,S}}
+const UpperOrLowerTriangular{T,S} = Union{UpperOrUnitUpperTriangular{T,S}, LowerOrUnitLowerTriangular{T,S}}
 
 # patch missing overload from Base
 axes(rd::Diagonal{<:Any,<:AbstractFill}) = (axes(rd.diag,1),axes(rd.diag,1))
-axes(T::AbstractTriangular{<:Any,<:AbstractFill}) = axes(parent(T))
+axes(T::UpperOrLowerTriangular{<:Any,<:AbstractFill}) = axes(parent(T))
 
 axes(rd::RectDiagonal) = rd.axes
 size(rd::RectDiagonal) = map(length, rd.axes)
@@ -666,7 +645,7 @@ Base.print_matrix_row(io::IO,
                  AbstractFillMatrix,
                  Diagonal{<:Any,<:AbstractFillVector},
                  RectDiagonal,
-                 AbstractTriangular{<:Any,<:AbstractFillMatrix}
+                 UpperOrLowerTriangular{<:Any,<:AbstractFillMatrix}
                  }, A::Vector,
         i::Integer, cols::AbstractVector, sep::AbstractString, idxlast::Integer=last(axes(X, 2))) =
         axes_print_matrix_row(axes(X), io, X, A, i, cols, sep)
