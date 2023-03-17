@@ -208,7 +208,7 @@ for op in (:+, :-)
             broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
             _copy_oftype(a, promote_type(T,V))
         end
-        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector{T}, b::Zeros{V,1}) where {T,V}
+        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFill{T}, b::ZerosVector{V}) where {T,V}
             broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
             TT = promote_type(T,V)
             broadcasted(TT∘$op, a)
