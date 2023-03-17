@@ -195,8 +195,8 @@ Base.@propagate_inbounds @inline Base._unsafe_getindex(::IndexStyle, F::Abstract
 
 
 
-getindex(A::AbstractFill, kr::AbstractVector{Bool}) = _fill_getindex(A, kr)
-getindex(A::AbstractFill, kr::AbstractArray{Bool}) = _fill_getindex(A, kr)
+Base.@propagate_inbounds getindex(A::AbstractFill, kr::AbstractVector{Bool}) = _fill_getindex(A, kr)
+Base.@propagate_inbounds getindex(A::AbstractFill, kr::AbstractArray{Bool}) = _fill_getindex(A, kr)
 
 @inline Base.iterate(F::AbstractFill) = length(F) == 0 ? nothing : (v = getindex_value(F); (v, (v, 1)))
 @inline function Base.iterate(F::AbstractFill, (v, n))
