@@ -216,7 +216,7 @@ function +(a::Zeros{T}, b::Zeros{V}) where {T, V} # for disambiguity
     promote_shape(a,b)
     return elconvert(promote_op(+,T,V),a)
 end
-# no AbstractArray. Otherwise incompatible with StaticArray.jl
+# no AbstractArray. Otherwise incompatible with StaticArrays.jl
 # AbstractFill for disambiguity
 for TYPE in (:Array, :AbstractFill, :AbstractRange, :Diagonal)
     @eval function +(a::$TYPE{T}, b::Zeros{V}) where {T, V}
@@ -238,7 +238,7 @@ end
 
 -(a::Ones, b::Ones) = Zeros(a) + Zeros(b)
 
-# no AbstractArray. Otherwise incompatible with StaticArray.jl
+# no AbstractArray. Otherwise incompatible with StaticArrays.jl
 for TYPE in (:Array, :AbstractRange)
     @eval begin
         +(a::$TYPE, b::AbstractFill) = fill_add(a, b)
