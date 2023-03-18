@@ -374,7 +374,7 @@ end
 
     # FillArray + StaticArray should not have ambiguities
     A_svec, B_svec = SVector{5}(rand(5)), SVector(1, 2, 3, 4, 5)
-    test_addition_and_subtraction((A_fill, B_fill), (A_svec, B_svec), SVector)
+    test_addition_and_subtraction((A_fill, B_fill), (A_svec, B_svec), SVector{5})
 
     # Optimizations for Zeros and RectOrDiagonal{<:Any, <:AbstractFill}
     As_special_square = (
