@@ -238,11 +238,15 @@ end
 
 # necessary for AbstractRange, Diagonal, etc
 +(a::AbstractFill, b::AbstractFill) = fill_add(a, b)
-+(a::Union{Zeros,AbstractFill}, b::AbstractRange) = fill_add(b, a)
-+(a::AbstractRange, b::Union{Zeros,AbstractFill}) = fill_add(a, b)
++(a::AbstractFill, b::AbstractRange) = fill_add(b, a)
++(a::AbstractRange, b::AbstractFill) = fill_add(a, b)
++(a::Zeros, b::AbstractRange) = fill_add(b, a)
++(a::AbstractRange, b::Zeros) = fill_add(a, b)
 -(a::AbstractFill, b::AbstractFill) = a + (-b)
--(a::Union{Zeros,AbstractFill}, b::AbstractRange) = a + (-b)
--(a::AbstractRange, b::Union{Zeros,AbstractFill}) = a + (-b)
+-(a::AbstractFill, b::AbstractRange) = a + (-b)
+-(a::AbstractRange, b::AbstractFill) = a + (-b)
+-(a::Zeros, b::AbstractRange) = a + (-b)
+-(a::AbstractRange, b::Zeros) = a + (-b)
 
 @inline function fill_add(a, b::AbstractFill)
     promote_shape(a, b)
