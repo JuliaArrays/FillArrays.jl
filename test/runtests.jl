@@ -308,26 +308,30 @@ as_array(x::AbstractArray) = Array(x)
 as_array(x::UniformScaling) = x
 function test_addition_and_subtraction(As, Bs, Tout::Type)
     for A in As, B in Bs
-        @test A + B isa Tout{promote_type(eltype(A), eltype(B))}
-        @test as_array(A + B) == as_array(A) + as_array(B)
+        @testset "$A ± $B" begin
+            @test A + B isa Tout{promote_type(eltype(A), eltype(B))}
+            @test as_array(A + B) == as_array(A) + as_array(B)
 
-        @test A - B isa Tout{promote_type(eltype(A), eltype(B))}
-        @test as_array(A - B) == as_array(A) - as_array(B)
+            @test A - B isa Tout{promote_type(eltype(A), eltype(B))}
+            @test as_array(A - B) == as_array(A) - as_array(B)
 
-        @test B + A isa Tout{promote_type(eltype(B), eltype(A))}
-        @test as_array(B + A) == as_array(B) + as_array(A)
+            @test B + A isa Tout{promote_type(eltype(B), eltype(A))}
+            @test as_array(B + A) == as_array(B) + as_array(A)
 
-        @test B - A isa Tout{promote_type(eltype(B), eltype(A))}
-        @test as_array(B - A) == as_array(B) - as_array(A)
+            @test B - A isa Tout{promote_type(eltype(B), eltype(A))}
+            @test as_array(B - A) == as_array(B) - as_array(A)
+        end
     end
 end
 
 # Check that all permutations of + / - throw a `DimensionMismatch` exception.
 function test_addition_and_subtraction_dim_mismatch(a, b)
-    @test_throws DimensionMismatch a + b
-    @test_throws DimensionMismatch a - b
-    @test_throws DimensionMismatch b + a
-    @test_throws DimensionMismatch b - a
+    @testset "$a ± $b" begin
+        @test_throws DimensionMismatch a + b
+        @test_throws DimensionMismatch a - b
+        @test_throws DimensionMismatch b + a
+        @test_throws DimensionMismatch b - a
+    end
 end
 
 @testset "FillArray addition and subtraction" begin
@@ -367,6 +371,10 @@ end
     for A in As_fill_nonsquare, B in Bs_us
         test_addition_and_subtraction_dim_mismatch(A, B)
     end
+
+    # FillArray + StaticArray should not have ambiguities
+    A_svec, B_svec = SVector{5}(rand(5)), SVector(1, 2, 3, 4, 5)
+    test_addition_and_subtraction((A_fill, B_fill, Zeros(5)), (A_svec, B_svec), SVector{5})
 
     # Optimizations for Zeros and RectOrDiagonal{<:Any, <:AbstractFill}
     As_special_square = (
