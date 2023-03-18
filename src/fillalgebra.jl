@@ -239,7 +239,7 @@ end
 -(a::Ones, b::Ones) = Zeros(a) + Zeros(b)
 
 # no AbstractArray. Otherwise incompatible with StaticArray.jl
-for TYPE in (:Array, :AbstractRange, :Diagonal)
+for TYPE in (:Array, :AbstractRange)
     @eval begin
         +(a::$TYPE, b::AbstractFill) = fill_add(a, b)
         -(a::$TYPE, b::AbstractFill) = a + (-b)
