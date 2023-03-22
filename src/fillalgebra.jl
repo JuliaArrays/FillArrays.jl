@@ -247,10 +247,14 @@ for TYPE in (:Array, :AbstractRange)
         -(a::AbstractFill, b::$TYPE) = a + (-b)
     end
 end
-+(a::AbstractFill, b::AbstractFill) = fill_add(a, b)
++(a::AbstractFill, b::AbstractFill) = Fill(getindex_value(a) + getindex_value(b), promote_shape(a,b))
 -(a::AbstractFill, b::AbstractFill) = a + (-b)
 
-@inline function fill_add(a, b::AbstractFill)
+@inline function fill_add(a::AbstractArray, b::AbstractFill)
+    promote_shape(a, b)
+    a .+ [getindex_value(b)]
+end
+@inline function fill_add(a::AbstractArray{<:Number}, b::AbstractFill)
     promote_shape(a, b)
     a .+ getindex_value(b)
 end
