@@ -1471,3 +1471,19 @@ end
     @test cor(Fill(3, 4, 5)) ≈ cor(fill(3, 4, 5)) nans=true
     @test cor(Fill(3, 4, 5), dims=2) ≈ cor(fill(3, 4, 5), dims=2) nans=true
 end
+
+@testset "Structured broadcast" begin
+    D = Diagonal(1:5)
+    @test D + Zeros(5,5) isa Diagonal
+    @test D - Zeros(5,5) isa Diagonal
+    @test D .+ Zeros(5,5) isa Diagonal
+    @test D .- Zeros(5,5) isa Diagonal
+    @test D .* Zeros(5,5) isa Diagonal
+    @test Zeros(5,5) .* D isa Diagonal
+    @test Zeros(5,5) - D isa Diagonal
+    @test Zeros(5,5) + D isa Diagonal
+    @test Zeros(5,5) .- D isa Diagonal
+    @test Zeros(5,5) .+ D isa Diagonal
+    f = (x,y) -> x+1
+    @test f.(D, Zeros(5,5)) isa Matrix
+end
