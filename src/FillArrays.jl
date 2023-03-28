@@ -18,7 +18,7 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 import Statistics: mean, std, var, cov, cor
 
 
-export Zeros, Ones, Fill, Eye, Trues, Falses
+export Zeros, Ones, Fill, Eye, Trues, Falses, OneElement
 
 import Base: oneto
 
@@ -717,5 +717,7 @@ Base.@propagate_inbounds function view(A::AbstractFill{<:Any,N}, I::Vararg{Real,
     @boundscheck checkbounds(A, I...)
     fillsimilar(A)
 end
+
+include("oneelement.jl")
 
 end # module

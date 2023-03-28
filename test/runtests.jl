@@ -1471,3 +1471,7 @@ end
     @test cor(Fill(3, 4, 5)) ≈ cor(fill(3, 4, 5)) nans=true
     @test cor(Fill(3, 4, 5), dims=2) ≈ cor(fill(3, 4, 5), dims=2) nans=true
 end
+
+@testset "OneElement" begin
+    e₁ = OneElement(5)
+end
