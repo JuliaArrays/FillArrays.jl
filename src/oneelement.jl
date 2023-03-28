@@ -10,7 +10,7 @@ struct OneElement{T,N,I,A} <: AbstractArray{T,N}
 end
 
 OneElement(val, inds::NTuple{N,Int}, sz::NTuple{N,Integer}) where N = OneElement(val, inds, oneto.(sz))
-OneElement(val, inds::Int, sz::Int) where N = OneElement(val, (inds,), (sz,))
+OneElement(val, inds::Int, sz::Int) = OneElement(val, (inds,), (sz,))
 OneElement(inds::Int, sz::Int) = OneElement(1, inds, sz)
 OneElement{T}(inds::Int, sz::Int) where T = OneElement(one(T), inds, sz)
 
