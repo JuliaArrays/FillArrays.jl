@@ -708,11 +708,11 @@ copy(a::LinearAlgebra.Transpose{<:Any,<:AbstractFill}) = transpose(parent(a))
 
 Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, kr::AbstractArray{Bool,N}) where N = _fill_getindex(A, kr)
 Base.@propagate_inbounds view(A::AbstractFill{<:Any,1}, kr::AbstractVector{Bool}) = _fill_getindex(A, kr)
-Base.@propagate_inbounds view(A::AbstractFill{<:Any,N}, I::Vararg{Union{Real, AbstractArray}, N}) where N =
+Base.@propagate_inbounds view(A::AbstractFill, I::Vararg{Union{Real, AbstractArray, Colon}}) =
     _fill_getindex(A, Base.to_indices(A,I)...)
 
 # not getindex since we need array-like indexing
-Base.@propagate_inbounds function view(A::AbstractFill{<:Any,N}, I::Vararg{Real, N}) where N
+Base.@propagate_inbounds function view(A::AbstractFill, I::Vararg{Real})
     @boundscheck checkbounds(A, I...)
     fillsimilar(A)
 end
