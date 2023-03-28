@@ -613,6 +613,14 @@ end
         @test zero(Ones(10,10)) == Zeros(10,10)
         @test zero(Fill(0.5, 10, 10)) == Zeros(10,10)
     end
+
+    @testset "Matrix ±" begin
+        x = Fill([1,2], 5)
+        z = Zeros{SVector{2,Int}}(5)
+        @test +(z) ≡ -(z) ≡ z
+        @test +(x) == x
+        @test -(x) == Fill(-[1,2], 5)
+    end
 end
 
 @testset "maximum/minimum/svd/sort" begin
