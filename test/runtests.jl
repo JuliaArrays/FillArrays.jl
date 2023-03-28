@@ -20,6 +20,7 @@ include("infinitearrays.jl")
 
             for T in (Int, Float64)
                 Z = $Typ{T}(5)
+                @test $Typ(T, 5) ≡ Z
                 @test eltype(Z) == T
                 @test Array(Z) == $funcs(T,5)
                 @test Array{T}(Z) == $funcs(T,5)
@@ -34,6 +35,7 @@ include("infinitearrays.jl")
                 @test $Typ(2ones(T,5)) == Z
 
                 Z = $Typ{T}(5, 5)
+                @test $Typ(T, 5, 5) ≡ Z
                 @test eltype(Z) == T
                 @test Array(Z) == $funcs(T,5,5)
                 @test Array{T}(Z) == $funcs(T,5,5)
