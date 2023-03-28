@@ -496,7 +496,9 @@ sum(x::AbstractFill) = getindex_value(x)*length(x)
 sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
 sum(x::Zeros) = getindex_value(x)
 
-cumsum(x::AbstractFill{<:Any,1}) = StepRangeLen(getindex_value(x), getindex_value(x), length(x))
+# needed to support infinite case
+steprangelen(st...) = StepRangeLen(st...)
+cumsum(x::AbstractFill{<:Any,1}) = steprangelen(getindex_value(x), getindex_value(x), length(x))
 
 cumsum(x::ZerosVector) = x
 cumsum(x::ZerosVector{Bool}) = x
