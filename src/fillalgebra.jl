@@ -86,7 +86,6 @@ end
 *(a::ZerosMatrix, b::AbstractMatrix) = mult_zeros(a, b)
 *(a::AbstractMatrix, b::ZerosVector) = mult_zeros(a, b)
 *(a::AbstractMatrix, b::ZerosMatrix) = mult_zeros(a, b)
-*(a::ZerosVector, b::AbstractVector) = mult_zeros(a, b)
 *(a::ZerosMatrix, b::AbstractVector) = mult_zeros(a, b)
 *(a::AbstractVector, b::ZerosMatrix) = mult_zeros(a, b)
 

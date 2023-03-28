@@ -510,9 +510,9 @@ end
     @test_throws MethodError [1,2,3]*Zeros(3) # Not defined for [1,2,3]*[0,0,0] either
 
     @testset "Check multiplication by Adjoint vectors works as expected." begin
-        @test randn(4, 3)' * Zeros(4) === Zeros(3)
-        @test randn(4)' * Zeros(4) === zero(Float64)
-        @test [1, 2, 3]' * Zeros{Int}(3) === zero(Int)
+        @test randn(4, 3)' * Zeros(4) ≡ Zeros(3)
+        @test randn(4)' * Zeros(4) ≡ transpose(randn(4)) * Zeros(4) ≡ zero(Float64)
+        @test [1, 2, 3]' * Zeros{Int}(3) ≡ zero(Int)
         @test [SVector(1,2)', SVector(2,3)', SVector(3,4)']' * Zeros{Int}(3) === SVector(0,0)
         @test_throws DimensionMismatch randn(4)' * Zeros(3)
         @test Zeros(5)' * randn(5,3) ≡ Zeros(5)'*Zeros(5,3) ≡ Zeros(5)'*Ones(5,3) ≡ Zeros(3)'
