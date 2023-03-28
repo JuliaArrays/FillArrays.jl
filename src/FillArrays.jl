@@ -504,7 +504,6 @@ cumsum(x::ZerosVector) = x
 cumsum(x::ZerosVector{Bool}) = x
 cumsum(x::OnesVector{II}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
 cumsum(x::OnesVector{Bool}) = oneto(length(x))
-cumsum(x::AbstractFillVector{Bool}) = cumsum(AbstractFill{Int}(x))
 
 
 #########
