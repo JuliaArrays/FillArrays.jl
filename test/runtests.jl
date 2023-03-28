@@ -1474,11 +1474,10 @@ end
     D = Diagonal(1:5)
     @test D + Zeros(5,5) isa Diagonal
     @test D - Zeros(5,5) isa Diagonal
+    @test D .* Zeros(5,5) isa Diagonal
+    @test Zeros(5,5) .* D isa Diagonal
     @test Zeros(5,5) - D isa Diagonal
     @test Zeros(5,5)  + D isa Diagonal
     f = (x,y) -> x+1
     @test f.(D, Zeros(5,5)) isa Matrix
-
-    S = Symmetric(randn(5,5))
-    S + Zeros(5,5)
 end
