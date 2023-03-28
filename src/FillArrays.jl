@@ -34,13 +34,13 @@ const AbstractFillVecOrMat{T} = Union{AbstractFillVector{T},AbstractFillMatrix{T
 
 ==(a::AbstractFill, b::AbstractFill) = axes(a) == axes(b) && getindex_value(a) == getindex_value(b)
 
-Base.@propagate_inbounds @inline function _fill_getindex(F::AbstractFill, kj::Integer...)
+@inline function _fill_getindex(F::AbstractFill, kj::Integer...)
     @boundscheck checkbounds(F, kj...)
     getindex_value(F)
 end
 
-getindex(F::AbstractFill, k::Integer) = _fill_getindex(F, k)
-getindex(F::AbstractFill{T, N}, kj::Vararg{Integer, N}) where {T, N} = _fill_getindex(F, kj...)
+Base.@propagate_inbounds getindex(F::AbstractFill, k::Integer) = _fill_getindex(F, k)
+Base.@propagate_inbounds getindex(F::AbstractFill{T, N}, kj::Vararg{Integer, N}) where {T, N} = _fill_getindex(F, kj...)
 
 @inline function setindex!(F::AbstractFill, v, k::Integer)
     @boundscheck checkbounds(F, k)
@@ -195,8 +195,8 @@ Base.@propagate_inbounds @inline Base._unsafe_getindex(::IndexStyle, F::Abstract
 
 
 
-getindex(A::AbstractFill, kr::AbstractVector{Bool}) = _fill_getindex(A, kr)
-getindex(A::AbstractFill, kr::AbstractArray{Bool}) = _fill_getindex(A, kr)
+Base.@propagate_inbounds getindex(A::AbstractFill, kr::AbstractVector{Bool}) = _fill_getindex(A, kr)
+Base.@propagate_inbounds getindex(A::AbstractFill, kr::AbstractArray{Bool}) = _fill_getindex(A, kr)
 
 @inline Base.iterate(F::AbstractFill) = length(F) == 0 ? nothing : (v = getindex_value(F); (v, (v, 1)))
 @inline function Base.iterate(F::AbstractFill, (v, n))
