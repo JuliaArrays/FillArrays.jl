@@ -194,6 +194,23 @@ include("infinitearrays.jl")
         A = FillArrays.RectDiagonal(Int[], (1:0, 1:4))
         @test !(0 in A)
     end
+
+    @testset "promotion" begin
+        Z = Zeros{Int}(5)
+        Zf = Zeros(5)
+        O = Ones{Int}(5)
+        Of = Ones{Float64}(5)
+        @test [Z,O] isa Vector{Fill{Int,1,Tuple{Base.OneTo{Int}}}}
+        @test [Z,Of] isa Vector{Fill{Float64,1,Tuple{Base.OneTo{Int}}}}
+        @test [O,O] isa Vector{Ones{Int,1,Tuple{Base.OneTo{Int}}}}
+        @test [O,Of] isa Vector{Ones{Float64,1,Tuple{Base.OneTo{Int}}}}
+        @test [Z,Zf] isa Vector{Zeros{Float64,1,Tuple{Base.OneTo{Int}}}}
+
+        @test convert(Ones{Int}, Of) ≡ convert(Ones{Int,1}, Of) ≡ convert(typeof(O), Of) ≡ O
+        @test convert(Zeros{Int}, Zf) ≡ convert(Zeros{Int,1}, Zf) ≡ convert(typeof(Z), Zf) ≡ Z
+
+        @test_throws MethodError convert(Zeros{SVector{2,Int}}, Zf)
+    end
 end
 
 @testset "indexing" begin
