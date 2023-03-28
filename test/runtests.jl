@@ -1473,5 +1473,13 @@ end
 end
 
 @testset "OneElement" begin
-    e₁ = OneElement(5)
+    e₁ = OneElement(2, 5)
+    @test e₁ == [0,1,0,0,0]
+
+    e₁ = OneElement{Float64}(2, 5)
+    @test e₁ == [0,1,0,0,0]
+
+    @test Base.setindex(Zeros(5), 2, 2) ≡ OneElement(2.0, 2, 5)
+    @test Base.setindex(Zeros(5,3), 2, 2, 3) ≡ OneElement(2.0, (2,3), (5,3))
+    @test_throws BoundsError Base.setindex(Zeros(5), 2, 6)
 end
