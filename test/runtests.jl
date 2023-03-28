@@ -634,11 +634,11 @@ end
     @test sum(Fill(3,10)) ≡ 30
     @test reduce(+, Fill(3,10)) ≡ 30
     @test sum(x -> x + 1, Fill(3,10)) ≡ 40
-    @test cumsum(Fill(3,10)) ≡ 3:3:30
+    @test cumsum(Fill(3,10)) ≡ StepRangeLen(3,3,10)
 
     @test sum(Ones(10)) ≡ 10.0
     @test sum(x -> x + 1, Ones(10)) ≡ 20.0
-    @test cumsum(Ones(10)) ≡ 1.0:10.0
+    @test cumsum(Ones(10)) ≡ StepRangeLen(1.0, 1.0, 10)
 
     @test sum(Ones{Int}(10)) ≡ 10
     @test sum(x -> x + 1, Ones{Int}(10)) ≡ 20
@@ -654,7 +654,7 @@ end
 
     @test cumsum(Zeros{Bool}(10)) ≡ Zeros{Bool}(10)
     @test cumsum(Ones{Bool}(10)) ≡ Base.OneTo{Int}(10)
-    @test cumsum(Fill(true,10)) ≡ 1:1:10
+    @test cumsum(Fill(true,10)) ≡ StepRangeLen(true, true, 10)
 
     @test diff(Fill(1,10)) ≡ Zeros{Int}(9)
     @test diff(Ones{Float64}(10)) ≡ Zeros{Float64}(9)
@@ -1338,6 +1338,8 @@ end
     @test stringmime("text/plain", Fill(7,2,3)) == "2×3 Fill{$Int}, with entries equal to 7"
     @test stringmime("text/plain", Fill(8.0,1)) == "1-element Fill{Float64}, with entry equal to 8.0"
     @test stringmime("text/plain", Eye(5)) == "5×5 Eye{Float64}"
+    # used downstream in LazyArrays.jl to deduce sparsity
+    @test Base.replace_in_print_matrix(Zeros(5,3), 1, 2, "0.0") == " ⋅ "
 
     # 2-arg show, compact printing
     @test repr(Zeros(3)) == "Zeros(3)"
