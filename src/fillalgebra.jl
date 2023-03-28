@@ -160,37 +160,20 @@ function *(a::Transpose{T, <:AbstractVector{T}}, b::ZerosVector{T}) where T<:Rea
 end
 *(a::Transpose{T, <:AbstractMatrix{T}}, b::ZerosVector{T}) where T<:Real = mult_zeros(a, b)
 
-# treat zero separately to support ∞-vectors
-function _zero_dot(a, b)
-    axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
-    zero(promote_type(eltype(a),eltype(b)))
-end
-
-_fill_dot(a::Zeros, b::Zeros) = _zero_dot(a, b)
-_fill_dot(a::Zeros, b) = _zero_dot(a, b)
-_fill_dot(a, b::Zeros) = _zero_dot(a, b)
-_fill_dot(a::Zeros, b::AbstractFill) = _zero_dot(a, b)
-_fill_dot(a::AbstractFill, b::Zeros) = _zero_dot(a, b)
-
-function _fill_dot(a::AbstractFill, b::AbstractFill)
-    axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
-    getindex_value(a)getindex_value(b)*length(b)
-end
-
 # support types with fast sum
-function _fill_dot(a::AbstractFill, b)
-    axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
-    getindex_value(a)sum(b)
-end
 
-function _fill_dot(a, b::AbstractFill)
+function _fill_dot(a::AbstractVector, b::AbstractFill)
     axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
-    sum(a)getindex_value(b)
+    # treat zero separately to support ∞-vectors
+    if iszero(b) || iszero(a)
+        zero(promote_type(eltype(a), eltype(b)))
+    else
+        sum(a) * getindex_value(b)
+    end
 end
-
 
 dot(a::AbstractFillVector, b::AbstractFillVector) = _fill_dot(a, b)
-dot(a::AbstractFillVector, b::AbstractVector) = _fill_dot(a, b)
+dot(a::AbstractFillVector, b::AbstractVector) = _fill_dot(b, a)
 dot(a::AbstractVector, b::AbstractFillVector) = _fill_dot(a, b)
 
 function dot(u::AbstractVector, E::Eye, v::AbstractVector)
