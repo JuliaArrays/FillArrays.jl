@@ -1338,6 +1338,8 @@ end
     @test stringmime("text/plain", Fill(7,2,3)) == "2×3 Fill{$Int}, with entries equal to 7"
     @test stringmime("text/plain", Fill(8.0,1)) == "1-element Fill{Float64}, with entry equal to 8.0"
     @test stringmime("text/plain", Eye(5)) == "5×5 Eye{Float64}"
+    # used downstream in LazyArrays.jl to deduce sparsity
+    @test Base.replace_in_print_matrix(Zeros(5,3), 1, 2, "0.0") == " ⋅ "
 
     # 2-arg show, compact printing
     @test repr(Zeros(3)) == "Zeros(3)"
