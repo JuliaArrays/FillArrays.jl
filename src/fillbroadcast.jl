@@ -247,3 +247,6 @@ broadcasted(::DefaultArrayStyle{N}, ::typeof(Base.literal_pow), ::Base.RefValue{
 broadcasted(::DefaultArrayStyle{N}, ::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::Ones{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = Ones{T}(axes(r))
 broadcasted(::DefaultArrayStyle{N}, ::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::Zeros{T,N}, ::Base.RefValue{Val{0}}) where {T,N} = Ones{T}(axes(r))
 broadcasted(::DefaultArrayStyle{N}, ::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::Zeros{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = Zeros{T}(axes(r))
+
+# supports structured broadcast
+LinearAlgebra.fzero(x::Zeros) = zero(eltype(x))
