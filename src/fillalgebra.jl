@@ -216,7 +216,9 @@ function +(a::Zeros{T}, b::Zeros{V}) where {T, V} # for disambiguity
     promote_shape(a,b)
     return elconvert(promote_op(+,T,V),a)
 end
-for TYPE in (:AbstractArray, :AbstractFill) # AbstractFill for disambiguity
+# no AbstractArray. Otherwise incompatible with StaticArrays.jl
+# AbstractFill for disambiguity
+for TYPE in (:Array, :AbstractFill, :AbstractRange, :Diagonal)
     @eval function +(a::$TYPE{T}, b::Zeros{V}) where {T, V}
         promote_shape(a,b)
         return elconvert(promote_op(+,T,V),a)
@@ -236,15 +238,23 @@ end
 
 -(a::Ones, b::Ones) = Zeros(a) + Zeros(b)
 
-# necessary for AbstractRange, Diagonal, etc
-+(a::AbstractFill, b::AbstractFill) = fill_add(a, b)
-+(a::AbstractFill, b::AbstractArray) = fill_add(b, a)
-+(a::AbstractArray, b::AbstractFill) = fill_add(a, b)
+# no AbstractArray. Otherwise incompatible with StaticArrays.jl
+for TYPE in (:Array, :AbstractRange)
+    @eval begin
+        +(a::$TYPE, b::AbstractFill) = fill_add(a, b)
+        -(a::$TYPE, b::AbstractFill) = a + (-b)
+        +(a::AbstractFill, b::$TYPE) = fill_add(b, a)
+        -(a::AbstractFill, b::$TYPE) = a + (-b)
+    end
+end
++(a::AbstractFill, b::AbstractFill) = Fill(getindex_value(a) + getindex_value(b), promote_shape(a,b))
 -(a::AbstractFill, b::AbstractFill) = a + (-b)
--(a::AbstractFill, b::AbstractArray) = a + (-b)
--(a::AbstractArray, b::AbstractFill) = a + (-b)
 
-@inline function fill_add(a, b::AbstractFill)
+@inline function fill_add(a::AbstractArray, b::AbstractFill)
+    promote_shape(a, b)
+    a .+ [getindex_value(b)]
+end
+@inline function fill_add(a::AbstractArray{<:Number}, b::AbstractFill)
     promote_shape(a, b)
     a .+ getindex_value(b)
 end
