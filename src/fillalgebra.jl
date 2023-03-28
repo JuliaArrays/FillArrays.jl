@@ -166,7 +166,7 @@ function _fill_dot(a::AbstractVector, b::AbstractFill)
     axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
     # treat zero separately to support ∞-vectors
     if iszero(b) || iszero(a)
-        zero(promote_type(eltype(a), eltype(b)))
+        zero(promote_op(*, eltype(a), eltype(b)))
     else
         sum(a) * getindex_value(b)
     end
