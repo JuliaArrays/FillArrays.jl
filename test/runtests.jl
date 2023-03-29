@@ -20,6 +20,7 @@ include("infinitearrays.jl")
 
             for T in (Int, Float64)
                 Z = $Typ{T}(5)
+                @test $Typ(T, 5) ≡ Z
                 @test eltype(Z) == T
                 @test Array(Z) == $funcs(T,5)
                 @test Array{T}(Z) == $funcs(T,5)
@@ -34,6 +35,7 @@ include("infinitearrays.jl")
                 @test $Typ(2ones(T,5)) == Z
 
                 Z = $Typ{T}(5, 5)
+                @test $Typ(T, 5, 5) ≡ Z
                 @test eltype(Z) == T
                 @test Array(Z) == $funcs(T,5,5)
                 @test Array{T}(Z) == $funcs(T,5,5)
@@ -525,9 +527,9 @@ end
     @test_throws MethodError [1,2,3]*Zeros(3) # Not defined for [1,2,3]*[0,0,0] either
 
     @testset "Check multiplication by Adjoint vectors works as expected." begin
-        @test randn(4, 3)' * Zeros(4) === Zeros(3)
-        @test randn(4)' * Zeros(4) === zero(Float64)
-        @test [1, 2, 3]' * Zeros{Int}(3) === zero(Int)
+        @test randn(4, 3)' * Zeros(4) ≡ Zeros(3)
+        @test randn(4)' * Zeros(4) ≡ transpose(randn(4)) * Zeros(4) ≡ zero(Float64)
+        @test [1, 2, 3]' * Zeros{Int}(3) ≡ zero(Int)
         @test [SVector(1,2)', SVector(2,3)', SVector(3,4)']' * Zeros{Int}(3) === SVector(0,0)
         @test_throws DimensionMismatch randn(4)' * Zeros(3)
         @test Zeros(5)' * randn(5,3) ≡ Zeros(5)'*Zeros(5,3) ≡ Zeros(5)'*Ones(5,3) ≡ Zeros(3)'
@@ -1503,4 +1505,25 @@ end
     @test Zeros(5,5) .+ D isa Diagonal
     f = (x,y) -> x+1
     @test f.(D, Zeros(5,5)) isa Matrix
+end
+
+@testset "OneElement" begin
+    e₁ = OneElement(2, 5)
+    @test e₁ == [0,1,0,0,0]
+    @test_throws BoundsError e₁[6]
+
+    e₁ = OneElement{Float64}(2, 5)
+    @test e₁ == [0,1,0,0,0]
+
+    v = OneElement{Float64}(2, 3, 4)
+    @test v == [0,0,2,0]
+
+    V = OneElement(2, (2,3), (3,4))
+    @test V == [0 0 0 0; 0 0 2 0; 0 0 0 0]
+
+    @test stringmime("text/plain", V) == "3×4 OneElement{$Int, 2, Tuple{$Int, $Int}, Tuple{Base.OneTo{$Int}, Base.OneTo{$Int}}}:\n ⋅  ⋅  ⋅  ⋅\n ⋅  ⋅  2  ⋅\n ⋅  ⋅  ⋅  ⋅"
+
+    @test Base.setindex(Zeros(5), 2, 2) ≡ OneElement(2.0, 2, 5)
+    @test Base.setindex(Zeros(5,3), 2, 2, 3) ≡ OneElement(2.0, (2,3), (5,3))
+    @test_throws BoundsError Base.setindex(Zeros(5), 2, 6)
 end

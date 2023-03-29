@@ -18,7 +18,7 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 import Statistics: mean, std, var, cov, cor
 
 
-export Zeros, Ones, Fill, Eye, Trues, Falses
+export Zeros, Ones, Fill, Eye, Trues, Falses, OneElement
 
 import Base: oneto
 
@@ -263,6 +263,7 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         @inline $Typ{T,N}(A::AbstractArray{V,N}) where{T,V,N} = $Typ{T,N}(size(A))
         @inline $Typ{T}(A::AbstractArray) where{T} = $Typ{T}(size(A))
         @inline $Typ(A::AbstractArray) = $Typ{eltype(A)}(A)
+        @inline $Typ(::Type{T}, m...) where T = $Typ{T}(m...)
 
         @inline axes(Z::$Typ) = Z.axes
         @inline size(Z::$Typ) = length.(Z.axes)
@@ -727,5 +728,7 @@ Base.@propagate_inbounds function view(A::AbstractFill{<:Any,N}, I::Vararg{Real,
     @boundscheck checkbounds(A, I...)
     fillsimilar(A)
 end
+
+include("oneelement.jl")
 
 end # module
