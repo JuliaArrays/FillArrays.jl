@@ -1493,9 +1493,18 @@ end
 @testset "OneElement" begin
     e₁ = OneElement(2, 5)
     @test e₁ == [0,1,0,0,0]
+    @test_throws BoundsError e₁[6]
 
     e₁ = OneElement{Float64}(2, 5)
     @test e₁ == [0,1,0,0,0]
+
+    v = OneElement{Float64}(2, 3, 4)
+    @test v == [0,0,2,0]
+
+    V = OneElement(2, (2,3), (3,4))
+    @test V == [0 0 0 0; 0 0 2 0; 0 0 0 0]
+
+    @test stringmime("text/plain", V) == "3×4 OneElement{$Int, 2, Tuple{$Int, $Int}, Tuple{OneTo{$Int}, OneTo{$Int}}}:\n ⋅  ⋅  ⋅  ⋅\n ⋅  ⋅  2  ⋅\n ⋅  ⋅  ⋅  ⋅"
 
     @test Base.setindex(Zeros(5), 2, 2) ≡ OneElement(2.0, 2, 5)
     @test Base.setindex(Zeros(5,3), 2, 2, 3) ≡ OneElement(2.0, (2,3), (5,3))
