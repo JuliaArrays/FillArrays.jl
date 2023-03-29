@@ -314,13 +314,13 @@ function test_addition_and_subtraction(As, Bs, Tout::Type)
             @test typeof(A + B) <: Tout{promote_type(eltype(A), eltype(B))}
             @test as_array(A + B) == as_array(A) + as_array(B)
 
-            @test A - B isa Tout{promote_type(eltype(A), eltype(B))}
+            @test typeof(A - B) <: Tout{promote_type(eltype(A), eltype(B))}
             @test as_array(A - B) == as_array(A) - as_array(B)
 
-            @test B + A isa Tout{promote_type(eltype(B), eltype(A))}
+            @test typeof(B + A) <: Tout{promote_type(eltype(B), eltype(A))}
             @test as_array(B + A) == as_array(B) + as_array(A)
 
-            @test B - A isa Tout{promote_type(eltype(B), eltype(A))}
+            @test typeof(B - A) <: Tout{promote_type(eltype(B), eltype(A))}
             @test as_array(B - A) == as_array(B) - as_array(A)
         end
     end
