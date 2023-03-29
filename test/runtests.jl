@@ -1432,6 +1432,15 @@ end
         @test FillArrays.getindex_value(v) == FillArrays.unique_value(v) == 2.0
         @test convert(Fill, v) ≡ Fill(2.0,2)
         @test view(a,1) ≡ Fill(2.0)
+        @test view(a,1,1) ≡ Fill(2.0)
+        @test view(a, :) === a
+        @test view(a, CartesianIndices(a)) === a
+        vv = view(a, CartesianIndices(a), :, 1)
+        @test ndims(vv) == 2
+        @test vv isa Fill && FillArrays.getindex_value(vv) == 2.0
+        vv = view(a, CartesianIndices(a), :, 1:1)
+        @test ndims(vv) == 3
+        @test vv isa Fill && FillArrays.getindex_value(vv) == 2.0
     end
 
     @testset "view with bool" begin
