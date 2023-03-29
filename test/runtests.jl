@@ -29,6 +29,7 @@ include("infinitearrays.jl")
                 @test convert(AbstractArray,Z) ≡ Z
                 @test convert(AbstractArray{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
                 @test convert(AbstractVector{T},Z) ≡ AbstractVector{T}(Z) ≡ Z
+                @test convert(AbstractFill{T},Z) ≡ AbstractFill{T}(Z) ≡ Z
 
                 @test $Typ{T,1}(2ones(T,5)) == Z
                 @test $Typ{T}(2ones(T,5)) == Z
@@ -552,6 +553,7 @@ end
         @test randn(5) * transpose(Zeros(6)) ≡ randn(5,1) * transpose(Zeros(6)) ≡ Zeros(5,6)
         @test Zeros(5) * transpose(randn(6)) ≡ Zeros(5,6)
         @test transpose(randn(5)) * Zeros(5) ≡ 0.0
+        @test transpose(randn(5) .+ im) * Zeros(5) ≡ 0.0 + 0im
 
         @test transpose([[1,2]]) * Zeros{SVector{2,Int}}(1) ≡ 0
         @test_broken transpose([[1,2,3]]) * Zeros{SVector{2,Int}}(1)
@@ -619,12 +621,13 @@ end
 
     @testset "Tests for ranges." begin
         X = randn(5)
-        @test !(Zeros(5) + X === X)
-        @test Zeros{Int}(5) + (1:5) === (1:5) && (1:5) + Zeros{Int}(5) === (1:5)
-        @test Zeros(5) + (1:5) === (1.0:1.0:5.0) && (1:5) + Zeros(5) === (1.0:1.0:5.0)
-        @test (1:5) - Zeros{Int}(5) === (1:5)
-        @test Zeros{Int}(5) - (1:5) === -1:-1:-5
-        @test Zeros(5) - (1:5) === -1.0:-1.0:-5.0
+        @test !(Zeros(5) + X ≡ X)
+        @test Zeros{Int}(5) + (1:5) ≡ (1:5) + Zeros{Int}(5) ≡ (1:5)
+        @test Zeros(5) + (1:5) ≡ (1:5) + Zeros(5) ≡ (1.0:1.0:5.0)
+        @test (1:5) - Zeros{Int}(5) ≡ (1:5)
+        @test Zeros{Int}(5) - (1:5) ≡ -1:-1:-5
+        @test Zeros(5) - (1:5) ≡ -1.0:-1.0:-5.0
+        @test Zeros{Int}(5) + (1.0:5) ≡ (1.0:5) + Zeros{Int}(5) ≡ 1.0:5
     end
 
     @testset "test Base.zero" begin
@@ -778,6 +781,8 @@ end
         @test broadcast(*, rnge, Zeros(10, 10)) ≡ Zeros{Float64}(10, 10)
         @test broadcast(*, Ones{Int}(10), rnge) ≡ rnge
         @test broadcast(*, rnge, Ones{Int}(10)) ≡ rnge
+        @test broadcast(*, Ones(10), -5:4) ≡ broadcast(*, -5:4, Ones(10)) ≡ rnge
+        @test broadcast(*, Ones(10), -5:1:4) ≡ broadcast(*, -5:1:4, Ones(10)) ≡ rnge
         @test_throws DimensionMismatch broadcast(*, Fill(5.0, 11), rnge)
         @test broadcast(*, rnge, Fill(5.0, 10)) == broadcast(*, rnge, 5.0)
         @test_throws DimensionMismatch broadcast(*, rnge, Fill(5.0, 11))
