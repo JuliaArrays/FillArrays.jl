@@ -1301,9 +1301,10 @@ end
     @test dot(Zeros(5), Ones{ComplexF16}(5)) ≡ zero(ComplexF64)
     @test dot(Ones{ComplexF16}(5), Zeros(5)) ≡ zero(ComplexF64)
     @test dot(randn(5), Zeros{ComplexF16}(5)) ≡ dot(Zeros{ComplexF16}(5), randn(5)) ≡ zero(ComplexF64)
-    @test dot(c, Fill(1 + im, 15)) ≡ dot(Fill(1 + im, 15), c) ≡ dot(c, fill(1 + im, 15))
+    @test dot(c, Fill(1 + im, 15)) ≡ dot(Fill(1 + im, 15), c)' ≡ dot(c, fill(1 + im, 15))
 
     @test dot(Fill(1,5), Fill(2.0,5)) ≡ 10.0
+    @test dot(Fill(true,5), Fill(Int8(1),5)) isa Int8
 
     let N = 2^big(1000) # fast dot for fast sum
         @test dot(Fill(2,N),1:N) == dot(Fill(2,N),1:N) == dot(1:N,Fill(2,N)) == 2*sum(1:N)
