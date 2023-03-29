@@ -1305,6 +1305,7 @@ end
 
     @test dot(Fill(1,5), Fill(2.0,5)) ≡ 10.0
     @test dot(Fill(true,5), Fill(Int8(1),5)) isa Int8
+    @test dot([Fill(1, 2, 2)], [[1 2; 3 4]])
 
     let N = 2^big(1000) # fast dot for fast sum
         @test dot(Fill(2,N),1:N) == dot(Fill(2,N),1:N) == dot(1:N,Fill(2,N)) == 2*sum(1:N)

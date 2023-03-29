@@ -161,15 +161,16 @@ end
 *(a::Transpose{T, <:AbstractMatrix{T}}, b::ZerosVector{T}) where T<:Real = mult_zeros(a, b)
 
 # support types with fast sum
+_mul_maybe_zero(a, b) = ifelse(iszero(a), zero(promote_op(*, typeof(a), typeof(b))), a * b)
 
 function _fill_dot(a::AbstractFillVector{T}, b::AbstractVector{V}) where {T,V}
     axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
     S = promote_op(+, T, V)
     # treat zero separately to support ∞-vectors
-    if iszero(b) || iszero(a)
+    if iszero(a)
         zero(S)
     else
-        dot(getindex_value(a), S(sum(b)))
+        _mul_maybe_zero(S(sum(b)), conj(getindex_value(a)))
     end
 end
 
@@ -177,10 +178,10 @@ function _fill_dot_rev(a::AbstractVector{T}, b::AbstractFillVector{V}) where {T,
     axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
     S = promote_op(+, T, V)
     # treat zero separately to support ∞-vectors
-    if iszero(b) || iszero(a)
+    if iszero(b)
         zero(S)
     else
-        dot(S(sum(a)), getindex_value(b))
+        _mul_maybe_zero(conj(S(sum(a))), getindex_value(b))
     end
 end
 
