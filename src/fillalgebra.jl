@@ -216,10 +216,8 @@ end
 -(a::AbstractFill) = Fill(-getindex_value(a), size(a))
 
 
-function +(a::Zeros{T}, b::Zeros{V}) where {T, V} # for disambiguity
-    promote_shape(a,b)
-    return elconvert(promote_op(+,T,V),a)
-end
++(a::Zeros, b::Zeros) = abs_add_zero(a, b)
+-(a::Zeros, b::Zeros) = abs_add_zero(a, b)
 
 # see glue.jl for ambiguities
 for TYPE in (:AbstractArray, :AbstractFill, :AbstractRange)
