@@ -1298,7 +1298,7 @@ end
     @test dot(u, Z, v) == 0
 
     @test dot(Zeros(5), Zeros{ComplexF16}(5)) ≡ zero(ComplexF64)
-    @test dot(Zeros(5), Ones{ComplexF16}(5)) ≡ zero(ComplexF64)
+    @test @inferred(dot(Zeros(5), Ones{ComplexF16}(5))) ≡ zero(ComplexF64)
     @test dot(Ones{ComplexF16}(5), Zeros(5)) ≡ zero(ComplexF64)
     @test dot(randn(5), Zeros{ComplexF16}(5)) ≡ dot(Zeros{ComplexF16}(5), randn(5)) ≡ zero(ComplexF64)
     @test dot(c, Fill(1 + im, 15)) ≡ dot(Fill(1 + im, 15), c)' ≈ dot(c, fill(1 + im, 15))
