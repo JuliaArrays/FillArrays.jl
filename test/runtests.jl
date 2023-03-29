@@ -1291,6 +1291,7 @@ end
     Random.seed!(5)
     u = rand(n)
     v = rand(n)
+    c = rand(ComplexF16, n)
 
     @test dot(u, D, v) == dot(u, v)
     @test dot(u, 2D, v) == 2dot(u, v)
@@ -1300,6 +1301,7 @@ end
     @test dot(Zeros(5), Ones{ComplexF16}(5)) ≡ zero(ComplexF64)
     @test dot(Ones{ComplexF16}(5), Zeros(5)) ≡ zero(ComplexF64)
     @test dot(randn(5), Zeros{ComplexF16}(5)) ≡ dot(Zeros{ComplexF16}(5), randn(5)) ≡ zero(ComplexF64)
+    @test dot(c, Fill(1 + im, 15)) ≡ dot(Fill(1 + im, 15), c) ≡ dot(c, fill(1 + im, 15))
 
     @test dot(Fill(1,5), Fill(2.0,5)) ≡ 10.0
 
