@@ -22,6 +22,8 @@ export Zeros, Ones, Fill, Eye, Trues, Falses
 
 import Base: oneto
 
+include("glue.jl")
+
 """
     AbstractFill{T, N, Axes} <: AbstractArray{T, N}
 

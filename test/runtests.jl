@@ -311,7 +311,7 @@ as_array(x::UniformScaling) = x
 function test_addition_and_subtraction(As, Bs, Tout::Type)
     for A in As, B in Bs
         @testset "$(typeof(A)) ± $(typeof(B))" begin
-            @test A + B isa Tout{promote_type(eltype(A), eltype(B))}
+            @test typeof(A + B) <: Tout{promote_type(eltype(A), eltype(B))}
             @test as_array(A + B) == as_array(A) + as_array(B)
 
             @test A - B isa Tout{promote_type(eltype(A), eltype(B))}

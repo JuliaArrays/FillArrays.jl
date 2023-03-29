@@ -220,14 +220,15 @@ function +(a::Zeros{T}, b::Zeros{V}) where {T, V} # for disambiguity
     promote_shape(a,b)
     return elconvert(promote_op(+,T,V),a)
 end
-# no AbstractArray. Otherwise incompatible with StaticArrays.jl
-# AbstractFill for disambiguity
-for TYPE in (:Array, :AbstractFill, :AbstractRange, :Diagonal)
-    @eval function +(a::$TYPE{T}, b::Zeros{V}) where {T, V}
-        promote_shape(a,b)
-        return elconvert(promote_op(+,T,V),a)
-    end
-    @eval +(a::Zeros, b::$TYPE) = b + a
+
+# see glue.jl for ambiguities
+for TYPE in (:AbstractArray, :AbstractFill, :AbstractRange)
+    @eval +(a::$TYPE, b::Zeros) = abs_add_zero(a, b)
+    @eval +(a::Zeros, b::$TYPE) = abs_add_zero(b, a)
+end
+@inline function abs_add_zero(a::AbstractArray{T}, b::Zeros{V}) where {T, V}
+    promote_shape(a,b)
+    return elconvert(promote_op(+,T,V),a)
 end
 
 # for VERSION other than 1.6, could use ZerosMatrix only
@@ -242,13 +243,13 @@ end
 
 -(a::Ones, b::Ones) = Zeros(a) + Zeros(b)
 
-# no AbstractArray. Otherwise incompatible with StaticArrays.jl
-for TYPE in (:Array, :AbstractRange)
+# see glue.jl for ambiguities
+for TYPE in (:AbstractArray, :AbstractRange)
     @eval begin
         +(a::$TYPE, b::AbstractFill) = fill_add(a, b)
-        -(a::$TYPE, b::AbstractFill) = a + (-b)
+        -(a::$TYPE, b::AbstractFill) = fill_add(a, -b)
         +(a::AbstractFill, b::$TYPE) = fill_add(b, a)
-        -(a::AbstractFill, b::$TYPE) = a + (-b)
+        -(a::AbstractFill, b::$TYPE) = fill_add(-b, a)
     end
 end
 +(a::AbstractFill, b::AbstractFill) = Fill(getindex_value(a) + getindex_value(b), promote_shape(a,b))
