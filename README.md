@@ -1,8 +1,12 @@
 # FillArrays.jl
 
-
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://JuliaArrays.github.io/FillArrays.jl/stable)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaArrays.github.io/FillArrays.jl/dev)
 [![Build Status](https://github.com/JuliaArrays/FillArrays.jl/workflows/CI/badge.svg)](https://github.com/JuliaArrays/FillArrays.jl/actions)
 [![codecov](https://codecov.io/gh/JuliaArrays/FillArrays.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaArrays/FillArrays.jl)
+[![deps](https://juliahub.com/docs/FillArrays/deps.svg)](https://juliahub.com/ui/Packages/FillArrays/2Dg1l?t=2)
+[![version](https://juliahub.com/docs/FillArrays/version.svg)](https://juliahub.com/ui/Packages/FillArrays/2Dg1l)
+[![pkgeval](https://juliahub.com/docs/FillArrays/pkgeval.svg)](https://juliahub.com/ui/Packages/FillArrays/2Dg1l)
 
 Julia package to lazily represent matrices filled with a single entry,
 as well as identity matrices.  This package exports the following types:
@@ -10,12 +14,8 @@ as well as identity matrices.  This package exports the following types:
 
 
 The primary purpose of this package is to present a unified way of constructing
-matrices. For example, to construct a 5-by-5 `CLArray` of all zeros, one would use
-```julia
-julia> CLArray(Zeros(5,5))
-```
-Because `Zeros` is lazy, this can be accomplished on the GPU with no memory transfer.
-Similarly, to construct a 5-by-5 `BandedMatrix` of all zeros with bandwidths `(1,2)`, one would use  
+matrices. 
+For example, to construct a 5-by-5 `BandedMatrix` of all zeros with bandwidths `(1,2)`, one would use  
 ```julia
 julia> BandedMatrix(Zeros(5,5), (1, 2))
 ```
