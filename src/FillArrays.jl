@@ -34,7 +34,7 @@ const AbstractFillVecOrMat{T} = Union{AbstractFillVector{T},AbstractFillMatrix{T
 
 ==(a::AbstractFill, b::AbstractFill) = axes(a) == axes(b) && getindex_value(a) == getindex_value(b)
 
-@inline function _fill_getindex(F::AbstractFill, kj::Integer...)
+Base.@propagate_inbounds function _fill_getindex(F::AbstractFill, kj::Integer...)
     @boundscheck checkbounds(F, kj...)
     getindex_value(F)
 end
@@ -42,13 +42,13 @@ end
 Base.@propagate_inbounds getindex(F::AbstractFill, k::Integer) = _fill_getindex(F, k)
 Base.@propagate_inbounds getindex(F::AbstractFill{T, N}, kj::Vararg{Integer, N}) where {T, N} = _fill_getindex(F, kj...)
 
-@inline function setindex!(F::AbstractFill, v, k::Integer)
+Base.@propagate_inbounds function setindex!(F::AbstractFill, v, k::Integer)
     @boundscheck checkbounds(F, k)
     v == getindex_value(F) || throw(ArgumentError("Cannot setindex! to $v for an AbstractFill with value $(getindex_value(F))."))
     F
 end
 
-@inline function setindex!(F::AbstractFill{T, N}, v, kj::Vararg{Integer, N}) where {T, N}
+Base.@propagate_inbounds function setindex!(F::AbstractFill{T, N}, v, kj::Vararg{Integer, N}) where {T, N}
     @boundscheck checkbounds(F, kj...)
     v == getindex_value(F) || throw(ArgumentError("Cannot setindex! to $v for an AbstractFill with value $(getindex_value(F))."))
     F
@@ -177,20 +177,20 @@ convert(::Type{T}, F::T) where T<:Fill = F
 
 
 
-getindex(F::Fill{<:Any,0}) = getindex_value(F)
+Base.@propagate_inbounds getindex(F::Fill{<:Any,0}) = getindex_value(F)
 
-Base.@propagate_inbounds @inline function _fill_getindex(A::AbstractFill, I::Vararg{Union{Real, AbstractArray}, N}) where N
+Base.@propagate_inbounds function _fill_getindex(A::AbstractFill, I::Vararg{Union{Real, AbstractArray}, N}) where N
     @boundscheck checkbounds(A, I...)
     shape = Base.index_shape(I...)
     fillsimilar(A, shape)
 end
 
-Base.@propagate_inbounds @inline function _fill_getindex(A::AbstractFill, kr::AbstractArray{Bool})
+Base.@propagate_inbounds function _fill_getindex(A::AbstractFill, kr::AbstractArray{Bool})
    @boundscheck checkbounds(A, kr)
    fillsimilar(A, count(kr))
 end
 
-Base.@propagate_inbounds @inline Base._unsafe_getindex(::IndexStyle, F::AbstractFill, I::Vararg{Union{Real, AbstractArray}, N}) where N =
+Base._unsafe_getindex(::IndexStyle, F::AbstractFill, I::Vararg{Union{Real, AbstractArray}, N}) where N =
     @inbounds(return _fill_getindex(F, I...))
 
 
@@ -332,7 +332,7 @@ axes(T::UpperOrLowerTriangular{<:Any,<:AbstractFill}) = axes(parent(T))
 axes(rd::RectDiagonal) = rd.axes
 size(rd::RectDiagonal) = map(length, rd.axes)
 
-@inline function getindex(rd::RectDiagonal{T}, i::Integer, j::Integer) where T
+Base.@propagate_inbounds function getindex(rd::RectDiagonal{T}, i::Integer, j::Integer) where T
     @boundscheck checkbounds(rd, i, j)
     if i == j
         @inbounds r = rd.diag[i]
@@ -342,7 +342,7 @@ size(rd::RectDiagonal) = map(length, rd.axes)
     return r
 end
 
-function setindex!(rd::RectDiagonal, v, i::Integer, j::Integer)
+Base.@propagate_inbounds function setindex!(rd::RectDiagonal, v, i::Integer, j::Integer)
     @boundscheck checkbounds(rd, i, j)
     if i == j
         @inbounds rd.diag[i] = v

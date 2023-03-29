@@ -1480,3 +1480,19 @@ end
     @test cor(Fill(3, 4, 5)) ≈ cor(fill(3, 4, 5)) nans=true
     @test cor(Fill(3, 4, 5), dims=2) ≈ cor(fill(3, 4, 5), dims=2) nans=true
 end
+
+
+# # Works at REPL, but broken in CI
+# @testset "Inbounds optimization" begin
+#     function llvm_lines(a)
+#         f(x,j) = @inbounds x[j]
+#         io = IOBuffer()
+#         code_llvm(io, f, (typeof(a), Int); debuginfo=:none)
+#         seekstart(io)
+#         countlines(io)
+#     end
+    
+#     @test llvm_lines(Zeros(10)) < 10
+#     @test llvm_lines(Ones(10)) < 10
+#     @test llvm_lines(Fill(2.0,10)) < 10
+# end
