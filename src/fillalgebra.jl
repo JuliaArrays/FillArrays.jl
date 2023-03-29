@@ -224,7 +224,9 @@ end
 # see glue.jl for ambiguities
 for TYPE in (:AbstractArray, :AbstractFill, :AbstractRange)
     @eval +(a::$TYPE, b::Zeros) = abs_add_zero(a, b)
+    @eval -(a::$TYPE, b::Zeros) = abs_add_zero(a, b)
     @eval +(a::Zeros, b::$TYPE) = abs_add_zero(b, a)
+    @eval -(a::Zeros, b::$TYPE) = abs_add_zero(-b, a)
 end
 @inline function abs_add_zero(a::AbstractArray{T}, b::Zeros{V}) where {T, V}
     promote_shape(a,b)
