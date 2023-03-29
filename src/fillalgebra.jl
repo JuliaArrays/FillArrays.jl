@@ -215,46 +215,38 @@ end
 -(a::Zeros) = a
 -(a::AbstractFill) = Fill(-getindex_value(a), size(a))
 
-
+# templates
+macro _add_zero(TYPE)
+    esc(quote
+        @inline +(a::$TYPE, b::Zeros) = abs_add_zero(a, b)
+        @inline -(a::$TYPE, b::Zeros) = abs_add_zero(a, b)
+        @inline +(a::Zeros, b::$TYPE) = abs_add_zero(b, a)
+        @inline -(a::Zeros, b::$TYPE) = abs_add_zero(-b, a)
+    end)
+end
+macro _add_fill(TYPE)
+    esc(quote
+        @_add_zero $TYPE
+        @inline +(a::$TYPE, b::AbstractFill) = fill_add(a, b)
+        @inline -(a::$TYPE, b::AbstractFill) = fill_add(a, -b)
+        @inline +(a::AbstractFill, b::$TYPE) = fill_add(b, a)
+        @inline -(a::AbstractFill, b::$TYPE) = fill_add(-b, a)
+    end)
+end
 +(a::Zeros, b::Zeros) = abs_add_zero(a, b)
 -(a::Zeros, b::Zeros) = abs_add_zero(a, b)
++(a::AbstractFill, b::AbstractFill) = Fill(getindex_value(a) + getindex_value(b), promote_shape(a,b))
+-(a::AbstractFill, b::AbstractFill) = a + (-b)
 
-# see glue.jl for ambiguities
-for TYPE in (:AbstractArray, :AbstractFill, :AbstractRange)
-    @eval +(a::$TYPE, b::Zeros) = abs_add_zero(a, b)
-    @eval -(a::$TYPE, b::Zeros) = abs_add_zero(a, b)
-    @eval +(a::Zeros, b::$TYPE) = abs_add_zero(b, a)
-    @eval -(a::Zeros, b::$TYPE) = abs_add_zero(-b, a)
-end
+@_add_zero AbstractFill
+@_add_fill AbstractArray
+@_add_fill AbstractRange
+
+# backends
 @inline function abs_add_zero(a::AbstractArray{T}, b::Zeros{V}) where {T, V}
     promote_shape(a,b)
     return elconvert(promote_op(+,T,V),a)
 end
-
-# for VERSION other than 1.6, could use ZerosMatrix only
-function +(a::AbstractFillMatrix{T}, b::UniformScaling) where {T}
-    n = checksquare(a)
-    return a + Diagonal(Fill(zero(T) + b.λ, n))
-end
-
-# LinearAlgebra defines `-(a::AbstractMatrix, b::UniformScaling) = a + (-b)`,
-# so the implementation of `-(a::UniformScaling, b::AbstractFill{<:Any,2})` is sufficient
--(a::UniformScaling, b::AbstractFill) = -b + a # @test I-Zeros(3,3) === Diagonal(Ones(3))
-
--(a::Ones, b::Ones) = Zeros(a) + Zeros(b)
-
-# see glue.jl for ambiguities
-for TYPE in (:AbstractArray, :AbstractRange)
-    @eval begin
-        +(a::$TYPE, b::AbstractFill) = fill_add(a, b)
-        -(a::$TYPE, b::AbstractFill) = fill_add(a, -b)
-        +(a::AbstractFill, b::$TYPE) = fill_add(b, a)
-        -(a::AbstractFill, b::$TYPE) = fill_add(-b, a)
-    end
-end
-+(a::AbstractFill, b::AbstractFill) = Fill(getindex_value(a) + getindex_value(b), promote_shape(a,b))
--(a::AbstractFill, b::AbstractFill) = a + (-b)
-
 @inline function fill_add(a::AbstractArray, b::AbstractFill)
     promote_shape(a, b)
     a .+ [getindex_value(b)]
@@ -268,6 +260,19 @@ end
 @inline elconvert(::Type{T}, A::AbstractRange) where T = T(first(A)):T(step(A)):T(last(A))
 @inline elconvert(::Type{T}, A::AbstractUnitRange) where T<:Integer = AbstractUnitRange{T}(A)
 @inline elconvert(::Type{T}, A::AbstractArray) where T = AbstractArray{T}(A)
+
+# special cases
+# for VERSION other than 1.6, could use ZerosMatrix only
+function +(a::AbstractFillMatrix{T}, b::UniformScaling) where {T}
+    n = checksquare(a)
+    return a + Diagonal(Fill(zero(T) + b.λ, n))
+end
+
+# LinearAlgebra defines `-(a::AbstractMatrix, b::UniformScaling) = a + (-b)`,
+# so the implementation of `-(a::UniformScaling, b::AbstractFill{<:Any,2})` is sufficient
+-(a::UniformScaling, b::AbstractFill) = -b + a # @test I-Zeros(3,3) === Diagonal(Ones(3))
+
+-(a::Ones, b::Ones) = Zeros(a) + Zeros(b)
 
 ####
 # norm
