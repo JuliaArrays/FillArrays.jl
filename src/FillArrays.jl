@@ -174,6 +174,12 @@ getindex_value
 AbstractArray{T}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 AbstractArray{T,N}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 AbstractFill{T}(F::AbstractFill) where T = AbstractArray{T}(F)
+AbstractFill{T,N}(F::AbstractFill) where {T,N} = AbstractArray{T,N}(F)
+AbstractFill{T,N,Ax}(F::AbstractFill{<:Any,N,Ax}) where {T,N,Ax} = AbstractArray{T,N}(F)
+
+convert(::Type{AbstractFill{T}}, F::AbstractFill) where T = convert(AbstractArray{T}, F)
+convert(::Type{AbstractFill{T,N}}, F::AbstractFill) where {T,N} = convert(AbstractArray{T,N}, F)
+convert(::Type{AbstractFill{T,N,Ax}}, F::AbstractFill{<:Any,N,Ax}) where {T,N,Ax} = convert(AbstractArray{T,N}, F)
 
 copy(F::Fill) = Fill(F.value, F.axes)
 
