@@ -1,4 +1,4 @@
-using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, Random, Base64, Test, Statistics
+using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, Random, Base64, Test, Statistics, LazyArrays
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 using Aqua
@@ -377,6 +377,9 @@ end
     # FillArray + StaticArray should not have ambiguities
     A_svec, B_svec = SVector{5}(rand(5)), SVector(1, 2, 3, 4, 5)
     test_addition_and_subtraction((A_fill, B_fill, Zeros(5)), (A_svec, B_svec), SVector{5})
+
+    # FillArray + LazyArray should not have ambiguities
+    test_addition_and_subtraction((A_fill, B_fill, Zeros(5)), (Vcat(1:2, 1:3),), Vcat)
 
     # Issue #224
     A_matmat, B_matmat = Fill(rand(3,3),5), [rand(3,3) for n=1:5]
