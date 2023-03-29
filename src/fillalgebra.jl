@@ -162,31 +162,31 @@ end
 
 # support types with fast sum
 
-function _fill_dot(a::AbstractVector{T}, b::AbstractFill{V}) where {T,V}
+function _fill_dot(a::AbstractFillVector{T}, b::AbstractVector{V}) where {T,V}
     axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
     S = promote_op(+, T, V)
     # treat zero separately to support ∞-vectors
     if iszero(b) || iszero(a)
         zero(S)
     else
-        dot(S(sum(a)), S(getindex_value(b)))
+        dot(getindex_value(a), S(sum(b)))
     end
 end
 
-function _fill_dot_conj(a::AbstractVector{T}, b::AbstractFill{V}) where {T,V}
+function _fill_dot_rev(a::AbstractVector{T}, b::AbstractFillVector{V}) where {T,V}
     axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
     S = promote_op(+, T, V)
     # treat zero separately to support ∞-vectors
     if iszero(b) || iszero(a)
         zero(S)
     else
-        dot(S(getindex_value(b)), S(sum(a)))
+        dot(S(sum(a)), getindex_value(b))
     end
 end
 
 dot(a::AbstractFillVector, b::AbstractFillVector) = _fill_dot(a, b)
-dot(a::AbstractFillVector, b::AbstractVector) = _fill_dot_conj(b, a)
-dot(a::AbstractVector, b::AbstractFillVector) = _fill_dot(a, b)
+dot(a::AbstractFillVector, b::AbstractVector) = _fill_dot(a, b)
+dot(a::AbstractVector, b::AbstractFillVector) = _fill_dot_rev(a, b)
 
 function dot(u::AbstractVector, E::Eye, v::AbstractVector)
     length(u) == size(E,1) && length(v) == size(E,2) ||
