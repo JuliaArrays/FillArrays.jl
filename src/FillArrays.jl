@@ -148,6 +148,27 @@ Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
 @inline axes(F::Fill) = F.axes
 @inline size(F::Fill) = map(length, F.axes)
 
+"""
+    getindex_value(F::AbstractFill)
+
+Return the value that `F` is filled with.
+
+# Examples
+
+```jldoctest
+julia> f = Ones(3);
+
+julia> FillArrays.getindex_value(f)
+1.0
+
+julia> g = Fill(2, 10);
+
+julia> FillArrays.getindex_value(g)
+2
+```
+"""
+getindex_value
+
 @inline getindex_value(F::Fill) = F.value
 
 AbstractArray{T}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
@@ -156,7 +177,12 @@ AbstractFill{T}(F::AbstractFill) where T = AbstractArray{T}(F)
 
 copy(F::Fill) = Fill(F.value, F.axes)
 
-""" Throws an error if `arr` does not contain one and only one unique value. """
+"""
+    unique_value(arr::AbstractArray)
+
+Return `only(unique(arr))` without intermediate allocations.
+Throws an error if `arr` does not contain one and only one unique value.
+"""
 function unique_value(arr::AbstractArray)
     if isempty(arr) error("Cannot convert empty array to Fill") end
     val = first(arr)
@@ -438,7 +464,8 @@ end
 
 
 ## Array
-Base.Array{T,N}(F::AbstractFill{V,N}) where {T,V,N} = fill(convert(T, getindex_value(F)), size(F))
+Base.Array{T,N}(F::AbstractFill{V,N}) where {T,V,N} =
+    convert(Array{T,N}, fill(convert(T, getindex_value(F)), size(F)))
 
 # These are in case `zeros` or `ones` are ever faster than `fill`
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
@@ -449,7 +476,7 @@ end
 
 # temporary patch. should be a PR(#48895) to LinearAlgebra
 Diagonal{T}(A::AbstractFillMatrix) where T = Diagonal{T}(diag(A))
-function convert(::Type{T}, A::AbstractFillMatrix) where T<:Diagonal 
+function convert(::Type{T}, A::AbstractFillMatrix) where T<:Diagonal
     checksquare(A)
     isdiag(A) ? T(A) : throw(InexactError(:convert, T, A))
 end
