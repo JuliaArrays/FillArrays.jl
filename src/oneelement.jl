@@ -49,3 +49,10 @@ function Base.setindex(A::Zeros{T,N}, v, kj::Vararg{Int,N}) where {T,N}
     @boundscheck checkbounds(A, kj...)
     OneElement(convert(T, v), kj, axes(A))
 end
+
+
+Base.@propagate_inbounds function view(A::RectOrDiagonal{<:Any,<:AbstractFill}, kr::AbstractRange, j::Integer)
+    @boundscheck checkbounds(A, kr, j)
+    k = findfirst(isequal(j), kr)
+    OneElement(getindex_value(A.diag), isnothing(k) ? 0 : something(k), length(kr))
+end
