@@ -1309,12 +1309,12 @@ end
     @test dot(u, 2D, v) == 2dot(u, v)
     @test dot(u, Z, v) == 0
 
-    @test dot(Zeros(5), Zeros{ComplexF16}(5)) ≡ zero(ComplexF64)
+    @test @inferred(dot(Zeros(5), Zeros{ComplexF16}(5))) ≡ zero(ComplexF64)
     @test @inferred(dot(Zeros(5), Ones{ComplexF16}(5))) ≡ zero(ComplexF64)
-    @test abs(dot(Ones{ComplexF16}(5), Zeros(5))) ≡ abs(dot(randn(5), Zeros{ComplexF16}(5))) ≡ abs(dot(Zeros{ComplexF16}(5), randn(5))) ≡ zero(Float64) # 0.0 !≡ -0.0
-    @test dot(c, Fill(1 + im, 15)) ≡ dot(Fill(1 + im, 15), c)' ≈ dot(c, fill(1 + im, 15))
+    @test abs(@inferred(dot(Ones{ComplexF16}(5), Zeros(5)))) ≡ abs(@inferred(dot(randn(5), Zeros{ComplexF16}(5)))) ≡ abs(@inferred(dot(Zeros{ComplexF16}(5), randn(5)))) ≡ zero(Float64) # 0.0 !≡ -0.0
+    @test @inferred(dot(c, Fill(1 + im, 15))) ≡ (@inferred(dot(Fill(1 + im, 15), c)))' ≈ @inferred(dot(c, fill(1 + im, 15)))
 
-    @test dot(Fill(1,5), Fill(2.0,5)) ≡ 10.0
+    @test @inferred(dot(Fill(1,5), Fill(2.0,5))) ≡ 10.0
     @test_skip dot(Fill(true,5), Fill(Int8(1),5)) isa Int8 # not working at present
 
     let N = 2^big(1000) # fast dot for fast sum
