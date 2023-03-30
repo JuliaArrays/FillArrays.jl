@@ -175,7 +175,7 @@ dot(a::AbstractFillVector, b::AbstractFillVector) = _fill_dot(a, b)
 dot(a::AbstractFillVector, b::AbstractVector) = _fill_dot(a, b)
 dot(a::AbstractVector, b::AbstractFillVector) = _fill_dot_rev(a, b)
 
-if VERSION >= v"1.6" && VERSION < v"1.7"
+if VERSION >= v"1.6.0" && VERSION < v"1.7"
     dot(A::AbstractFill, J::UniformScaling) = dot(tr(A), J.λ) # borrowed from julia\stdlib\v1.8\LinearAlgebra\src\uniformscaling.jl:516
 end
 
