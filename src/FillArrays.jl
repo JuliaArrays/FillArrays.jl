@@ -6,7 +6,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero,
-    show, view, in, mapreduce, one, reverse, promote_op
+    show, view, in, mapreduce, one, reverse, promote_op, promote_rule
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
@@ -18,7 +18,7 @@ import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
 import Statistics: mean, std, var, cov, cor
 
 
-export Zeros, Ones, Fill, Eye, Trues, Falses
+export Zeros, Ones, Fill, Eye, Trues, Falses, OneElement
 
 import Base: oneto
 
@@ -33,6 +33,7 @@ const AbstractFillMatrix{T} = AbstractFill{T,2}
 const AbstractFillVecOrMat{T} = Union{AbstractFillVector{T},AbstractFillMatrix{T}}
 
 ==(a::AbstractFill, b::AbstractFill) = axes(a) == axes(b) && getindex_value(a) == getindex_value(b)
+
 
 @inline function _fill_getindex(F::AbstractFill, kj::Integer...)
     @boundscheck checkbounds(F, kj...)
@@ -147,15 +148,47 @@ Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
 @inline axes(F::Fill) = F.axes
 @inline size(F::Fill) = map(length, F.axes)
 
+"""
+    getindex_value(F::AbstractFill)
+
+Return the value that `F` is filled with.
+
+# Examples
+
+```jldoctest
+julia> f = Ones(3);
+
+julia> FillArrays.getindex_value(f)
+1.0
+
+julia> g = Fill(2, 10);
+
+julia> FillArrays.getindex_value(g)
+2
+```
+"""
+getindex_value
+
 @inline getindex_value(F::Fill) = F.value
 
 AbstractArray{T}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 AbstractArray{T,N}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 AbstractFill{T}(F::AbstractFill) where T = AbstractArray{T}(F)
+AbstractFill{T,N}(F::AbstractFill) where {T,N} = AbstractArray{T,N}(F)
+AbstractFill{T,N,Ax}(F::AbstractFill{<:Any,N,Ax}) where {T,N,Ax} = AbstractArray{T,N}(F)
+
+convert(::Type{AbstractFill{T}}, F::AbstractFill) where T = convert(AbstractArray{T}, F)
+convert(::Type{AbstractFill{T,N}}, F::AbstractFill) where {T,N} = convert(AbstractArray{T,N}, F)
+convert(::Type{AbstractFill{T,N,Ax}}, F::AbstractFill{<:Any,N,Ax}) where {T,N,Ax} = convert(AbstractArray{T,N}, F)
 
 copy(F::Fill) = Fill(F.value, F.axes)
 
-""" Throws an error if `arr` does not contain one and only one unique value. """
+"""
+    unique_value(arr::AbstractArray)
+
+Return `only(unique(arr))` without intermediate allocations.
+Throws an error if `arr` does not contain one and only one unique value.
+"""
 function unique_value(arr::AbstractArray)
     if isempty(arr) error("Cannot convert empty array to Fill") end
     val = first(arr)
@@ -274,6 +307,14 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         copy(F::$Typ) = F
 
         getindex(F::$Typ{T,0}) where T = getindex_value(F)
+
+        promote_rule(::Type{$Typ{T, N, Axes}}, ::Type{$Typ{V, N, Axes}}) where {T,V,N,Axes} = $Typ{promote_type(T,V),N,Axes}
+        function convert(::Type{$Typ{T,N,Axes}}, A::$Typ{V,N,Axes}) where {T,V,N,Axes}
+            convert(T, getindex_value(A)) # checks that the types are convertible
+            $Typ{T,N,Axes}(axes(A))
+        end
+        convert(::Type{$Typ{T,N}}, A::$Typ{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
+        convert(::Type{$Typ{T}}, A::$Typ{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
     end
 end
 
@@ -284,6 +325,8 @@ for TYPE in (:Fill, :AbstractFill, :Ones, :Zeros), STYPE in (:AbstractArray, :Ab
         @inline $STYPE{T,N}(F::$TYPE{T,N}) where {T,N} = F
     end
 end
+
+promote_rule(::Type{<:AbstractFill{T, N, Axes}}, ::Type{<:AbstractFill{V, N, Axes}}) where {T,V,N,Axes} = Fill{promote_type(T,V),N,Axes}
 
 """
     fillsimilar(a::AbstractFill, axes)
@@ -427,7 +470,8 @@ end
 
 
 ## Array
-Base.Array{T,N}(F::AbstractFill{V,N}) where {T,V,N} = fill(convert(T, getindex_value(F)), size(F))
+Base.Array{T,N}(F::AbstractFill{V,N}) where {T,V,N} =
+    convert(Array{T,N}, fill(convert(T, getindex_value(F)), size(F)))
 
 # These are in case `zeros` or `ones` are ever faster than `fill`
 for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
@@ -438,7 +482,7 @@ end
 
 # temporary patch. should be a PR(#48895) to LinearAlgebra
 Diagonal{T}(A::AbstractFillMatrix) where T = Diagonal{T}(diag(A))
-function convert(::Type{T}, A::AbstractFillMatrix) where T<:Diagonal 
+function convert(::Type{T}, A::AbstractFillMatrix) where T<:Diagonal
     checksquare(A)
     isdiag(A) ? T(A) : throw(InexactError(:convert, T, A))
 end
@@ -497,14 +541,14 @@ sum(x::AbstractFill) = getindex_value(x)*length(x)
 sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
 sum(x::Zeros) = getindex_value(x)
 
-cumsum(x::AbstractFill{<:Any,1}) = range(getindex_value(x); step=getindex_value(x),
-                                                    length=length(x))
+# needed to support infinite case
+steprangelen(st...) = StepRangeLen(st...)
+cumsum(x::AbstractFill{<:Any,1}) = steprangelen(getindex_value(x), getindex_value(x), length(x))
 
 cumsum(x::ZerosVector) = x
 cumsum(x::ZerosVector{Bool}) = x
 cumsum(x::OnesVector{II}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
 cumsum(x::OnesVector{Bool}) = oneto(length(x))
-cumsum(x::AbstractFillVector{Bool}) = cumsum(AbstractFill{Int}(x))
 
 
 #########
@@ -717,5 +761,7 @@ Base.@propagate_inbounds function view(A::AbstractFill, I::Vararg{Real})
     @boundscheck checkbounds(A, I...)
     fillsimilar(A)
 end
+
+include("oneelement.jl")
 
 end # module

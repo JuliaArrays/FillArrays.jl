@@ -29,6 +29,7 @@ include("infinitearrays.jl")
                 @test convert(AbstractArray,Z) ≡ Z
                 @test convert(AbstractArray{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
                 @test convert(AbstractVector{T},Z) ≡ AbstractVector{T}(Z) ≡ Z
+                @test convert(AbstractFill{T},Z) ≡ AbstractFill{T}(Z) ≡ Z
 
                 @test $Typ{T,1}(2ones(T,5)) == Z
                 @test $Typ{T}(2ones(T,5)) == Z
@@ -53,6 +54,9 @@ include("infinitearrays.jl")
                 @test convert(Fill{Int}, Ones(20)) ≡ Fill(1, 20)
                 @test convert(Fill{Int,1}, Ones(20)) ≡ Fill(1, 20)
                 @test convert(Fill{Int,1,Tuple{Base.OneTo{Int}}}, Ones(20)) ≡ Fill(1, 20)
+                @test convert(AbstractFill{Int}, Ones(20)) ≡ AbstractFill{Int}(Ones(20)) ≡ Ones{Int}(20)
+                @test convert(AbstractFill{Int,1}, Ones(20)) ≡ AbstractFill{Int,1}(Ones(20)) ≡ Ones{Int}(20)
+                @test convert(AbstractFill{Int,1,Tuple{Base.OneTo{Int}}}, Ones(20)) ≡ AbstractFill{Int,1,Tuple{Base.OneTo{Int}}}(Ones(20)) ≡ Ones{Int}(20)
 
                 @test $Typ{T,2}(2ones(T,5,5)) ≡ $Typ{T}(5,5)
                 @test $Typ{T}(2ones(T,5,5)) ≡ $Typ{T}(5,5)
@@ -196,6 +200,23 @@ include("infinitearrays.jl")
         A = FillArrays.RectDiagonal(Int[], (1:0, 1:4))
         @test !(0 in A)
     end
+
+    @testset "promotion" begin
+        Z = Zeros{Int}(5)
+        Zf = Zeros(5)
+        O = Ones{Int}(5)
+        Of = Ones{Float64}(5)
+        @test [Z,O] isa Vector{Fill{Int,1,Tuple{Base.OneTo{Int}}}}
+        @test [Z,Of] isa Vector{Fill{Float64,1,Tuple{Base.OneTo{Int}}}}
+        @test [O,O] isa Vector{Ones{Int,1,Tuple{Base.OneTo{Int}}}}
+        @test [O,Of] isa Vector{Ones{Float64,1,Tuple{Base.OneTo{Int}}}}
+        @test [Z,Zf] isa Vector{Zeros{Float64,1,Tuple{Base.OneTo{Int}}}}
+
+        @test convert(Ones{Int}, Of) ≡ convert(Ones{Int,1}, Of) ≡ convert(typeof(O), Of) ≡ O
+        @test convert(Zeros{Int}, Zf) ≡ convert(Zeros{Int,1}, Zf) ≡ convert(typeof(Z), Zf) ≡ Z
+
+        @test_throws MethodError convert(Zeros{SVector{2,Int}}, Zf)
+    end
 end
 
 @testset "indexing" begin
@@ -308,20 +329,32 @@ end
 # type, and produce numerically correct results.
 as_array(x::AbstractArray) = Array(x)
 as_array(x::UniformScaling) = x
-function test_addition_and_subtraction(As, Bs, Tout::Type)
+equal_or_undef(a::Number, b::Number) = (a == b) || isequal(a, b)
+equal_or_undef(a, b) = all(equal_or_undef.(a, b))
+function test_addition_subtraction_dot(As, Bs, Tout::Type)
     for A in As, B in Bs
-        @testset "$(typeof(A)) ± $(typeof(B))" begin
+        @testset "$(typeof(A)) and $(typeof(B))" begin
             @test A + B isa Tout{promote_type(eltype(A), eltype(B))}
-            @test as_array(A + B) == as_array(A) + as_array(B)
+            @test equal_or_undef(as_array(A + B), as_array(A) + as_array(B))
 
             @test A - B isa Tout{promote_type(eltype(A), eltype(B))}
-            @test as_array(A - B) == as_array(A) - as_array(B)
+            @test equal_or_undef(as_array(A - B), as_array(A) - as_array(B))
 
             @test B + A isa Tout{promote_type(eltype(B), eltype(A))}
-            @test as_array(B + A) == as_array(B) + as_array(A)
+            @test equal_or_undef(as_array(B + A), as_array(B) + as_array(A))
 
             @test B - A isa Tout{promote_type(eltype(B), eltype(A))}
-            @test as_array(B - A) == as_array(B) - as_array(A)
+            @test equal_or_undef(as_array(B - A), as_array(B) - as_array(A))
+            
+            # Julia 1.6 doesn't support dot(UniformScaling)
+            if VERSION < v"1.6.0" || VERSION >= v"1.8.0"
+                d1 = dot(A, B)
+                d2 = dot(as_array(A), as_array(B))
+                d3 = dot(B, A)
+                d4 = dot(as_array(B), as_array(A))
+                @test d1 ≈ d2 || d1 ≡ d2
+                @test d3 ≈ d4 || d3 ≡ d4
+            end
         end
     end
 end
@@ -351,24 +384,24 @@ end
     @test -A_fill === Fill(-A_fill.value, 5)
 
     # FillArray +/- FillArray should construct a new FillArray.
-    test_addition_and_subtraction((A_fill, B_fill), (A_fill, B_fill), Fill)
+    test_addition_subtraction_dot((A_fill, B_fill), (A_fill, B_fill), Fill)
     test_addition_and_subtraction_dim_mismatch(A_fill, Fill(randn(rng), 5, 2))
 
     # FillArray + Array (etc) should construct a new Array using `getindex`.
-    A_dense, B_dense = randn(rng, 5), [5, 4, 3, 2, 1]
-    test_addition_and_subtraction((A_fill, B_fill), (A_dense, B_dense), Array)
+    B_dense = (randn(rng, 5), [5, 4, 3, 2, 1], fill(Inf, 5), fill(NaN, 5))
+    test_addition_subtraction_dot((A_fill, B_fill), B_dense, Array)
     test_addition_and_subtraction_dim_mismatch(A_fill, randn(rng, 5, 2))
 
     # FillArray + StepLenRange / UnitRange (etc) should yield an AbstractRange.
     A_ur, B_ur = 1.0:5.0, 6:10
-    test_addition_and_subtraction((A_fill, B_fill), (A_ur, B_ur), AbstractRange)
+    test_addition_subtraction_dot((A_fill, B_fill), (A_ur, B_ur), AbstractRange)
     test_addition_and_subtraction_dim_mismatch(A_fill, 1.0:6.0)
     test_addition_and_subtraction_dim_mismatch(A_fill, 5:10)
 
     # FillArray + UniformScaling should yield a Matrix in general
     As_fill_square = (Fill(randn(rng, Float64), 3, 3), Fill(5, 4, 4))
     Bs_us = (UniformScaling(2.3), UniformScaling(3))
-    test_addition_and_subtraction(As_fill_square, Bs_us, Matrix)
+    test_addition_subtraction_dot(As_fill_square, Bs_us, Matrix)
     As_fill_nonsquare = (Fill(randn(rng, Float64), 3, 2), Fill(5, 3, 4))
     for A in As_fill_nonsquare, B in Bs_us
         test_addition_and_subtraction_dim_mismatch(A, B)
@@ -376,12 +409,12 @@ end
 
     # FillArray + StaticArray should not have ambiguities
     A_svec, B_svec = SVector{5}(rand(5)), SVector(1, 2, 3, 4, 5)
-    test_addition_and_subtraction((A_fill, B_fill, Zeros(5)), (A_svec, B_svec), SVector{5})
+    test_addition_subtraction_dot((A_fill, B_fill, Zeros(5)), (A_svec, B_svec), SVector{5})
 
     # Issue #224
     A_matmat, B_matmat = Fill(rand(3,3),5), [rand(3,3) for n=1:5]
-    test_addition_and_subtraction((A_matmat,), (A_matmat,), Fill)
-    test_addition_and_subtraction((B_matmat,), (A_matmat,), Vector)
+    test_addition_subtraction_dot((A_matmat,), (A_matmat,), Fill)
+    test_addition_subtraction_dot((B_matmat,), (A_matmat,), Vector)
 
     # Optimizations for Zeros and RectOrDiagonal{<:Any, <:AbstractFill}
     As_special_square = (
@@ -391,7 +424,7 @@ end
         RectDiagonal(Fill(randn(rng, Float64), 3), 3, 3), RectDiagonal(Fill(3, 4), 4, 4)
     )
     DiagonalAbstractFill{T} = Diagonal{T, <:AbstractFill{T, 1}}
-    test_addition_and_subtraction(As_special_square, Bs_us, DiagonalAbstractFill)
+    test_addition_subtraction_dot(As_special_square, Bs_us, DiagonalAbstractFill)
     As_special_nonsquare = (
         Zeros(3, 2), Zeros{Int}(3, 4),
         Eye(3, 2), Eye{Int}(3, 4),
@@ -516,7 +549,7 @@ end
         @test [SVector(1,2)', SVector(2,3)', SVector(3,4)']' * Zeros{Int}(3) === SVector(0,0)
         @test_throws DimensionMismatch randn(4)' * Zeros(3)
         @test Zeros(5)' * randn(5,3) ≡ Zeros(5)'*Zeros(5,3) ≡ Zeros(5)'*Ones(5,3) ≡ Zeros(3)'
-        @test Zeros(5)' * randn(5) ≡ Zeros(5)' * Zeros(5) ≡ Zeros(5)' * Ones(5) ≡ 0.0
+        @test abs(Zeros(5)' * randn(5)) ≡ abs(Zeros(5)' * Zeros(5)) ≡ abs(Zeros(5)' * Ones(5)) ≡ 0.0
         @test Zeros(5) * Zeros(6)' ≡ Zeros(5,1) * Zeros(6)' ≡ Zeros(5,6)
         @test randn(5) * Zeros(6)' ≡ randn(5,1) * Zeros(6)' ≡ Zeros(5,6)
         @test Zeros(5) * randn(6)' ≡ Zeros(5,6)
@@ -531,10 +564,11 @@ end
         @test transpose([1, 2, 3]) * Zeros{Int}(3) === zero(Int)
         @test_throws DimensionMismatch transpose(randn(4)) * Zeros(3)
         @test transpose(Zeros(5)) * randn(5,3) ≡ transpose(Zeros(5))*Zeros(5,3) ≡ transpose(Zeros(5))*Ones(5,3) ≡ transpose(Zeros(3))
-        @test transpose(Zeros(5)) * randn(5) ≡ transpose(Zeros(5)) * Zeros(5) ≡ transpose(Zeros(5)) * Ones(5) ≡ 0.0
+        @test abs(transpose(Zeros(5)) * randn(5)) ≡ abs(transpose(Zeros(5)) * Zeros(5)) ≡ abs(transpose(Zeros(5)) * Ones(5)) ≡ 0.0
         @test randn(5) * transpose(Zeros(6)) ≡ randn(5,1) * transpose(Zeros(6)) ≡ Zeros(5,6)
         @test Zeros(5) * transpose(randn(6)) ≡ Zeros(5,6)
         @test transpose(randn(5)) * Zeros(5) ≡ 0.0
+        @test transpose(randn(5) .+ im) * Zeros(5) ≡ 0.0 + 0im
 
         @test transpose([[1,2]]) * Zeros{SVector{2,Int}}(1) ≡ 0
         @test_broken transpose([[1,2,3]]) * Zeros{SVector{2,Int}}(1)
@@ -549,13 +583,13 @@ end
         @test +(z1) === z1
         @test -(z1) === z1
 
-        test_addition_and_subtraction((z1, z2), (z1, z2), Zeros)
+        test_addition_subtraction_dot((z1, z2), (z1, z2), Zeros)
         test_addition_and_subtraction_dim_mismatch(z1, Zeros{Float64}(4, 2))
     end
 
     # `Zeros` +/- `Fill`s should yield `Fills`.
     fill1, fill2 = Fill(5.0, 4), Fill(5, 4)
-    test_addition_and_subtraction((z1, z2), (fill1, fill2), Fill)
+    test_addition_subtraction_dot((z1, z2), (fill1, fill2), Fill)
     test_addition_and_subtraction_dim_mismatch(z1, Fill(5, 5))
 
     X = randn(3, 5)
@@ -602,12 +636,13 @@ end
 
     @testset "Tests for ranges." begin
         X = randn(5)
-        @test !(Zeros(5) + X === X)
-        @test Zeros{Int}(5) + (1:5) === (1:5) && (1:5) + Zeros{Int}(5) === (1:5)
-        @test Zeros(5) + (1:5) === (1.0:1.0:5.0) && (1:5) + Zeros(5) === (1.0:1.0:5.0)
-        @test (1:5) - Zeros{Int}(5) === (1:5)
-        @test Zeros{Int}(5) - (1:5) === -1:-1:-5
-        @test Zeros(5) - (1:5) === -1.0:-1.0:-5.0
+        @test !(Zeros(5) + X ≡ X)
+        @test Zeros{Int}(5) + (1:5) ≡ (1:5) + Zeros{Int}(5) ≡ (1:5)
+        @test Zeros(5) + (1:5) ≡ (1:5) + Zeros(5) ≡ (1.0:1.0:5.0)
+        @test (1:5) - Zeros{Int}(5) ≡ (1:5)
+        @test Zeros{Int}(5) - (1:5) ≡ -1:-1:-5
+        @test Zeros(5) - (1:5) ≡ -1.0:-1.0:-5.0
+        @test Zeros{Int}(5) + (1.0:5) ≡ (1.0:5) + Zeros{Int}(5) ≡ 1.0:5
     end
 
     @testset "test Base.zero" begin
@@ -636,11 +671,11 @@ end
     @test sum(Fill(3,10)) ≡ 30
     @test reduce(+, Fill(3,10)) ≡ 30
     @test sum(x -> x + 1, Fill(3,10)) ≡ 40
-    @test cumsum(Fill(3,10)) ≡ 3:3:30
+    @test cumsum(Fill(3,10)) ≡ StepRangeLen(3,3,10)
 
     @test sum(Ones(10)) ≡ 10.0
     @test sum(x -> x + 1, Ones(10)) ≡ 20.0
-    @test cumsum(Ones(10)) ≡ 1.0:10.0
+    @test cumsum(Ones(10)) ≡ StepRangeLen(1.0, 1.0, 10)
 
     @test sum(Ones{Int}(10)) ≡ 10
     @test sum(x -> x + 1, Ones{Int}(10)) ≡ 20
@@ -656,7 +691,7 @@ end
 
     @test cumsum(Zeros{Bool}(10)) ≡ Zeros{Bool}(10)
     @test cumsum(Ones{Bool}(10)) ≡ Base.OneTo{Int}(10)
-    @test cumsum(Fill(true,10)) ≡ 1:1:10
+    @test cumsum(Fill(true,10)) ≡ StepRangeLen(true, true, 10)
 
     @test diff(Fill(1,10)) ≡ Zeros{Int}(9)
     @test diff(Ones{Float64}(10)) ≡ Zeros{Float64}(9)
@@ -761,6 +796,8 @@ end
         @test broadcast(*, rnge, Zeros(10, 10)) ≡ Zeros{Float64}(10, 10)
         @test broadcast(*, Ones{Int}(10), rnge) ≡ rnge
         @test broadcast(*, rnge, Ones{Int}(10)) ≡ rnge
+        @test broadcast(*, Ones(10), -5:4) ≡ broadcast(*, -5:4, Ones(10)) ≡ rnge
+        @test broadcast(*, Ones(10), -5:1:4) ≡ broadcast(*, -5:1:4, Ones(10)) ≡ rnge
         @test_throws DimensionMismatch broadcast(*, Fill(5.0, 11), rnge)
         @test broadcast(*, rnge, Fill(5.0, 10)) == broadcast(*, rnge, 5.0)
         @test_throws DimensionMismatch broadcast(*, rnge, Fill(5.0, 11))
@@ -1301,17 +1338,19 @@ end
     Random.seed!(5)
     u = rand(n)
     v = rand(n)
+    c = rand(ComplexF16, n)
 
     @test dot(u, D, v) == dot(u, v)
     @test dot(u, 2D, v) == 2dot(u, v)
     @test dot(u, Z, v) == 0
 
-    @test dot(Zeros(5), Zeros{ComplexF16}(5)) ≡ zero(ComplexF64)
-    @test dot(Zeros(5), Ones{ComplexF16}(5)) ≡ zero(ComplexF64)
-    @test dot(Ones{ComplexF16}(5), Zeros(5)) ≡ zero(ComplexF64)
-    @test dot(randn(5), Zeros{ComplexF16}(5)) ≡ dot(Zeros{ComplexF16}(5), randn(5)) ≡ zero(ComplexF64)
+    @test @inferred(dot(Zeros(5), Zeros{ComplexF16}(5))) ≡ zero(ComplexF64)
+    @test @inferred(dot(Zeros(5), Ones{ComplexF16}(5))) ≡ zero(ComplexF64)
+    @test abs(@inferred(dot(Ones{ComplexF16}(5), Zeros(5)))) ≡ abs(@inferred(dot(randn(5), Zeros{ComplexF16}(5)))) ≡ abs(@inferred(dot(Zeros{ComplexF16}(5), randn(5)))) ≡ zero(Float64) # 0.0 !≡ -0.0
+    @test @inferred(dot(c, Fill(1 + im, 15))) ≡ (@inferred(dot(Fill(1 + im, 15), c)))' ≈ @inferred(dot(c, fill(1 + im, 15)))
 
-    @test dot(Fill(1,5), Fill(2.0,5)) ≡ 10.0
+    @test @inferred(dot(Fill(1,5), Fill(2.0,5))) ≡ 10.0
+    @test_skip dot(Fill(true,5), Fill(Int8(1),5)) isa Int8 # not working at present
 
     let N = 2^big(1000) # fast dot for fast sum
         @test dot(Fill(2,N),1:N) == dot(Fill(2,N),1:N) == dot(1:N,Fill(2,N)) == 2*sum(1:N)
@@ -1340,6 +1379,8 @@ end
     @test stringmime("text/plain", Fill(7,2,3)) == "2×3 Fill{$Int}, with entries equal to 7"
     @test stringmime("text/plain", Fill(8.0,1)) == "1-element Fill{Float64}, with entry equal to 8.0"
     @test stringmime("text/plain", Eye(5)) == "5×5 Eye{Float64}"
+    # used downstream in LazyArrays.jl to deduce sparsity
+    @test Base.replace_in_print_matrix(Zeros(5,3), 1, 2, "0.0") == " ⋅ "
 
     # 2-arg show, compact printing
     @test repr(Zeros(3)) == "Zeros(3)"
@@ -1479,4 +1520,41 @@ end
     @test cor(Fill(3,4)) == cor(fill(3,4))
     @test cor(Fill(3, 4, 5)) ≈ cor(fill(3, 4, 5)) nans=true
     @test cor(Fill(3, 4, 5), dims=2) ≈ cor(fill(3, 4, 5), dims=2) nans=true
+end
+
+@testset "Structured broadcast" begin
+    D = Diagonal(1:5)
+    @test D + Zeros(5,5) isa Diagonal
+    @test D - Zeros(5,5) isa Diagonal
+    @test D .+ Zeros(5,5) isa Diagonal
+    @test D .- Zeros(5,5) isa Diagonal
+    @test D .* Zeros(5,5) isa Diagonal
+    @test Zeros(5,5) .* D isa Diagonal
+    @test Zeros(5,5) - D isa Diagonal
+    @test Zeros(5,5) + D isa Diagonal
+    @test Zeros(5,5) .- D isa Diagonal
+    @test Zeros(5,5) .+ D isa Diagonal
+    f = (x,y) -> x+1
+    @test f.(D, Zeros(5,5)) isa Matrix
+end
+
+@testset "OneElement" begin
+    e₁ = OneElement(2, 5)
+    @test e₁ == [0,1,0,0,0]
+    @test_throws BoundsError e₁[6]
+
+    e₁ = OneElement{Float64}(2, 5)
+    @test e₁ == [0,1,0,0,0]
+
+    v = OneElement{Float64}(2, 3, 4)
+    @test v == [0,0,2,0]
+
+    V = OneElement(2, (2,3), (3,4))
+    @test V == [0 0 0 0; 0 0 2 0; 0 0 0 0]
+
+    @test stringmime("text/plain", V) == "3×4 OneElement{$Int, 2, Tuple{$Int, $Int}, Tuple{Base.OneTo{$Int}, Base.OneTo{$Int}}}:\n ⋅  ⋅  ⋅  ⋅\n ⋅  ⋅  2  ⋅\n ⋅  ⋅  ⋅  ⋅"
+
+    @test Base.setindex(Zeros(5), 2, 2) ≡ OneElement(2.0, 2, 5)
+    @test Base.setindex(Zeros(5,3), 2, 2, 3) ≡ OneElement(2.0, (2,3), (5,3))
+    @test_throws BoundsError Base.setindex(Zeros(5), 2, 6)
 end
