@@ -161,6 +161,8 @@ end
 *(a::Transpose{T, <:AbstractMatrix{T}}, b::ZerosVector{T}) where T<:Real = mult_zeros(a, b)
 
 # support types with fast sum
+# infinite cases should be supported in InfiniteArrays.jl
+# type issues of Bool dot are ignored at present.
 function _fill_dot(a::AbstractFillVector{T}, b::AbstractVector{V}) where {T,V}
     axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
     dot(getindex_value(a), sum(b))
