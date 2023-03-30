@@ -324,12 +324,14 @@ function test_addition_subtraction_dot(As, Bs, Tout::Type)
             @test B - A isa Tout{promote_type(eltype(B), eltype(A))}
             @test equal_or_undef(as_array(B - A), as_array(B) - as_array(A))
             
-            d1 = dot(A, B)
-            d2 = dot(as_array(A), as_array(B))
-            d3 = dot(B, A)
-            d4 = dot(as_array(B), as_array(A))
-            @test d1 ≈ d2 || d1 ≡ d2
-            @test d3 ≈ d4 || d3 ≡ d4
+            if VERSION < v"1.6.0" || VERSION >= v"1.8.0"
+                d1 = dot(A, B)
+                d2 = dot(as_array(A), as_array(B))
+                d3 = dot(B, A)
+                d4 = dot(as_array(B), as_array(A))
+                @test d1 ≈ d2 || d1 ≡ d2
+                @test d3 ≈ d4 || d3 ≡ d4
+            end
         end
     end
 end
