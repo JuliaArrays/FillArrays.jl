@@ -14,12 +14,8 @@ as well as identity matrices.  This package exports the following types:
 
 
 The primary purpose of this package is to present a unified way of constructing
-matrices. For example, to construct a 5-by-5 `CLArray` of all zeros, one would use
-```julia
-julia> CLArray(Zeros(5,5))
-```
-Because `Zeros` is lazy, this can be accomplished on the GPU with no memory transfer.
-Similarly, to construct a 5-by-5 `BandedMatrix` of all zeros with bandwidths `(1,2)`, one would use  
+matrices. 
+For example, to construct a 5-by-5 `BandedMatrix` of all zeros with bandwidths `(1,2)`, one would use  
 ```julia
 julia> BandedMatrix(Zeros(5,5), (1, 2))
 ```

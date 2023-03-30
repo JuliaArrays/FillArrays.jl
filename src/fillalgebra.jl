@@ -72,7 +72,7 @@ for TYPE in (:AbstractFillVector, :AbstractVector)
     @eval *(a::ZerosMatrix, b::$TYPE) = mult_zeros(a,b)
 end
 
-function *(a::Diagonal, b::AbstractFill{<:Any,2})
+function *(a::Diagonal, b::AbstractFillMatrix)
     checkdimensionmismatch(a,b)
     a.diag .* b # use special broadcast
 end
@@ -137,21 +137,22 @@ function *(a::Transpose{T, <:AbstractVector{T}}, b::ZerosVector{T}) where T<:Rea
 end
 *(a::Transpose{T, <:AbstractMatrix{T}}, b::ZerosVector{T}) where T<:Real = mult_zeros(a, b)
 
-# treat zero separately to support ∞-vectors
-function _fill_dot(a::AbstractVector, b::AbstractVector)
+# support types with fast sum
+# infinite cases should be supported in InfiniteArrays.jl
+# type issues of Bool dot are ignored at present.
+function _fill_dot(a::AbstractFillVector{T}, b::AbstractVector{V}) where {T,V}
     axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
-    if iszero(a) || iszero(b)
-        zero(promote_type(eltype(a),eltype(b)))
-    elseif isa(a,AbstractFill)
-        getindex_value(a)sum(b)
-    else
-        getindex_value(b)sum(a)
-    end
+    dot(getindex_value(a), sum(b))
+end
+
+function _fill_dot_rev(a::AbstractVector{T}, b::AbstractFillVector{V}) where {T,V}
+    axes(a) == axes(b) || throw(DimensionMismatch("dot product arguments have lengths $(length(a)) and $(length(b))"))
+    dot(sum(a), getindex_value(b))
 end
 
 dot(a::AbstractFillVector, b::AbstractFillVector) = _fill_dot(a, b)
 dot(a::AbstractFillVector, b::AbstractVector) = _fill_dot(a, b)
-dot(a::AbstractVector, b::AbstractFillVector) = _fill_dot(a, b)
+dot(a::AbstractVector, b::AbstractFillVector) = _fill_dot_rev(a, b)
 
 function dot(u::AbstractVector, E::Eye, v::AbstractVector)
     length(u) == size(E,1) && length(v) == size(E,2) ||
@@ -172,11 +173,18 @@ function dot(u::AbstractVector{T}, D::Diagonal{U,<:Zeros}, v::AbstractVector{V})
 end
 
 # Addition and Subtraction
++(a::AbstractFill) = a
+-(a::Zeros) = a
+-(a::AbstractFill) = Fill(-getindex_value(a), size(a))
+
+
 function +(a::Zeros{T}, b::Zeros{V}) where {T, V} # for disambiguity
     promote_shape(a,b)
     return elconvert(promote_op(+,T,V),a)
 end
-for TYPE in (:AbstractArray, :AbstractFill) # AbstractFill for disambiguity
+# no AbstractArray. Otherwise incompatible with StaticArrays.jl
+# AbstractFill for disambiguity
+for TYPE in (:Array, :AbstractFill, :AbstractRange, :Diagonal)
     @eval function +(a::$TYPE{T}, b::Zeros{V}) where {T, V}
         promote_shape(a,b)
         return elconvert(promote_op(+,T,V),a)
@@ -196,15 +204,23 @@ end
 
 -(a::Ones, b::Ones) = Zeros(a) + Zeros(b)
 
-# necessary for AbstractRange, Diagonal, etc
-+(a::AbstractFill, b::AbstractFill) = fill_add(a, b)
-+(a::AbstractFill, b::AbstractArray) = fill_add(b, a)
-+(a::AbstractArray, b::AbstractFill) = fill_add(a, b)
+# no AbstractArray. Otherwise incompatible with StaticArrays.jl
+for TYPE in (:Array, :AbstractRange)
+    @eval begin
+        +(a::$TYPE, b::AbstractFill) = fill_add(a, b)
+        -(a::$TYPE, b::AbstractFill) = a + (-b)
+        +(a::AbstractFill, b::$TYPE) = fill_add(b, a)
+        -(a::AbstractFill, b::$TYPE) = a + (-b)
+    end
+end
++(a::AbstractFill, b::AbstractFill) = Fill(getindex_value(a) + getindex_value(b), promote_shape(a,b))
 -(a::AbstractFill, b::AbstractFill) = a + (-b)
--(a::AbstractFill, b::AbstractArray) = a + (-b)
--(a::AbstractArray, b::AbstractFill) = a + (-b)
 
-@inline function fill_add(a, b::AbstractFill)
+@inline function fill_add(a::AbstractArray, b::AbstractFill)
+    promote_shape(a, b)
+    a .+ [getindex_value(b)]
+end
+@inline function fill_add(a::AbstractArray{<:Number}, b::AbstractFill)
     promote_shape(a, b)
     a .+ getindex_value(b)
 end
