@@ -311,8 +311,7 @@ equal_or_undef(a, b) = all(equal_or_undef.(a, b))
 function test_addition_subtraction_dot(As, Bs, Tout::Type)
     for A in As, B in Bs
         @testset "$(typeof(A)) and $(typeof(B))" begin
-            T = Tout{promote_type(eltype(A), eltype(B))}
-            @test A + B isa T
+            @test A + B isa Tout{promote_type(eltype(A), eltype(B))}
             @test equal_or_undef(as_array(A + B), as_array(A) + as_array(B))
 
             @test A - B isa Tout{promote_type(eltype(A), eltype(B))}
