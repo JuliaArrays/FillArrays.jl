@@ -10,7 +10,7 @@
 
 Julia package to lazily represent matrices filled with a single entry,
 as well as identity matrices.  This package exports the following types:
-`Eye`, `Fill`, `Ones`, `Zeros`, `Trues` and `Falses`.
+`Eye`, `Fill`, `Ones`, `Zeros`, `Trues`, `Falses`, and `OneElement`.
 
 
 The primary purpose of this package is to present a unified way of constructing
@@ -28,6 +28,9 @@ julia> Zeros(5, 6)
 5×6 Zeros{Float64}
 
 julia> Zeros{Int}(2, 3)
+2×3 Zeros{Int64}
+
+julia> Zeros(Int, 2, 3) # can also specify the type as an argument
 2×3 Zeros{Int64}
 
 julia> Ones{Int}(5)
@@ -49,6 +52,14 @@ julia> Trues(2, 3)
 
 julia> Falses(2)
 2-element Zeros{Bool}
+
+julia> OneElement(3.0, (2,1), (5,6))
+5×6 OneElement{Float64, 2, Tuple{Int64, Int64}, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}:
+  ⋅    ⋅    ⋅    ⋅    ⋅    ⋅ 
+ 3.0   ⋅    ⋅    ⋅    ⋅    ⋅ 
+  ⋅    ⋅    ⋅    ⋅    ⋅    ⋅ 
+  ⋅    ⋅    ⋅    ⋅    ⋅    ⋅ 
+  ⋅    ⋅    ⋅    ⋅    ⋅    ⋅ 
 ```
 
 They support conversion to other matrix types like `Array`, `SparseVector`, `SparseMatrix`, and `Diagonal`:
