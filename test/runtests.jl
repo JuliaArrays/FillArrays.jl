@@ -869,6 +869,15 @@ end
         @test Zeros(10) .- Zeros(1,9) ≡ Zeros(10,9)
         @test Ones(10) .- Zeros(1,9) ≡ Ones(10,9)
         @test Ones(10) .- Ones(1,9) ≡ Zeros(10,9)
+
+    end
+
+    @testset "issue #208" begin
+        u = rand(2); v = Zeros(2)
+        @test Broadcast.broadcasted(-, u, v) isa Broadcast.Broadcasted
+        @test Broadcast.broadcasted(+, u, v) isa Broadcast.Broadcasted
+        @test Broadcast.broadcasted(-, v, u) isa Broadcast.Broadcasted
+        @test Broadcast.broadcasted(+, v, u) isa Broadcast.Broadcasted
     end
 
     @testset "Zero .*" begin
