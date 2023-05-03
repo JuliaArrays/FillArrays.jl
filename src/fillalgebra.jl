@@ -100,9 +100,75 @@ function *(a::AbstractFillMatrix, b::Diagonal)
     a .* permutedims(b.diag) # use special broadcast
 end
 
-*(a::Adjoint{T, <:StridedMatrix{T}},   b::FillVector{T}) where T = reshape(sum(conj.(parent(a)); dims=1) .* b.value, size(parent(a), 2))
-*(a::Transpose{T, <:StridedMatrix{T}}, b::FillVector{T}) where T = reshape(sum(parent(a); dims=1) .* b.value, size(parent(a), 2))
-*(a::StridedMatrix{T}, b::FillVector{T}) where T         = reshape(sum(a; dims=2) .* b.value, size(a, 1))
+function mul!(y::StridedVector, A::StridedMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
+    Base.require_one_based_indexing(A)
+    Base.require_one_based_indexing(b)
+    Base.require_one_based_indexing(y)
+
+    size(A,2) == size(b,1) ||
+        throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match length of x $(length(x))"))
+    size(y,1) == size(A,1) ||
+        throw(DimensionMismatch("first dimension of A, $(size(A,1)) does not match length of y $(length(y))"))
+
+    α = alpha * getindex_value(b)
+
+    if iszero(beta)
+        y .= α .* view(A, :, 1)
+        for i in axes(A,2)[2:end]
+            y .+= α .* view(A, :, i)
+        end
+    else
+        lmul!(beta, y)
+        for col in eachcol(A)
+            y .+= α .* col
+        end
+    end
+    y
+end
+
+function mul!(y::StridedVector, A::Transpose{<:Any, <:StridedMatrix}, b::AbstractFillVector, alpha::Number, beta::Number)
+    size(A,2) == size(b,1) ||
+        throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match length of x $(length(x))"))
+    size(y,1) == size(A,1) ||
+        throw(DimensionMismatch("first dimension of A, $(size(A,1)) does not match length of y $(length(y))"))
+
+    α = alpha * getindex_value(b)
+
+    At = transpose(A)
+
+    if iszero(beta)
+        for (ind, col) in zip(eachindex(y), eachcol(At))
+            y[ind] = α * transpose(sum(col))
+        end
+    else
+        for (ind, col) in zip(eachindex(y), eachcol(At))
+            y[ind] = α * transpose(sum(col)) + beta * y[ind]
+        end
+    end
+    y
+end
+
+function mul!(y::StridedVector, A::Adjoint{<:Any, <:StridedMatrix}, b::AbstractFillVector, alpha::Number, beta::Number)
+    size(A,2) == size(b,1) ||
+        throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match length of x $(length(x))"))
+    size(y,1) == size(A,1) ||
+        throw(DimensionMismatch("first dimension of A, $(size(A,1)) does not match length of y $(length(y))"))
+
+    α = alpha * getindex_value(b)
+
+    Aadj = A'
+
+    if iszero(beta)
+        for (ind, col) in zip(eachindex(y), eachcol(Aadj))
+            y[ind] = α * sum(col)'
+        end
+    else
+        for (ind, col) in zip(eachindex(y), eachcol(Aadj))
+            y[ind] = α * sum(col)' + beta * y[ind]
+        end
+    end
+    y
+end
 
 function *(a::Adjoint{T, <:StridedMatrix{T}}, b::FillMatrix{T}) where T
     fB = similar(parent(a), size(b, 1), size(b, 2))
