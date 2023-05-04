@@ -1630,4 +1630,40 @@ end
     @test Base.setindex(Zeros(5), 2, 2) ≡ OneElement(2.0, 2, 5)
     @test Base.setindex(Zeros(5,3), 2, 2, 3) ≡ OneElement(2.0, (2,3), (5,3))
     @test_throws BoundsError Base.setindex(Zeros(5), 2, 6)
+
+    @testset "matmul" begin
+        A = rand(3,3)
+        @testset "vector" begin
+            w = zeros(size(A,1))
+            for ind in (size(A,2)-1, size(A,2)+1)
+                x = OneElement(3, 2, size(A,2))
+                @test A * x ≈ A * Array(x)
+                @test A' * x ≈ A' * Array(x)
+                @test transpose(A) * x ≈ transpose(A) * Array(x)
+
+                @test mul!(w, A, x) ≈ A * Array(x)
+                @test mul!(w, A', x) ≈ A' * Array(x)
+                w .= 1
+                @test mul!(w, A, x, 1.0, 1.0) ≈ A * Array(x) .+ 1
+                w .= 1
+                @test mul!(w, A', x, 1.0, 1.0) ≈ A' * Array(x) .+ 1
+            end
+        end
+        @testset "matrix" begin
+            C = zeros(size(A))
+            for inds in (size(A) .- 1, size(A) .+ 1)
+                B = OneElement(3, inds, size(A))
+                @test A * B ≈ A * Array(B)
+                @test A' * B ≈ A' * Array(B)
+                @test transpose(A) * B ≈ transpose(A) * Array(B)
+
+                @test mul!(C, A, B) ≈ A * Array(B)
+                @test mul!(C, A', B) ≈ A' * Array(B)
+                C .= 1
+                @test mul!(C, A, B, 1.0, 1.0) ≈ A * Array(B) .+ 1
+                C .= 1
+                @test mul!(C, A', B, 1.0, 1.0) ≈ A' * Array(B) .+ 1
+            end
+        end
+    end
 end
