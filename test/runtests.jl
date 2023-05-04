@@ -1285,6 +1285,7 @@ end
             A = randn(mA,nA)
 
             @test Fill(2,3)*A ≈ Vector(Fill(2,3))*A
+            @test Fill(2,0)*A ≈ Vector(Fill(2,0))*A
             @test Fill(2,3,mA)*A ≈ Matrix(Fill(2,3,mA))*A
             @test Fill(2,3,la)*a ≈ Matrix(Fill(2,3,la))*a
             @test Ones(3)*A ≈ Vector(Ones(3))*A
@@ -1297,6 +1298,8 @@ end
             @test A*Fill(2,nA) ≈ A*Vector(Fill(2,nA))
             @test A*Fill(2,nA,1) ≈ A*Matrix(Fill(2,nA,1))
             @test a*Fill(2,na,3) ≈ a*Matrix(Fill(2,na,3))
+            @test A*Fill(2,nA,0) ≈ A*Matrix(Fill(2,nA,0))
+            @test a*Fill(2,na,0) ≈ a*Matrix(Fill(2,na,0))
             @test A*Ones(nA) ≈ A*Vector(Ones(nA))
             @test A*Ones(nA,1) ≈ A*Matrix(Ones(nA,1))
             @test a*Ones(na,3) ≈ a*Matrix(Ones(na,3))
@@ -1636,7 +1639,7 @@ end
         @testset "vector" begin
             w = zeros(size(A,1))
             for ind in (size(A,2)-1, size(A,2)+1)
-                x = OneElement(3, 2, size(A,2))
+                x = OneElement(3, ind, size(A,2))
                 @test A * x ≈ A * Array(x)
                 @test A' * x ≈ A' * Array(x)
                 @test transpose(A) * x ≈ transpose(A) * Array(x)
