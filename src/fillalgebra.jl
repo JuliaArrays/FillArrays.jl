@@ -210,12 +210,15 @@ function copyfirstcol!(C::Union{<:Adjoint, <:Transpose})
     return nothing
 end
 
+_firstcol(C::AbstractMatrix) = view(C, :, 1)
+_firstcol(C::Union{<:Adjoint, <:Transpose}) = view(parent(C), 1, :)
+
 function _mulfill!(C, A, B::AbstractFillMatrix, alpha, beta)
     check_matmul_sizes(C, A, B)
     if iszero(size(B,2))
         return lmul!(beta, C)
     end
-    mul!(view(C, :, 1), A, view(B, :, 1), alpha, beta)
+    mul!(_firstcol(C), A, view(B, :, 1), alpha, beta)
     copyfirstcol!(C)
     C
 end
