@@ -1277,70 +1277,73 @@ end
     w .= 2
     @test mul!(w, Fill(2,mw,5), Fill(3,5), 1.0, 2.0) ≈ Fill(30,mw) .+ 4 ≈ fill(2,mw,5) * fill(3,5) .+ 4
 
-    a = randn(3)
-    A = randn(1,4)
+    @testset "strided" begin
+        @testset for (la, (mA, nA)) in [(3, (1,4)), (0, (1,4)), (3, (1, 0))]
 
-    la, na = size(a,1), size(a,2)
-    mA, nA = size(A)
+            a = randn(la)
+            na = 1
+            A = randn(mA,nA)
 
-    @test Fill(2,3)*A ≈ Vector(Fill(2,3))*A
-    @test Fill(2,3,mA)*A ≈ Matrix(Fill(2,3,mA))*A
-    @test Fill(2,3,la)*a ≈ Matrix(Fill(2,3,la))*a
-    @test Ones(3)*A ≈ Vector(Ones(3))*A
-    @test Ones(3,mA)*A ≈ Matrix(Ones(3,mA))*A
-    @test Ones(3,la)*a ≈ Matrix(Ones(3,la))*a
-    @test Zeros(3)*A  ≡ Zeros(3,nA)
-    @test Zeros(3,mA)*A == Zeros(3,nA)
-    @test Zeros(3,la)*a == Zeros(3)
+            @test Fill(2,3)*A ≈ Vector(Fill(2,3))*A
+            @test Fill(2,3,mA)*A ≈ Matrix(Fill(2,3,mA))*A
+            @test Fill(2,3,la)*a ≈ Matrix(Fill(2,3,la))*a
+            @test Ones(3)*A ≈ Vector(Ones(3))*A
+            @test Ones(3,mA)*A ≈ Matrix(Ones(3,mA))*A
+            @test Ones(3,la)*a ≈ Matrix(Ones(3,la))*a
+            @test Zeros(3)*A  ≡ Zeros(3,nA)
+            @test Zeros(3,mA)*A == Zeros(3,nA)
+            @test Zeros(3,la)*a == Zeros(3)
 
-    @test A*Fill(2,nA) ≈ A*Vector(Fill(2,nA))
-    @test A*Fill(2,nA,1) ≈ A*Matrix(Fill(2,nA,1))
-    @test a*Fill(2,na,3) ≈ a*Matrix(Fill(2,na,3))
-    @test A*Ones(nA) ≈ A*Vector(Ones(nA))
-    @test A*Ones(nA,1) ≈ A*Matrix(Ones(nA,1))
-    @test a*Ones(na,3) ≈ a*Matrix(Ones(na,3))
-    @test A*Zeros(nA)  ≡ Zeros(mA)
-    @test A*Zeros(nA,1) ≡ Zeros(mA,1)
-    @test a*Zeros(na,3) ≡ Zeros(la,3)
+            @test A*Fill(2,nA) ≈ A*Vector(Fill(2,nA))
+            @test A*Fill(2,nA,1) ≈ A*Matrix(Fill(2,nA,1))
+            @test a*Fill(2,na,3) ≈ a*Matrix(Fill(2,na,3))
+            @test A*Ones(nA) ≈ A*Vector(Ones(nA))
+            @test A*Ones(nA,1) ≈ A*Matrix(Ones(nA,1))
+            @test a*Ones(na,3) ≈ a*Matrix(Ones(na,3))
+            @test A*Zeros(nA)  ≡ Zeros(mA)
+            @test A*Zeros(nA,1) ≡ Zeros(mA,1)
+            @test a*Zeros(na,3) ≡ Zeros(la,3)
 
-    w = zeros(mA)
-    @test mul!(w, A, Fill(2,nA), true, false) ≈ A * fill(2,nA)
-    w .= 2
-    @test mul!(w, A, Fill(2,nA), 1.0, 1.0) ≈ A * fill(2,nA) .+ 2
+            w = zeros(mA)
+            @test mul!(w, A, Fill(2,nA), true, false) ≈ A * fill(2,nA)
+            w .= 2
+            @test mul!(w, A, Fill(2,nA), 1.0, 1.0) ≈ A * fill(2,nA) .+ 2
 
-    nW = 3
-    W = zeros(mA, nW)
-    @test mul!(W, A, Fill(2,nA,nW), true, false) ≈ A * fill(2,nA,nW)
-    W .= 2
-    @test mul!(W, A, Fill(2,nA,nW), 1.0, 1.0) ≈ A * fill(2,nA,nW) .+ 2
+            nW = 3
+            W = zeros(mA, nW)
+            @test mul!(W, A, Fill(2,nA,nW), true, false) ≈ A * fill(2,nA,nW)
+            W .= 2
+            @test mul!(W, A, Fill(2,nA,nW), 1.0, 1.0) ≈ A * fill(2,nA,nW) .+ 2
 
-    mW = 5
-    W = zeros(mW, nA)
-    @test mul!(W, Fill(2,mW,mA), A, true, false) ≈ fill(2,mW,mA) * A
-    W .= 2
-    @test mul!(W, Fill(2,mW,mA), A, 1.0, 1.0) ≈ fill(2,mW,mA) * A .+ 2
+            mW = 5
+            W = zeros(mW, nA)
+            @test mul!(W, Fill(2,mW,mA), A, true, false) ≈ fill(2,mW,mA) * A
+            W .= 2
+            @test mul!(W, Fill(2,mW,mA), A, 1.0, 1.0) ≈ fill(2,mW,mA) * A .+ 2
 
-    mw = 5
-    w = zeros(mw)
-    @test mul!(w, Fill(2,mw,la), a, true, false) ≈ fill(2,mw,la) * a
-    w .= 2
-    @test mul!(w, Fill(2,mw,la), a, 1.0, 1.0) ≈ fill(2,mw,la) * a .+ 2
+            mw = 5
+            w = zeros(mw)
+            @test mul!(w, Fill(2,mw,la), a, true, false) ≈ fill(2,mw,la) * a
+            w .= 2
+            @test mul!(w, Fill(2,mw,la), a, 1.0, 1.0) ≈ fill(2,mw,la) * a .+ 2
 
-    @testset for f in [adjoint, transpose]
-        w = zeros(nA)
-        @test mul!(w, f(A), Fill(2,mA), true, false) ≈ f(A) * fill(2,mA)
-        w .= 2
-        @test mul!(w, f(A), Fill(2,mA), 1.0, 1.0) ≈ f(A) * fill(2,mA) .+ 2
+            @testset for f in [adjoint, transpose]
+                w = zeros(nA)
+                @test mul!(w, f(A), Fill(2,mA), true, false) ≈ f(A) * fill(2,mA)
+                w .= 2
+                @test mul!(w, f(A), Fill(2,mA), 1.0, 1.0) ≈ f(A) * fill(2,mA) .+ 2
 
-        W = zeros(nA, nW)
-        @test mul!(W, f(A), Fill(2,mA,nW), true, false) ≈ f(A) * fill(2,mA,nW)
-        W .= 2
-        @test mul!(W, f(A), Fill(2,mA,nW), 1.0, 1.0) ≈ f(A) * fill(2,mA,nW) .+ 2
+                W = zeros(nA, nW)
+                @test mul!(W, f(A), Fill(2,mA,nW), true, false) ≈ f(A) * fill(2,mA,nW)
+                W .= 2
+                @test mul!(W, f(A), Fill(2,mA,nW), 1.0, 1.0) ≈ f(A) * fill(2,mA,nW) .+ 2
 
-        W = zeros(mW, mA)
-        @test mul!(W, Fill(2,mW,nA), f(A), true, false) ≈ fill(2,mW,nA) * f(A)
-        W .= 2
-        @test mul!(W, Fill(2,mW,nA), f(A), 1.0, 1.0) ≈ fill(2,mW,nA) * f(A) .+ 2
+                W = zeros(mW, mA)
+                @test mul!(W, Fill(2,mW,nA), f(A), true, false) ≈ fill(2,mW,nA) * f(A)
+                W .= 2
+                @test mul!(W, Fill(2,mW,nA), f(A), 1.0, 1.0) ≈ fill(2,mW,nA) * f(A) .+ 2
+            end
+        end
     end
 
     D = Diagonal(randn(1))
