@@ -160,7 +160,7 @@ function mul!(y::StridedVector, A::AbstractFillMatrix, b::StridedVector, alpha::
     y
 end
 
-function _mul_5args_adjtrans(y::AbstractVector, A::AbstractMatrix, b::AbstractVector, alpha, beta, f)
+function _mul_adjtrans!(y::AbstractVector, A::AbstractMatrix, b::AbstractVector, alpha, beta, f)
     α = alpha * getindex_value(b)
 
     At = f(A)
@@ -180,7 +180,7 @@ end
 for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
     @eval function mul!(y::StridedVector, A::$T{<:Any, <:StridedMatrix}, b::AbstractFillVector, alpha::Number, beta::Number)
         check_matmul_sizes(y, A, b)
-        _mul_5args_adjtrans(y, A, b, alpha, beta, $f)
+        _mul_adjtrans!(y, A, b, alpha, beta, $f)
     end
 end
 
@@ -207,12 +207,26 @@ function mul!(C::StridedMatrix, A::StridedMatrix, B::AbstractFillMatrix, alpha::
     C
 end
 
-function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::StridedMatrix, alpha::Number, beta::Number)
+# hack around the fact that view(A', :, 1) is not a StridedVector whereas view(A, 1, :) is
+# we extract the strided view to dispatch to the more efficient method
+_eachcol(B) = eachcol(B)
+_eachcol(B::Union{<:Adjoint, <:Transpose}) = eachrow(parent(B))
+function _mul!(C, A, B, alpha, beta)
     check_matmul_sizes(C, A, B)
-    for (colC, colB) in zip(eachcol(C), eachcol(B))
+    for (colC, colB) in zip(_eachcol(C), _eachcol(B))
         mul!(colC, A, colB, alpha, beta)
     end
     C
+end
+
+function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::StridedMatrix, alpha::Number, beta::Number)
+    _mul!(C, A, B, alpha, beta)
+end
+
+for T in (:Adjoint, :Transpose)
+    @eval function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::$T{<:Any, <:StridedMatrix}, alpha::Number, beta::Number)
+        _mul!(C, A, B, alpha, beta)
+    end
 end
 
 function _adjvec_mul_zeros(a, b)

@@ -1304,15 +1304,15 @@ end
     @test a*Zeros(na,3) ≡ Zeros(la,3)
 
     w = zeros(mA)
-    @test mul!(w, A, Fill(2,nA), true, false) ≈ A * Fill(2,nA)
+    @test mul!(w, A, Fill(2,nA), true, false) ≈ A * fill(2,nA)
     w .= 2
-    @test mul!(w, A, Fill(2,nA), 1.0, 1.0) ≈ A * Fill(2,nA) .+ 2
+    @test mul!(w, A, Fill(2,nA), 1.0, 1.0) ≈ A * fill(2,nA) .+ 2
 
     nW = 3
     W = zeros(mA, nW)
-    @test mul!(W, A, Fill(2,nA,nW), true, false) ≈ A * Fill(2,nA,nW)
+    @test mul!(W, A, Fill(2,nA,nW), true, false) ≈ A * fill(2,nA,nW)
     W .= 2
-    @test mul!(W, A, Fill(2,nA,nW), 1.0, 1.0) ≈ A * Fill(2,nA,nW) .+ 2
+    @test mul!(W, A, Fill(2,nA,nW), 1.0, 1.0) ≈ A * fill(2,nA,nW) .+ 2
 
     mW = 5
     W = zeros(mW, nA)
@@ -1328,14 +1328,19 @@ end
 
     @testset for f in [adjoint, transpose]
         w = zeros(nA)
-        @test mul!(w, f(A), Fill(2,mA), true, false) ≈ f(A) * Fill(2,mA)
+        @test mul!(w, f(A), Fill(2,mA), true, false) ≈ f(A) * fill(2,mA)
         w .= 2
-        @test mul!(w, f(A), Fill(2,mA), 1.0, 1.0) ≈ f(A) * Fill(2,mA) .+ 2
+        @test mul!(w, f(A), Fill(2,mA), 1.0, 1.0) ≈ f(A) * fill(2,mA) .+ 2
 
         W = zeros(nA, nW)
-        @test mul!(W, f(A), Fill(2,mA,nW), true, false) ≈ f(A) * Fill(2,mA,nW)
+        @test mul!(W, f(A), Fill(2,mA,nW), true, false) ≈ f(A) * fill(2,mA,nW)
         W .= 2
-        @test mul!(W, f(A), Fill(2,mA,nW), 1.0, 1.0) ≈ f(A) * Fill(2,mA,nW) .+ 2
+        @test mul!(W, f(A), Fill(2,mA,nW), 1.0, 1.0) ≈ f(A) * fill(2,mA,nW) .+ 2
+
+        W = zeros(mW, mA)
+        @test mul!(W, Fill(2,mW,nA), f(A), true, false) ≈ fill(2,mW,nA) * f(A)
+        W .= 2
+        @test mul!(W, Fill(2,mW,nA), f(A), 1.0, 1.0) ≈ fill(2,mW,nA) * f(A) .+ 2
     end
 
     D = Diagonal(randn(1))
