@@ -1265,6 +1265,18 @@ end
     @test Zeros(3,10)*Zeros(10,12) ≡ Zeros(3,12)
     @test Zeros(3,10)*Zeros(10) ≡ Zeros(3)
 
+    W = zeros(3,4)
+    mW, nW = size(W)
+    @test mul!(W, Fill(2,mW,5), Fill(3,5,nW)) ≈ Fill(30,mW,nW) ≈ fill(2,mW,5) * fill(3,5,nW)
+    W .= 2
+    @test mul!(W, Fill(2,mW,5), Fill(3,5,nW), 1.0, 2.0) ≈ Fill(30,mW,nW) .+ 4 ≈ fill(2,mW,5) * fill(3,5,nW) .+ 4
+
+    w = zeros(5)
+    mw = size(w,1)
+    @test mul!(w, Fill(2,mw,5), Fill(3,5)) ≈ Fill(30,mw) ≈ fill(2,mw,5) * fill(3,5)
+    w .= 2
+    @test mul!(w, Fill(2,mw,5), Fill(3,5), 1.0, 2.0) ≈ Fill(30,mw) .+ 4 ≈ fill(2,mw,5) * fill(3,5) .+ 4
+
     a = randn(3)
     A = randn(1,4)
 
@@ -1296,11 +1308,23 @@ end
     w .= 2
     @test mul!(w, A, Fill(2,nA), 1.0, 1.0) ≈ A * Fill(2,nA) .+ 2
 
-    nw = 3
-    w = zeros(mA, nw)
-    @test mul!(w, A, Fill(2,nA,nw), true, false) ≈ A * Fill(2,nA,nw)
+    nW = 3
+    W = zeros(mA, nW)
+    @test mul!(W, A, Fill(2,nA,nW), true, false) ≈ A * Fill(2,nA,nW)
+    W .= 2
+    @test mul!(W, A, Fill(2,nA,nW), 1.0, 1.0) ≈ A * Fill(2,nA,nW) .+ 2
+
+    mW = 5
+    W = zeros(mW, nA)
+    @test mul!(W, Fill(2,mW,mA), A, true, false) ≈ fill(2,mW,mA) * A
+    W .= 2
+    @test mul!(W, Fill(2,mW,mA), A, 1.0, 1.0) ≈ fill(2,mW,mA) * A .+ 2
+
+    mw = 5
+    w = zeros(mw)
+    @test mul!(w, Fill(2,mw,la), a, true, false) ≈ fill(2,mw,la) * a
     w .= 2
-    @test mul!(w, A, Fill(2,nA,nw), 1.0, 1.0) ≈ A * Fill(2,nA,nw) .+ 2
+    @test mul!(w, Fill(2,mw,la), a, 1.0, 1.0) ≈ fill(2,mw,la) * a .+ 2
 
     @testset for f in [adjoint, transpose]
         w = zeros(nA)
@@ -1308,10 +1332,10 @@ end
         w .= 2
         @test mul!(w, f(A), Fill(2,mA), 1.0, 1.0) ≈ f(A) * Fill(2,mA) .+ 2
 
-        w = zeros(nA, nw)
-        @test mul!(w, f(A), Fill(2,mA,nw), true, false) ≈ f(A) * Fill(2,mA,nw)
-        w .= 2
-        @test mul!(w, f(A), Fill(2,mA,nw), 1.0, 1.0) ≈ f(A) * Fill(2,mA,nw) .+ 2
+        W = zeros(nA, nW)
+        @test mul!(W, f(A), Fill(2,mA,nW), true, false) ≈ f(A) * Fill(2,mA,nW)
+        W .= 2
+        @test mul!(W, f(A), Fill(2,mA,nW), 1.0, 1.0) ≈ f(A) * Fill(2,mA,nW) .+ 2
     end
 
     D = Diagonal(randn(1))

@@ -115,21 +115,47 @@ end
         throw(DimensionMismatch("A has size $(size(A)), B has size $(size(B)), C has size $(size(C))"))
 end
 
+function mul!(y::StridedVector, A::AbstractFillMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
+    check_matmul_sizes(y, A, b)
+
+    αAb = alpha * getindex_value(A) * getindex_value(b) * length(b)
+
+    if iszero(beta)
+        y .= αAb
+    else
+        y .= αAb .+ beta .* y
+    end
+    y
+end
+
 function mul!(y::StridedVector, A::StridedMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, b)
 
-    α = alpha * getindex_value(b)
+    αb = alpha * getindex_value(b)
 
     if iszero(beta)
         y .= zero(eltype(y))
         for col in eachcol(A)
-            y .+= α .* col
+            y .+= αb .* col
         end
     else
         lmul!(beta, y)
         for col in eachcol(A)
-            y .+= α .* col
+            y .+= αb .* col
         end
+    end
+    y
+end
+
+function mul!(y::StridedVector, A::AbstractFillMatrix, b::StridedVector, alpha::Number, beta::Number)
+    check_matmul_sizes(y, A, b)
+
+    αA = alpha * getindex_value(A)
+
+    if iszero(beta)
+        y .= αA .* sum(b)
+    else
+        y .= αA .* sum(b) .+ beta .* y
     end
     y
 end
@@ -141,11 +167,11 @@ function _mul_5args_adjtrans(y::AbstractVector, A::AbstractMatrix, b::AbstractVe
 
     if iszero(beta)
         for (ind, col) in zip(eachindex(y), eachcol(At))
-            y[ind] = α * f(sum(col))
+            y[ind] = α .* f(sum(col))
         end
     else
         for (ind, col) in zip(eachindex(y), eachcol(At))
-            y[ind] = α * f(sum(col)) + beta * y[ind]
+            y[ind] = α .* f(sum(col)) .+ beta .* y[ind]
         end
     end
     y
@@ -158,6 +184,17 @@ for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
     end
 end
 
+function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
+    check_matmul_sizes(C, A, B)
+    αAB = alpha * getindex_value(A) * getindex_value(B) * size(B,1)
+    if iszero(beta)
+        C .= αAB
+    else
+        C .= αAB .+ beta .* C
+    end
+    C
+end
+
 function mul!(C::StridedMatrix, A::StridedMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
     check_matmul_sizes(C, A, B)
     if iszero(size(B,2))
@@ -166,6 +203,14 @@ function mul!(C::StridedMatrix, A::StridedMatrix, B::AbstractFillMatrix, alpha::
     mul!(view(C, :, 1), A, view(B, :, 1), alpha, beta)
     @views for i in axes(C,2)[2:end]
         C[:, i] .= C[:, 1]
+    end
+    C
+end
+
+function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::StridedMatrix, alpha::Number, beta::Number)
+    check_matmul_sizes(C, A, B)
+    for (colC, colB) in zip(eachcol(C), eachcol(B))
+        mul!(colC, A, colB, alpha, beta)
     end
     C
 end
