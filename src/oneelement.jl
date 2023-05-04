@@ -50,7 +50,7 @@ function Base.setindex(A::Zeros{T,N}, v, kj::Vararg{Int,N}) where {T,N}
     OneElement(convert(T, v), kj, axes(A))
 end
 
-function _mul!(y, A, x::OneElement{<:Any,1}, alpha::Number, beta::Number)
+function _mulonel!(y, A, x::OneElement{<:Any,1}, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, x)
     if x.ind[1] ∉ axes(x,1) # in this case x is all zeros
         mul!(y, A, Zeros{eltype(x)}(axes(x)), alpha, beta)
@@ -65,7 +65,7 @@ function _mul!(y, A, x::OneElement{<:Any,1}, alpha::Number, beta::Number)
     y
 end
 
-function _mul!(C, A, B::OneElement{<:Any,2}, alpha::Number, beta::Number)
+function _mulonel!(C, A, B::OneElement{<:Any,2}, alpha::Number, beta::Number)
     check_matmul_sizes(C, A, B)
     αB = alpha * B.val
     if B.ind[1] ∉ axes(B,1) || B.ind[2] ∉ axes(B,2) # in this case x is all zeros
@@ -84,9 +84,9 @@ end
 
 for MT in (:StridedMatrix, :(Transpose{<:Any, <:StridedMatrix}), :(Adjoint{<:Any, <:StridedMatrix}))
     @eval function mul!(y::StridedVector, A::$MT, x::OneElement{<:Any,1}, alpha::Number, beta::Number)
-        _mul!(y, A, x, alpha, beta)
+        _mulonel!(y, A, x, alpha, beta)
     end
     @eval function mul!(y::StridedMatrix, A::$MT, x::OneElement{<:Any,2}, alpha::Number, beta::Number)
-        _mul!(y, A, x, alpha, beta)
+        _mulonel!(y, A, x, alpha, beta)
     end
 end

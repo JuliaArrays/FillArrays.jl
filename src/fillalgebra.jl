@@ -195,23 +195,46 @@ function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, al
     C
 end
 
-function mul!(C::StridedMatrix, A::StridedMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
+function copyfirstcol!(C)
+    @views for i in axes(C,2)[2:end]
+        C[:, i] .= C[:, 1]
+    end
+    return nothing
+end
+function copyfirstcol!(C::Union{<:Adjoint, <:Transpose})
+    # in this case, we copy the first row of the parent to others
+    Cp = parent(C)
+    for colind in axes(Cp, 2)
+        Cp[2:end, colind] .= Cp[1, colind]
+    end
+    return nothing
+end
+
+function _mulfill!(C, A, B::AbstractFillMatrix, alpha, beta)
     check_matmul_sizes(C, A, B)
     if iszero(size(B,2))
         return lmul!(beta, C)
     end
     mul!(view(C, :, 1), A, view(B, :, 1), alpha, beta)
-    @views for i in axes(C,2)[2:end]
-        C[:, i] .= C[:, 1]
-    end
+    copyfirstcol!(C)
     C
+end
+
+function mul!(C::StridedMatrix, A::StridedMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
+    _mulfill!(C, A, B, alpha, beta)
+end
+
+for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
+    @eval function mul!(C::StridedMatrix, A::$T{<:Any, <:StridedMatrix}, B::AbstractFillMatrix, alpha::Number, beta::Number)
+        _mulfill!(C, A, B, alpha, beta)
+    end
 end
 
 # hack around the fact that view(A', :, 1) is not a StridedVector whereas view(A, 1, :) is
 # we extract the strided view to dispatch to the more efficient method
 _eachcol(B) = eachcol(B)
 _eachcol(B::Union{<:Adjoint, <:Transpose}) = eachrow(parent(B))
-function _mul!(C, A, B, alpha, beta)
+function _mulfill!(C, A::AbstractFillMatrix, B, alpha, beta)
     check_matmul_sizes(C, A, B)
     for (colC, colB) in zip(_eachcol(C), _eachcol(B))
         mul!(colC, A, colB, alpha, beta)
@@ -220,12 +243,12 @@ function _mul!(C, A, B, alpha, beta)
 end
 
 function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::StridedMatrix, alpha::Number, beta::Number)
-    _mul!(C, A, B, alpha, beta)
+    _mulfill!(C, A, B, alpha, beta)
 end
 
 for T in (:Adjoint, :Transpose)
     @eval function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::$T{<:Any, <:StridedMatrix}, alpha::Number, beta::Number)
-        _mul!(C, A, B, alpha, beta)
+        _mulfill!(C, A, B, alpha, beta)
     end
 end
 
