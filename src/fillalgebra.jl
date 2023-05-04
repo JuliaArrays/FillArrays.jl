@@ -100,22 +100,30 @@ function *(a::AbstractFillMatrix, b::Diagonal)
     a .* permutedims(b.diag) # use special broadcast
 end
 
-function mul!(y::StridedVector, A::StridedMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
-    Base.require_one_based_indexing(A)
-    Base.require_one_based_indexing(b)
-    Base.require_one_based_indexing(y)
-
-    size(A,2) == size(b,1) ||
+@noinline function check_matmul_sizes(y::AbstractVector, A::AbstractMatrix, x::AbstractVector)
+    Base.require_one_based_indexing(A, x, y)
+    size(A,2) == size(x,1) ||
         throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match length of x $(length(x))"))
     size(y,1) == size(A,1) ||
         throw(DimensionMismatch("first dimension of A, $(size(A,1)) does not match length of y $(length(y))"))
+end
+@noinline function check_matmul_sizes(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix)
+    Base.require_one_based_indexing(A, B, C)
+    size(A,2) == size(B,1) ||
+        throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match first dimension of B, $(size(B,1))"))
+    size(C,1) == size(A,1) && size(C,2) == size(B,2) ||
+        throw(DimensionMismatch("A has size $(size(A)), B has size $(size(B)), C has size $(size(C))"))
+end
+
+function mul!(y::StridedVector, A::StridedMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
+    check_matmul_sizes(y, A, b)
 
     α = alpha * getindex_value(b)
 
     if iszero(beta)
-        y .= α .* view(A, :, 1)
-        for i in axes(A,2)[2:end]
-            y .+= α .* view(A, :, i)
+        y .= zero(eltype(y))
+        for col in eachcol(A)
+            y .+= α .* col
         end
     else
         lmul!(beta, y)
@@ -126,67 +134,42 @@ function mul!(y::StridedVector, A::StridedMatrix, b::AbstractFillVector, alpha::
     y
 end
 
-function mul!(y::StridedVector, A::Transpose{<:Any, <:StridedMatrix}, b::AbstractFillVector, alpha::Number, beta::Number)
-    size(A,2) == size(b,1) ||
-        throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match length of x $(length(x))"))
-    size(y,1) == size(A,1) ||
-        throw(DimensionMismatch("first dimension of A, $(size(A,1)) does not match length of y $(length(y))"))
-
+function _mul_5args_adjtrans(y::AbstractVector, A::AbstractMatrix, b::AbstractVector, alpha, beta, f)
     α = alpha * getindex_value(b)
 
-    At = transpose(A)
+    At = f(A)
 
     if iszero(beta)
         for (ind, col) in zip(eachindex(y), eachcol(At))
-            y[ind] = α * transpose(sum(col))
+            y[ind] = α * f(sum(col))
         end
     else
         for (ind, col) in zip(eachindex(y), eachcol(At))
-            y[ind] = α * transpose(sum(col)) + beta * y[ind]
+            y[ind] = α * f(sum(col)) + beta * y[ind]
         end
     end
     y
 end
 
-function mul!(y::StridedVector, A::Adjoint{<:Any, <:StridedMatrix}, b::AbstractFillVector, alpha::Number, beta::Number)
-    size(A,2) == size(b,1) ||
-        throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match length of x $(length(x))"))
-    size(y,1) == size(A,1) ||
-        throw(DimensionMismatch("first dimension of A, $(size(A,1)) does not match length of y $(length(y))"))
-
-    α = alpha * getindex_value(b)
-
-    Aadj = A'
-
-    if iszero(beta)
-        for (ind, col) in zip(eachindex(y), eachcol(Aadj))
-            y[ind] = α * sum(col)'
-        end
-    else
-        for (ind, col) in zip(eachindex(y), eachcol(Aadj))
-            y[ind] = α * sum(col)' + beta * y[ind]
-        end
+for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
+    @eval function mul!(y::StridedVector, A::$T{<:Any, <:StridedMatrix}, b::AbstractFillVector, alpha::Number, beta::Number)
+        check_matmul_sizes(y, A, b)
+        _mul_5args_adjtrans(y, A, b, alpha, beta, $f)
     end
-    y
 end
 
-function *(a::Adjoint{T, <:StridedMatrix{T}}, b::FillMatrix{T}) where T
-    fB = similar(parent(a), size(b, 1), size(b, 2))
-    fill!(fB, b.value)
-    return a*fB
+function mul!(C::StridedMatrix, A::StridedMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
+    check_matmul_sizes(C, A, B)
+    if iszero(size(B,2))
+        return lmul!(beta, C)
+    end
+    mul!(view(C, :, 1), A, view(B, :, 1), alpha, beta)
+    @views for i in axes(C,2)[2:end]
+        C[:, i] .= C[:, 1]
+    end
+    C
 end
 
-function *(a::Transpose{T, <:StridedMatrix{T}}, b::FillMatrix{T}) where T
-    fB = similar(parent(a), size(b, 1), size(b, 2))
-    fill!(fB, b.value)
-    return a*fB
-end
-
-function *(a::StridedMatrix{T}, b::FillMatrix{T}) where T
-    fB = similar(a, size(b, 1), size(b, 2))
-    fill!(fB, b.value)
-    return a*fB
-end
 function _adjvec_mul_zeros(a, b)
     la, lb = length(a), length(b)
     if la ≠ lb

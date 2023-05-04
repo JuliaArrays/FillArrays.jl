@@ -1268,25 +1268,51 @@ end
     a = randn(3)
     A = randn(1,4)
 
-    @test Fill(2,3)*A ≈ Vector(Fill(2,3))*A
-    @test Fill(2,3,1)*A ≈ Matrix(Fill(2,3,1))*A
-    @test Fill(2,3,3)*a ≈ Matrix(Fill(2,3,3))*a
-    @test Ones(3)*A ≈ Vector(Ones(3))*A
-    @test Ones(3,1)*A ≈ Matrix(Ones(3,1))*A
-    @test Ones(3,3)*a ≈ Matrix(Ones(3,3))*a
-    @test Zeros(3)*A  ≡ Zeros(3,4)
-    @test Zeros(3,1)*A == Zeros(3,4)
-    @test Zeros(3,3)*a == Zeros(3)
+    la, na = size(a,1), size(a,2)
+    mA, nA = size(A)
 
-    @test A*Fill(2,4) ≈ A*Vector(Fill(2,4))
-    @test A*Fill(2,4,1) ≈ A*Matrix(Fill(2,4,1))
-    @test a*Fill(2,1,3) ≈ a*Matrix(Fill(2,1,3))
-    @test A*Ones(4) ≈ A*Vector(Ones(4))
-    @test A*Ones(4,1) ≈ A*Matrix(Ones(4,1))
-    @test a*Ones(1,3) ≈ a*Matrix(Ones(1,3))
-    @test A*Zeros(4)  ≡ Zeros(1)
-    @test A*Zeros(4,1) ≡ Zeros(1,1)
-    @test a*Zeros(1,3) ≡ Zeros(3,3)
+    @test Fill(2,3)*A ≈ Vector(Fill(2,3))*A
+    @test Fill(2,3,mA)*A ≈ Matrix(Fill(2,3,mA))*A
+    @test Fill(2,3,la)*a ≈ Matrix(Fill(2,3,la))*a
+    @test Ones(3)*A ≈ Vector(Ones(3))*A
+    @test Ones(3,mA)*A ≈ Matrix(Ones(3,mA))*A
+    @test Ones(3,la)*a ≈ Matrix(Ones(3,la))*a
+    @test Zeros(3)*A  ≡ Zeros(3,nA)
+    @test Zeros(3,mA)*A == Zeros(3,nA)
+    @test Zeros(3,la)*a == Zeros(3)
+
+    @test A*Fill(2,nA) ≈ A*Vector(Fill(2,nA))
+    @test A*Fill(2,nA,1) ≈ A*Matrix(Fill(2,nA,1))
+    @test a*Fill(2,na,3) ≈ a*Matrix(Fill(2,na,3))
+    @test A*Ones(nA) ≈ A*Vector(Ones(nA))
+    @test A*Ones(nA,1) ≈ A*Matrix(Ones(nA,1))
+    @test a*Ones(na,3) ≈ a*Matrix(Ones(na,3))
+    @test A*Zeros(nA)  ≡ Zeros(mA)
+    @test A*Zeros(nA,1) ≡ Zeros(mA,1)
+    @test a*Zeros(na,3) ≡ Zeros(la,3)
+
+    w = zeros(mA)
+    @test mul!(w, A, Fill(2,nA), true, false) ≈ A * Fill(2,nA)
+    w .= 2
+    @test mul!(w, A, Fill(2,nA), 1.0, 1.0) ≈ A * Fill(2,nA) .+ 2
+
+    nw = 3
+    w = zeros(mA, nw)
+    @test mul!(w, A, Fill(2,nA,nw), true, false) ≈ A * Fill(2,nA,nw)
+    w .= 2
+    @test mul!(w, A, Fill(2,nA,nw), 1.0, 1.0) ≈ A * Fill(2,nA,nw) .+ 2
+
+    @testset for f in [adjoint, transpose]
+        w = zeros(nA)
+        @test mul!(w, f(A), Fill(2,mA), true, false) ≈ f(A) * Fill(2,mA)
+        w .= 2
+        @test mul!(w, f(A), Fill(2,mA), 1.0, 1.0) ≈ f(A) * Fill(2,mA) .+ 2
+
+        w = zeros(nA, nw)
+        @test mul!(w, f(A), Fill(2,mA,nw), true, false) ≈ f(A) * Fill(2,mA,nw)
+        w .= 2
+        @test mul!(w, f(A), Fill(2,mA,nw), 1.0, 1.0) ≈ f(A) * Fill(2,mA,nw) .+ 2
+    end
 
     D = Diagonal(randn(1))
     @test Zeros(1,1)*D ≡ Zeros(1,1)
@@ -1300,7 +1326,7 @@ end
     @test Ones(5,10) * D ≡ Fill(2.0,5,10)
 
     # following test is broken in Base as of Julia v1.5
-    @test_skip @test_throws DimensionMismatch Diagonal(Fill(1,1)) * Ones(10)
+    @test_throws DimensionMismatch Diagonal(Fill(1,1)) * Ones(10)
     @test_throws DimensionMismatch Diagonal(Fill(1,1)) * Ones(10,5)
     @test_throws DimensionMismatch Ones(5,10) * Diagonal(Fill(1,1))
 
