@@ -230,25 +230,18 @@ for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
     end
 end
 
-# hack around the fact that view(A', :, 1) is not a StridedVector whereas view(A, 1, :) is
-# we extract the strided view to dispatch to the more efficient method
-_eachcol(B) = eachcol(B)
-_eachcol(B::Union{<:Adjoint, <:Transpose}) = eachrow(parent(B))
-function _mulfill!(C, A::AbstractFillMatrix, B, alpha, beta)
+function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::StridedMatrix, alpha::Number, beta::Number)
     check_matmul_sizes(C, A, B)
-    for (colC, colB) in zip(_eachcol(C), _eachcol(B))
+    for (colC, colB) in zip(eachcol(C), eachcol(B))
         mul!(colC, A, colB, alpha, beta)
     end
     C
 end
 
-function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::StridedMatrix, alpha::Number, beta::Number)
-    _mulfill!(C, A, B, alpha, beta)
-end
-
-for T in (:Adjoint, :Transpose)
+for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
     @eval function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::$T{<:Any, <:StridedMatrix}, alpha::Number, beta::Number)
-        _mulfill!(C, A, B, alpha, beta)
+        _mulfill!($f(C), $f(B), $f(A), alpha, beta)
+        C
     end
 end
 
