@@ -1573,3 +1573,109 @@ end
     @test Base.setindex(Zeros(5,3), 2, 2, 3) ≡ OneElement(2.0, (2,3), (5,3))
     @test_throws BoundsError Base.setindex(Zeros(5), 2, 6)
 end
+
+@testset "repeat" begin
+    @testset "0D" begin
+        @test repeat(Zeros()) isa Zeros
+        @test repeat(Zeros()) == repeat(zeros())
+        @test repeat(Ones()) isa Ones
+        @test repeat(Ones()) == repeat(ones())
+        @test repeat(Fill(3)) isa Fill
+        @test repeat(Fill(3)) == repeat(fill(3))
+
+        @test repeat(Zeros(), inner=(), outer=()) isa Zeros
+        @test repeat(Zeros(), inner=(), outer=()) == repeat(zeros(), inner=(), outer=())
+        @test repeat(Ones(), inner=(), outer=()) isa Ones
+        @test repeat(Ones(), inner=(), outer=()) == repeat(ones(), inner=(), outer=())
+        @test repeat(Fill(4), inner=(), outer=()) isa Fill
+        @test repeat(Fill(4), inner=(), outer=()) == repeat(fill(4), inner=(), outer=())
+
+        @test repeat(Zeros{Bool}(), 2, 3) isa Zeros{Bool}
+        @test repeat(Zeros{Bool}(), 2, 3) == repeat(zeros(Bool), 2, 3)
+        @test repeat(Ones{Bool}(), 2, 3) isa Ones{Bool}
+        @test repeat(Ones{Bool}(), 2, 3) == repeat(ones(Bool), 2, 3)
+        @test repeat(Fill(false), 2, 3) isa Fill
+        @test repeat(Fill(false), 2, 3) == repeat(fill(false), 2, 3)
+
+        @test repeat(Zeros(), inner=(2,2), outer=5) isa Zeros
+        @test repeat(Zeros(), inner=(2,2), outer=5) == repeat(zeros(), inner=(2,2), outer=5)
+        @test repeat(Ones(), inner=(2,2), outer=5) isa Ones
+        @test repeat(Ones(), inner=(2,2), outer=5) == repeat(ones(), inner=(2,2), outer=5)
+        @test repeat(Fill(2), inner=(2,2), outer=5) isa Fill
+        @test repeat(Fill(2), inner=(2,2), outer=5) == repeat(fill(2), inner=(2,2), outer=5)
+
+        @test repeat(Zeros(), inner=(2,2), outer=(2,3)) isa Zeros
+        @test repeat(Zeros(), inner=(2,2), outer=(2,3)) == repeat(zeros(), inner=(2,2), outer=(2,3))
+        @test repeat(Ones(), inner=(2,2), outer=(2,3)) isa Ones
+        @test repeat(Ones(), inner=(2,2), outer=(2,3)) == repeat(ones(), inner=(2,2), outer=(2,3))
+        @test repeat(Fill("a"), inner=(2,2), outer=(2,3)) isa Fill
+        @test repeat(Fill("a"), inner=(2,2), outer=(2,3)) == repeat(fill("a"), inner=(2,2), outer=(2,3))
+    end
+    @testset "1D" begin
+        @test repeat(Zeros(2), 2, 3) isa Zeros
+        @test repeat(Zeros(2), 2, 3) == repeat(zeros(2), 2, 3)
+        @test repeat(Ones(2), 2, 3) isa Ones
+        @test repeat(Ones(2), 2, 3) == repeat(ones(2), 2, 3)
+        @test repeat(Fill(2,3), 2, 3) isa Fill
+        @test repeat(Fill(2,3), 2, 3) == repeat(fill(2,3), 2, 3)
+
+        @test repeat(Zeros(2), inner=2, outer=4) isa Zeros
+        @test repeat(Zeros(2), inner=2, outer=4) == repeat(zeros(2), inner=2, outer=4)
+        @test repeat(Ones(2), inner=2, outer=4) isa Ones
+        @test repeat(Ones(2), inner=2, outer=4) == repeat(ones(2), inner=2, outer=4)
+        @test repeat(Fill(2,3), inner=2, outer=4) isa Fill
+        @test repeat(Fill(2,3), inner=2, outer=4) == repeat(fill(2,3), inner=2, outer=4)
+
+        @test repeat(Zeros(2), inner=2, outer=(2,3)) isa Zeros
+        @test repeat(Zeros(2), inner=2, outer=(2,3)) == repeat(zeros(2), inner=2, outer=(2,3))
+        @test repeat(Ones(2), inner=2, outer=(2,3)) isa Ones
+        @test repeat(Ones(2), inner=2, outer=(2,3)) == repeat(ones(2), inner=2, outer=(2,3))
+        @test repeat(Fill("b",3), inner=2, outer=(2,3)) isa Fill
+        @test repeat(Fill("b",3), inner=2, outer=(2,3)) == repeat(fill("b",3), inner=2, outer=(2,3))
+
+        @test repeat(Zeros(Int, 2), inner=(2,), outer=(2,3)) isa Zeros
+        @test repeat(Zeros(Int, 2), inner=(2,), outer=(2,3)) == repeat(zeros(Int, 2), inner=(2,), outer=(2,3))
+        @test repeat(Ones(Int, 2), inner=(2,), outer=(2,3)) isa Ones
+        @test repeat(Ones(Int, 2), inner=(2,), outer=(2,3)) == repeat(ones(Int, 2), inner=(2,), outer=(2,3))
+        @test repeat(Fill(2,3), inner=(2,), outer=(2,3)) isa Fill
+        @test repeat(Fill(2,3), inner=(2,), outer=(2,3)) == repeat(fill(2,3), inner=(2,), outer=(2,3))
+
+        @test repeat(Zeros(2), inner=(2,2,1,4), outer=(2,3)) isa Zeros
+        @test repeat(Zeros(2), inner=(2,2,1,4), outer=(2,3)) == repeat(zeros(2), inner=(2,2,1,4), outer=(2,3))
+        @test repeat(Ones(2), inner=(2,2,1,4), outer=(2,3)) isa Ones
+        @test repeat(Ones(2), inner=(2,2,1,4), outer=(2,3)) == repeat(ones(2), inner=(2,2,1,4), outer=(2,3))
+        @test repeat(Fill(2,3), inner=(2,2,1,4), outer=(2,3)) isa Fill
+        @test repeat(Fill(2,3), inner=(2,2,1,4), outer=(2,3)) == repeat(fill(2,3), inner=(2,2,1,4), outer=(2,3))
+
+        @test_throws ArgumentError repeat(Fill(2,3), inner=())
+        @test_throws ArgumentError repeat(Fill(2,3), outer=())
+    end
+
+    @testset "2D" begin
+        @test repeat(Zeros(2,3), 2, 3) isa Zeros
+        @test repeat(Zeros(2,3), 2, 3) == repeat(zeros(2,3), 2, 3)
+        @test repeat(Ones(2,3), 2, 3) isa Ones
+        @test repeat(Ones(2,3), 2, 3) == repeat(ones(2,3), 2, 3)
+        @test repeat(Fill(2,3,4), 2, 3) isa Fill
+        @test repeat(Fill(2,3,4), 2, 3) == repeat(fill(2,3,4), 2, 3)
+
+        @test repeat(Zeros(2,3), inner=(1,2), outer=(4,2)) isa Zeros
+        @test repeat(Zeros(2,3), inner=(1,2), outer=(4,2)) == repeat(zeros(2,3), inner=(1,2), outer=(4,2))
+        @test repeat(Ones(2,3), inner=(1,2), outer=(4,2)) isa Ones
+        @test repeat(Ones(2,3), inner=(1,2), outer=(4,2)) == repeat(ones(2,3), inner=(1,2), outer=(4,2))
+        @test repeat(Fill(2,3,4), inner=(1,2), outer=(4,2)) isa Fill
+        @test repeat(Fill(2,3,4), inner=(1,2), outer=(4,2)) == repeat(fill(2,3,4), inner=(1,2), outer=(4,2))
+
+        @test repeat(Zeros(2,3), inner=(2,2,1,4), outer=(2,1,3)) isa Zeros
+        @test repeat(Zeros(2,3), inner=(2,2,1,4), outer=(2,1,3)) == repeat(zeros(2,3), inner=(2,2,1,4), outer=(2,1,3))
+        @test repeat(Ones(2,3), inner=(2,2,1,4), outer=(2,1,3)) isa Ones
+        @test repeat(Ones(2,3), inner=(2,2,1,4), outer=(2,1,3)) == repeat(ones(2,3), inner=(2,2,1,4), outer=(2,1,3))
+        @test repeat(Fill(2,3,4), inner=(2,2,1,4), outer=(2,1,3)) isa Fill
+        @test repeat(Fill(2,3,4), inner=(2,2,1,4), outer=(2,1,3)) == repeat(fill(2,3,4), inner=(2,2,1,4), outer=(2,1,3))
+
+        @test_throws ArgumentError repeat(Fill(2,3,4), inner=())
+        @test_throws ArgumentError repeat(Fill(2,3,4), outer=())
+        @test_throws ArgumentError repeat(Fill(2,3,4), inner=(1,))
+        @test_throws ArgumentError repeat(Fill(2,3,4), outer=(1,))
+    end
+end
