@@ -35,20 +35,24 @@ reverse(A::AbstractFill; dims=:) = A
 
 ## Algebraic identities
 
-mult_axes(a_ax, b_ax) = (a_ax[1], b_ax[2:end]...)
+mult_axes(a_ax::Tuple, b_ax::Tuple) = (a_ax[1], b_ax[2:end]...)
 
-function mult_fill(a::AbstractFill, b::AbstractFill)
-    axes(a, 2) ≠ axes(b, 1) &&
-        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
+function _mult_fill(a::AbstractFill, b::AbstractFill, ax, ::Type{Fill})
     val = getindex_value(a)*getindex_value(b)*size(a,2)
-    return Fill(val, mult_axes(axes(a), axes(b)))
+    return Fill(val, ax)
 end
 
-function mult_fill(a, b, ::Type{OnesZeros}) where {OnesZeros}
-    axes(a, 2) ≠ axes(b, 1) &&
-        throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
+function _mult_fill(a, b, ax, ::Type{OnesZeros}) where {OnesZeros}
     ElType = promote_type(eltype(a), eltype(b))
-    return OnesZeros{ElType}(mult_axes(axes(a), axes(b)))
+    return OnesZeros{ElType}(ax)
+end
+
+function mult_fill(a, b, T::Type = Fill)
+    Base.require_one_based_indexing(a, b)
+    size(a, 2) ≠ size(b, 1) &&
+        throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
+    ax = mult_axes(axes(a), axes(b))
+    _mult_fill(a, b, ax, T)
 end
 
 *(a::AbstractFillVector, b::AbstractFillMatrix) = mult_fill(a,b)

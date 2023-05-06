@@ -1235,6 +1235,12 @@ end
     @test_throws DimensionMismatch Fill(2,10)*Fill(3,2,12)
     @test_throws DimensionMismatch Fill(2,3,10)*Fill(3,2,12)
 
+    f = Fill(1, (Base.IdentityUnitRange(1:3), Base.IdentityUnitRange(1:3)))
+    @test f * f === Fill(size(f,2), axes(f))
+
+    f = Fill(2, (Base.IdentityUnitRange(2:3), Base.IdentityUnitRange(2:3)))
+    @test_throws ArgumentError f * f
+
     @test Ones(10)*Fill(3,1,12) ≡ Fill(3.0,10,12)
     @test Ones(10,3)*Fill(3,3,12) ≡ Fill(9.0,10,12)
     @test Ones(10,3)*Fill(3,3) ≡ Fill(9.0,10)
@@ -1258,6 +1264,12 @@ end
     @test Zeros(10)*Zeros(1,12) ≡ Zeros(10,12)
     @test Zeros(3,10)*Zeros(10,12) ≡ Zeros(3,12)
     @test Zeros(3,10)*Zeros(10) ≡ Zeros(3)
+
+    f = Zeros((Base.IdentityUnitRange(1:4), Base.IdentityUnitRange(1:4)))
+    @test f * f === f
+
+    f = Zeros((Base.IdentityUnitRange(3:4), Base.IdentityUnitRange(3:4)))
+    @test_throws ArgumentError f * f
 
     a = randn(3)
     A = randn(1,4)
