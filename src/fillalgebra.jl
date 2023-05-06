@@ -35,8 +35,6 @@ reverse(A::AbstractFill; dims=:) = A
 
 ## Algebraic identities
 
-mult_axes(a_ax::Tuple, b_ax::Tuple) = (a_ax[1], b_ax[2:end]...)
-
 function _mult_fill(a::AbstractFill, b::AbstractFill, ax, ::Type{Fill})
     val = getindex_value(a)*getindex_value(b)*size(a,2)
     return Fill(val, ax)
@@ -51,8 +49,8 @@ function mult_fill(a, b, T::Type = Fill)
     Base.require_one_based_indexing(a, b)
     size(a, 2) ≠ size(b, 1) &&
         throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
-    ax = mult_axes(axes(a), axes(b))
-    _mult_fill(a, b, ax, T)
+    ax_result = (axes(a, 1), axes(b)[2:end]...)
+    _mult_fill(a, b, ax_result, T)
 end
 
 *(a::AbstractFillVector, b::AbstractFillMatrix) = mult_fill(a,b)
