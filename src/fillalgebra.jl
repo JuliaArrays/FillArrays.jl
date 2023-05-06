@@ -35,20 +35,20 @@ reverse(A::AbstractFill; dims=:) = A
 
 ## Algebraic identities
 
-mult_axes(a, b) = (axes(a, 1), axes(b)[2:end]...)
+mult_axes(a_ax, b_ax) = (a_ax[1], b_ax[2:end]...)
 
 function mult_fill(a::AbstractFill, b::AbstractFill)
     axes(a, 2) ≠ axes(b, 1) &&
         throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
     val = getindex_value(a)*getindex_value(b)*size(a,2)
-    return Fill(val, mult_axes(a, b))
+    return Fill(val, mult_axes(axes(a), axes(b)))
 end
 
 function mult_fill(a, b, ::Type{OnesZeros}) where {OnesZeros}
     axes(a, 2) ≠ axes(b, 1) &&
         throw(DimensionMismatch("Incompatible matrix multiplication dimensions"))
     ElType = promote_type(eltype(a), eltype(b))
-    return OnesZeros{ElType}(mult_axes(a, b))
+    return OnesZeros{ElType}(mult_axes(axes(a), axes(b)))
 end
 
 *(a::AbstractFillVector, b::AbstractFillMatrix) = mult_fill(a,b)
