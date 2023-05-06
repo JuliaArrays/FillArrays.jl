@@ -1,8 +1,6 @@
 ## vec
 
-vec(a::Ones{T}) where T = Ones{T}(length(a))
-vec(a::Zeros{T}) where T = Zeros{T}(length(a))
-vec(a::Fill{T}) where T = Fill{T}(a.value,length(a))
+vec(a::AbstractFill) = fillsimilar(a, length(a))
 
 ## Transpose/Adjoint
 # cannot do this for vectors since that would destroy scalar dot product
