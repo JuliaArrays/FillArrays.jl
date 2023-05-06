@@ -8,8 +8,8 @@ vec(a::Fill{T}) where T = Fill{T}(a.value,length(a))
 # cannot do this for vectors since that would destroy scalar dot product
 
 
-transpose(a::Union{<:OnesMatrix, <:ZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
-adjoint(a::Union{<:OnesMatrix, <:ZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
+transpose(a::Union{OnesMatrix, ZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
+adjoint(a::Union{OnesMatrix, ZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
 transpose(a::FillMatrix{T}) where T = Fill{T}(transpose(a.value), reverse(a.axes))
 adjoint(a::FillMatrix{T}) where T = Fill{T}(adjoint(a.value), reverse(a.axes))
 
