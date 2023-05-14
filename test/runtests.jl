@@ -1265,17 +1265,19 @@ end
     @test Zeros(3,10)*Zeros(10,12) ≡ Zeros(3,12)
     @test Zeros(3,10)*Zeros(10) ≡ Zeros(3)
 
-    W = zeros(3,4)
-    mW, nW = size(W)
-    @test mul!(W, Fill(2,mW,5), Fill(3,5,nW)) ≈ Fill(30,mW,nW) ≈ fill(2,mW,5) * fill(3,5,nW)
-    W .= 2
-    @test mul!(W, Fill(2,mW,5), Fill(3,5,nW), 1.0, 2.0) ≈ Fill(30,mW,nW) .+ 4 ≈ fill(2,mW,5) * fill(3,5,nW) .+ 4
+    for W in (zeros(3,4), @MMatrix zeros(3,4))
+        mW, nW = size(W)
+        @test mul!(W, Fill(2,mW,5), Fill(3,5,nW)) ≈ Fill(30,mW,nW) ≈ fill(2,mW,5) * fill(3,5,nW)
+        W .= 2
+        @test mul!(W, Fill(2,mW,5), Fill(3,5,nW), 1.0, 2.0) ≈ Fill(30,mW,nW) .+ 4 ≈ fill(2,mW,5) * fill(3,5,nW) .+ 4
+    end
 
-    w = zeros(5)
-    mw = size(w,1)
-    @test mul!(w, Fill(2,mw,5), Fill(3,5)) ≈ Fill(30,mw) ≈ fill(2,mw,5) * fill(3,5)
-    w .= 2
-    @test mul!(w, Fill(2,mw,5), Fill(3,5), 1.0, 2.0) ≈ Fill(30,mw) .+ 4 ≈ fill(2,mw,5) * fill(3,5) .+ 4
+    for w in (zeros(5), @MVector zeros(5))
+        mw = size(w,1)
+        @test mul!(w, Fill(2,mw,5), Fill(3,5)) ≈ Fill(30,mw) ≈ fill(2,mw,5) * fill(3,5)
+        w .= 2
+        @test mul!(w, Fill(2,mw,5), Fill(3,5), 1.0, 2.0) ≈ Fill(30,mw) .+ 4 ≈ fill(2,mw,5) * fill(3,5) .+ 4
+    end
 
     @testset "strided" begin
         @testset for (la, (mA, nA)) in [(3, (1,4)), (0, (1,4)), (3, (1, 0))]

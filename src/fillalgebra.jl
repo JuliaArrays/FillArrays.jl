@@ -115,7 +115,7 @@ end
         throw(DimensionMismatch("A has size $(size(A)), B has size $(size(B)), C has size $(size(C))"))
 end
 
-function mul!(y::StridedVector, A::AbstractFillMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
+function mul!(y::AbstractVector, A::AbstractFillMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, b)
 
     αAb = alpha * getindex_value(A) * getindex_value(b) * length(b)
@@ -184,7 +184,7 @@ for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
     end
 end
 
-function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
+function mul!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
     check_matmul_sizes(C, A, B)
     αAB = alpha * getindex_value(A) * getindex_value(B) * size(B,1)
     if iszero(beta)
