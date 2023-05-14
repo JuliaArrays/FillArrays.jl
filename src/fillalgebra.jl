@@ -211,7 +211,7 @@ function copyfirstcol!(C::Union{Adjoint, Transpose})
 end
 
 _firstcol(C::AbstractMatrix) = view(C, :, 1)
-_firstcol(C::Union{<:Adjoint, <:Transpose}) = view(parent(C), 1, :)
+_firstcol(C::Union{Adjoint, Transpose}) = view(parent(C), 1, :)
 
 function _mulfill!(C, A, B::AbstractFillMatrix, alpha, beta)
     check_matmul_sizes(C, A, B)
@@ -227,7 +227,7 @@ function mul!(C::StridedMatrix, A::StridedMatrix, B::AbstractFillMatrix, alpha::
     _mulfill!(C, A, B, alpha, beta)
 end
 
-for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
+for T in (:Adjoint, :Transpose)
     @eval function mul!(C::StridedMatrix, A::$T{<:Any, <:StridedMatrix}, B::AbstractFillMatrix, alpha::Number, beta::Number)
         _mulfill!(C, A, B, alpha, beta)
     end
