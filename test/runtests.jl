@@ -1640,34 +1640,46 @@ end
         A = rand(3,3)
         @testset "vector" begin
             w = zeros(size(A,1))
+            w2 = MVector{length(w)}(w)
             for ind in (size(A,2)-1, size(A,2)+1)
                 x = OneElement(3, ind, size(A,2))
-                @test A * x ≈ A * Array(x)
-                @test A' * x ≈ A' * Array(x)
-                @test transpose(A) * x ≈ transpose(A) * Array(x)
+                xarr = Array(x)
+                @test A * x ≈ A * xarr
+                @test A' * x ≈ A' * xarr
+                @test transpose(A) * x ≈ transpose(A) * xarr
 
-                @test mul!(w, A, x) ≈ A * Array(x)
-                @test mul!(w, A', x) ≈ A' * Array(x)
+                @test mul!(w, A, x) ≈ A * xarr
+                @test mul!(w, A', x) ≈ A' * xarr
                 w .= 1
-                @test mul!(w, A, x, 1.0, 1.0) ≈ A * Array(x) .+ 1
+                @test mul!(w, A, x, 1.0, 1.0) ≈ A * xarr .+ 1
                 w .= 1
-                @test mul!(w, A', x, 1.0, 1.0) ≈ A' * Array(x) .+ 1
+                @test mul!(w, A', x, 1.0, 1.0) ≈ A' * xarr .+ 1
+
+                F = Fill(3, size(A))
+                w2 .= 1
+                @test mul!(w2, F, x, 1.0, 1.0) ≈ Array(F) * xarr .+ 1
             end
         end
         @testset "matrix" begin
             C = zeros(size(A))
+            C2 = MMatrix{size(C)...}(C)
             for inds in (size(A) .- 1, size(A) .+ 1)
                 B = OneElement(3, inds, size(A))
-                @test A * B ≈ A * Array(B)
-                @test A' * B ≈ A' * Array(B)
-                @test transpose(A) * B ≈ transpose(A) * Array(B)
+                Barr = Array(B)
+                @test A * B ≈ A * Barr
+                @test A' * B ≈ A' * Barr
+                @test transpose(A) * B ≈ transpose(A) * Barr
 
-                @test mul!(C, A, B) ≈ A * Array(B)
-                @test mul!(C, A', B) ≈ A' * Array(B)
+                @test mul!(C, A, B) ≈ A * Barr
+                @test mul!(C, A', B) ≈ A' * Barr
                 C .= 1
-                @test mul!(C, A, B, 1.0, 1.0) ≈ A * Array(B) .+ 1
+                @test mul!(C, A, B, 1.0, 1.0) ≈ A * Barr .+ 1
                 C .= 1
-                @test mul!(C, A', B, 1.0, 1.0) ≈ A' * Array(B) .+ 1
+                @test mul!(C, A', B, 1.0, 1.0) ≈ A' * Barr .+ 1
+
+                C2 .= 1
+                F = Fill(3,size(A))
+                @test mul!(C2, F, B, 1.0, 1.0) ≈ Array(F) * Barr .+ 1
             end
         end
     end
