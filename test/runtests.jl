@@ -345,7 +345,7 @@ function test_addition_subtraction_dot(As, Bs, Tout::Type)
 
             @test B - A isa Tout{promote_type(eltype(B), eltype(A))}
             @test equal_or_undef(as_array(B - A), as_array(B) - as_array(A))
-            
+
             # Julia 1.6 doesn't support dot(UniformScaling)
             if VERSION < v"1.6.0" || VERSION >= v"1.8.0"
                 d1 = dot(A, B)
