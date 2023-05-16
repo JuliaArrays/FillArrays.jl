@@ -1172,6 +1172,12 @@ end
     @test FillArrays._copy_oftype(m, Int) ≡ Eye{Int}(10)
     @test FillArrays._copy_oftype(D, eltype(D)) ≡ D
     @test FillArrays._copy_oftype(D, Float64) ≡ Diagonal(Fill(2.0,10))
+
+    # test that _copy_oftype does, in fact, copy the array
+    D2 = Diagonal([1,1])
+    @test FillArrays._copy_oftype(D2, Float64) isa Diagonal{Float64}
+    @test FillArrays._copy_oftype(D2, eltype(D2)) == D2
+    @test FillArrays._copy_oftype(D2, eltype(D2)) !== D2
 end
 
 @testset "Issue #31" begin
