@@ -1558,6 +1558,8 @@ end
     @test e₁ == [0,1,0,0,0]
     @test_throws BoundsError e₁[6]
 
+    @test stringmime("text/plain", e₁) == "5-element OneElement{$Int, 1, Tuple{$Int}, Tuple{Base.OneTo{$Int}}}:\n ⋅\n 1\n ⋅\n ⋅\n ⋅"
+
     e₁ = OneElement{Float64}(2, 5)
     @test e₁ == [0,1,0,0,0]
 
