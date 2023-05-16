@@ -1168,7 +1168,9 @@ end
 
     @test copy(m) ≡ m
     @test copy(D) ≡ D
+    @test FillArrays._copy_oftype(m, eltype(m)) ≡ m
     @test FillArrays._copy_oftype(m, Int) ≡ Eye{Int}(10)
+    @test FillArrays._copy_oftype(D, eltype(D)) ≡ D
     @test FillArrays._copy_oftype(D, Float64) ≡ Diagonal(Fill(2.0,10))
 end
 
