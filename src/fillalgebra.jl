@@ -6,10 +6,8 @@ vec(a::AbstractFill) = fillsimilar(a, length(a))
 # cannot do this for vectors since that would destroy scalar dot product
 
 
-transpose(a::OnesMatrix{T}) where T = Ones{T}(reverse(a.axes))
-adjoint(a::OnesMatrix{T}) where T = Ones{T}(reverse(a.axes))
-transpose(a::ZerosMatrix{T}) where T = Zeros{T}(reverse(a.axes))
-adjoint(a::ZerosMatrix{T}) where T = Zeros{T}(reverse(a.axes))
+transpose(a::Union{OnesMatrix, ZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
+adjoint(a::Union{OnesMatrix, ZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
 transpose(a::FillMatrix{T}) where T = Fill{T}(transpose(a.value), reverse(a.axes))
 adjoint(a::FillMatrix{T}) where T = Fill{T}(adjoint(a.value), reverse(a.axes))
 
