@@ -204,8 +204,10 @@ include("infinitearrays.jl")
     @testset "promotion" begin
         Z = Zeros{Int}(5)
         Zf = Zeros(5)
+        @test promote_type(typeof(Z), typeof(Zf)) == typeof(Zf)
         O = Ones{Int}(5)
         Of = Ones{Float64}(5)
+        @test promote_type(typeof(O), typeof(Of)) == typeof(Of)
         @test [Z,O] isa Vector{Fill{Int,1,Tuple{Base.OneTo{Int}}}}
         @test [Z,Of] isa Vector{Fill{Float64,1,Tuple{Base.OneTo{Int}}}}
         @test [O,O] isa Vector{Ones{Int,1,Tuple{Base.OneTo{Int}}}}
@@ -214,6 +216,10 @@ include("infinitearrays.jl")
 
         @test convert(Ones{Int}, Of) ≡ convert(Ones{Int,1}, Of) ≡ convert(typeof(O), Of) ≡ O
         @test convert(Zeros{Int}, Zf) ≡ convert(Zeros{Int,1}, Zf) ≡ convert(typeof(Z), Zf) ≡ Z
+
+        F = Fill(1, 2)
+        Ff = Fill(1.0, 2)
+        @test promote_type(typeof(F), typeof(Ff)) == typeof(Ff)
 
         @test_throws MethodError convert(Zeros{SVector{2,Int}}, Zf)
     end
