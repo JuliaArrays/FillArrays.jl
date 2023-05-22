@@ -194,7 +194,7 @@ function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b
 end
 
 _copy_oftype(A::AbstractArray, ::Type{S}) where {S} = eltype(A) == S ? copy(A) : AbstractArray{S}(A)
-_copy_oftype(A::AbstractRange, ::Type{S}) where {S} = map(S, A)
+_copy_oftype(A::AbstractRange, ::Type{S}) where {S} = eltype(A) == S ? copy(A) : map(S, A)
 
 for op in (:+, :-)
     @eval begin
