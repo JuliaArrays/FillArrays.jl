@@ -5,7 +5,18 @@ on:
       - master
   pull_request:
 jobs:
+  pre_job:
+    # continue-on-error: true # Uncomment once integration is finished
+    runs-on: ubuntu-latest
+    # Map a step output to a job output
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
   test:
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -14,7 +25,6 @@ jobs:
         version:
           - '1.6'
           - '1'
-          - '~1.9.0-0'
         os:
           - ubuntu-latest
           - macOS-latest

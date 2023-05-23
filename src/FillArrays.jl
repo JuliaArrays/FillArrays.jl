@@ -10,7 +10,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
-    issymmetric, ishermitian, AdjOrTransAbsVec, checksquare
+    issymmetric, ishermitian, AdjOrTransAbsVec, checksquare, mul!
 
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
@@ -329,7 +329,7 @@ end
 promote_rule(::Type{<:AbstractFill{T, N, Axes}}, ::Type{<:AbstractFill{V, N, Axes}}) where {T,V,N,Axes} = Fill{promote_type(T,V),N,Axes}
 
 """
-    fillsimilar(a::AbstractFill, axes)
+    fillsimilar(a::AbstractFill, axes...)
 
 creates a fill object that has the same fill value as `a` but
 with the specified axes.
