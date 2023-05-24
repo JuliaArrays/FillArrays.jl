@@ -6,7 +6,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero,
-    show, view, in, mapreduce, one, reverse, promote_op, promote_rule
+    show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
@@ -760,6 +760,43 @@ Base.@propagate_inbounds view(A::AbstractFill, I...) =
 Base.@propagate_inbounds function view(A::AbstractFill, I::Vararg{Real})
     @boundscheck checkbounds(A, I...)
     fillsimilar(A)
+end
+
+# repeat
+
+_first(t::Tuple) = t[1]
+_first(t::Tuple{}) = 1
+
+_maybetail(t::Tuple) = Base.tail(t)
+_maybetail(t::Tuple{}) = t
+
+_match_size(sz::Tuple{}, inner::Tuple{}, outer::Tuple{}) = ()
+function _match_size(sz::Tuple, inner::Tuple, outer::Tuple)
+    t1 = (_first(sz), _first(inner), _first(outer))
+    t2 = _match_size(_maybetail(sz), _maybetail(inner), _maybetail(outer))
+    (t1, t2...)
+end
+
+function _repeat_size(sz::Tuple, inner::Tuple, outer::Tuple)
+    t = _match_size(sz, inner, outer)
+    map(*, getindex.(t, 1), getindex.(t, 2), getindex.(t, 3))
+end
+
+function _repeat(A; inner=ntuple(x->1, ndims(A)), outer=ntuple(x->1, ndims(A)))
+    Base.require_one_based_indexing(A)
+    length(inner) >= ndims(A) ||
+        throw(ArgumentError("number of inner repetitions $(length(inner)) cannot be "*
+            "less than number of dimensions of input array $(ndims(A))"))
+    length(outer) >= ndims(A) ||
+        throw(ArgumentError("number of outer repetitions $(length(outer)) cannot be "*
+            "less than number of dimensions of input array $(ndims(A))"))
+    sz = _repeat_size(size(A), Tuple(inner), Tuple(outer))
+    fillsimilar(A, sz)
+end
+
+repeat(A::AbstractFill, count::Integer...) = _repeat(A, outer=count)
+function repeat(A::AbstractFill; inner=ntuple(x->1, ndims(A)), outer=ntuple(x->1, ndims(A)))
+    _repeat(A, inner=inner, outer=outer)
 end
 
 include("oneelement.jl")
