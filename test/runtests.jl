@@ -204,8 +204,10 @@ include("infinitearrays.jl")
     @testset "promotion" begin
         Z = Zeros{Int}(5)
         Zf = Zeros(5)
+        @test promote_type(typeof(Z), typeof(Zf)) == typeof(Zf)
         O = Ones{Int}(5)
         Of = Ones{Float64}(5)
+        @test promote_type(typeof(O), typeof(Of)) == typeof(Of)
         @test [Z,O] isa Vector{Fill{Int,1,Tuple{Base.OneTo{Int}}}}
         @test [Z,Of] isa Vector{Fill{Float64,1,Tuple{Base.OneTo{Int}}}}
         @test [O,O] isa Vector{Ones{Int,1,Tuple{Base.OneTo{Int}}}}
@@ -214,6 +216,10 @@ include("infinitearrays.jl")
 
         @test convert(Ones{Int}, Of) ≡ convert(Ones{Int,1}, Of) ≡ convert(typeof(O), Of) ≡ O
         @test convert(Zeros{Int}, Zf) ≡ convert(Zeros{Int,1}, Zf) ≡ convert(typeof(Z), Zf) ≡ Z
+
+        F = Fill(1, 2)
+        Ff = Fill(1.0, 2)
+        @test promote_type(typeof(F), typeof(Ff)) == typeof(Ff)
 
         @test_throws MethodError convert(Zeros{SVector{2,Int}}, Zf)
     end
@@ -345,7 +351,7 @@ function test_addition_subtraction_dot(As, Bs, Tout::Type)
 
             @test B - A isa Tout{promote_type(eltype(B), eltype(A))}
             @test equal_or_undef(as_array(B - A), as_array(B) - as_array(A))
-            
+
             # Julia 1.6 doesn't support dot(UniformScaling)
             if VERSION < v"1.6.0" || VERSION >= v"1.8.0"
                 d1 = dot(A, B)
@@ -1162,8 +1168,16 @@ end
 
     @test copy(m) ≡ m
     @test copy(D) ≡ D
+    @test FillArrays._copy_oftype(m, eltype(m)) ≡ m
     @test FillArrays._copy_oftype(m, Int) ≡ Eye{Int}(10)
+    @test FillArrays._copy_oftype(D, eltype(D)) ≡ D
     @test FillArrays._copy_oftype(D, Float64) ≡ Diagonal(Fill(2.0,10))
+
+    # test that _copy_oftype does, in fact, copy the array
+    D2 = Diagonal([1,1])
+    @test FillArrays._copy_oftype(D2, Float64) isa Diagonal{Float64}
+    @test FillArrays._copy_oftype(D2, eltype(D2)) == D2
+    @test FillArrays._copy_oftype(D2, eltype(D2)) !== D2
 end
 
 @testset "Issue #31" begin
@@ -1264,35 +1278,98 @@ end
     @test Zeros(10)*Zeros(1,12) ≡ Zeros(10,12)
     @test Zeros(3,10)*Zeros(10,12) ≡ Zeros(3,12)
     @test Zeros(3,10)*Zeros(10) ≡ Zeros(3)
-
+    
     f = Zeros((Base.IdentityUnitRange(1:4), Base.IdentityUnitRange(1:4)))
     @test f * f === f
 
     f = Zeros((Base.IdentityUnitRange(3:4), Base.IdentityUnitRange(3:4)))
     @test_throws ArgumentError f * f
 
-    a = randn(3)
-    A = randn(1,4)
+    for W in (zeros(3,4), @MMatrix zeros(3,4))
+        mW, nW = size(W)
+        @test mul!(W, Fill(2,mW,5), Fill(3,5,nW)) ≈ Fill(30,mW,nW) ≈ fill(2,mW,5) * fill(3,5,nW)
+        W .= 2
+        @test mul!(W, Fill(2,mW,5), Fill(3,5,nW), 1.0, 2.0) ≈ Fill(30,mW,nW) .+ 4 ≈ fill(2,mW,5) * fill(3,5,nW) .+ 4
+    end
 
-    @test Fill(2,3)*A ≈ Vector(Fill(2,3))*A
-    @test Fill(2,3,1)*A ≈ Matrix(Fill(2,3,1))*A
-    @test Fill(2,3,3)*a ≈ Matrix(Fill(2,3,3))*a
-    @test Ones(3)*A ≈ Vector(Ones(3))*A
-    @test Ones(3,1)*A ≈ Matrix(Ones(3,1))*A
-    @test Ones(3,3)*a ≈ Matrix(Ones(3,3))*a
-    @test Zeros(3)*A  ≡ Zeros(3,4)
-    @test Zeros(3,1)*A == Zeros(3,4)
-    @test Zeros(3,3)*a == Zeros(3)
+    for w in (zeros(5), @MVector zeros(5))
+        mw = size(w,1)
+        @test mul!(w, Fill(2,mw,5), Fill(3,5)) ≈ Fill(30,mw) ≈ fill(2,mw,5) * fill(3,5)
+        w .= 2
+        @test mul!(w, Fill(2,mw,5), Fill(3,5), 1.0, 2.0) ≈ Fill(30,mw) .+ 4 ≈ fill(2,mw,5) * fill(3,5) .+ 4
+    end
 
-    @test A*Fill(2,4) ≈ A*Vector(Fill(2,4))
-    @test A*Fill(2,4,1) ≈ A*Matrix(Fill(2,4,1))
-    @test a*Fill(2,1,3) ≈ a*Matrix(Fill(2,1,3))
-    @test A*Ones(4) ≈ A*Vector(Ones(4))
-    @test A*Ones(4,1) ≈ A*Matrix(Ones(4,1))
-    @test a*Ones(1,3) ≈ a*Matrix(Ones(1,3))
-    @test A*Zeros(4)  ≡ Zeros(1)
-    @test A*Zeros(4,1) ≡ Zeros(1,1)
-    @test a*Zeros(1,3) ≡ Zeros(3,3)
+    @testset "strided" begin
+        @testset for (la, (mA, nA)) in [(3, (1,4)), (0, (1,4)), (3, (1, 0))]
+
+            a = randn(la)
+            na = 1
+            A = randn(mA,nA)
+
+            @test Fill(2,3)*A ≈ Vector(Fill(2,3))*A
+            @test Fill(2,0)*A ≈ Vector(Fill(2,0))*A
+            @test Fill(2,3,mA)*A ≈ Matrix(Fill(2,3,mA))*A
+            @test Fill(2,3,la)*a ≈ Matrix(Fill(2,3,la))*a
+            @test Ones(3)*A ≈ Vector(Ones(3))*A
+            @test Ones(3,mA)*A ≈ Matrix(Ones(3,mA))*A
+            @test Ones(3,la)*a ≈ Matrix(Ones(3,la))*a
+            @test Zeros(3)*A  ≡ Zeros(3,nA)
+            @test Zeros(3,mA)*A == Zeros(3,nA)
+            @test Zeros(3,la)*a == Zeros(3)
+
+            @test A*Fill(2,nA) ≈ A*Vector(Fill(2,nA))
+            @test A*Fill(2,nA,1) ≈ A*Matrix(Fill(2,nA,1))
+            @test a*Fill(2,na,3) ≈ a*Matrix(Fill(2,na,3))
+            @test A*Fill(2,nA,0) ≈ A*Matrix(Fill(2,nA,0))
+            @test a*Fill(2,na,0) ≈ a*Matrix(Fill(2,na,0))
+            @test A*Ones(nA) ≈ A*Vector(Ones(nA))
+            @test A*Ones(nA,1) ≈ A*Matrix(Ones(nA,1))
+            @test a*Ones(na,3) ≈ a*Matrix(Ones(na,3))
+            @test A*Zeros(nA)  ≡ Zeros(mA)
+            @test A*Zeros(nA,1) ≡ Zeros(mA,1)
+            @test a*Zeros(na,3) ≡ Zeros(la,3)
+
+            w = zeros(mA)
+            @test mul!(w, A, Fill(2,nA), true, false) ≈ A * fill(2,nA)
+            w .= 2
+            @test mul!(w, A, Fill(2,nA), 1.0, 1.0) ≈ A * fill(2,nA) .+ 2
+
+            nW = 3
+            W = zeros(mA, nW)
+            @test mul!(W, A, Fill(2,nA,nW), true, false) ≈ A * fill(2,nA,nW)
+            W .= 2
+            @test mul!(W, A, Fill(2,nA,nW), 1.0, 1.0) ≈ A * fill(2,nA,nW) .+ 2
+
+            mW = 5
+            W = zeros(mW, nA)
+            @test mul!(W, Fill(2,mW,mA), A, true, false) ≈ fill(2,mW,mA) * A
+            W .= 2
+            @test mul!(W, Fill(2,mW,mA), A, 1.0, 1.0) ≈ fill(2,mW,mA) * A .+ 2
+
+            mw = 5
+            w = zeros(mw)
+            @test mul!(w, Fill(2,mw,la), a, true, false) ≈ fill(2,mw,la) * a
+            w .= 2
+            @test mul!(w, Fill(2,mw,la), a, 1.0, 1.0) ≈ fill(2,mw,la) * a .+ 2
+
+            @testset for f in [adjoint, transpose]
+                w = zeros(nA)
+                @test mul!(w, f(A), Fill(2,mA), true, false) ≈ f(A) * fill(2,mA)
+                w .= 2
+                @test mul!(w, f(A), Fill(2,mA), 1.0, 1.0) ≈ f(A) * fill(2,mA) .+ 2
+
+                W = zeros(nA, nW)
+                @test mul!(W, f(A), Fill(2,mA,nW), true, false) ≈ f(A) * fill(2,mA,nW)
+                W .= 2
+                @test mul!(W, f(A), Fill(2,mA,nW), 1.0, 1.0) ≈ f(A) * fill(2,mA,nW) .+ 2
+
+                W = zeros(mW, mA)
+                @test mul!(W, Fill(2,mW,nA), f(A), true, false) ≈ fill(2,mW,nA) * f(A)
+                W .= 2
+                @test mul!(W, Fill(2,mW,nA), f(A), 1.0, 1.0) ≈ fill(2,mW,nA) * f(A) .+ 2
+            end
+        end
+    end
 
     D = Diagonal(randn(1))
     @test Zeros(1,1)*D ≡ Zeros(1,1)
@@ -1306,7 +1383,7 @@ end
     @test Ones(5,10) * D ≡ Fill(2.0,5,10)
 
     # following test is broken in Base as of Julia v1.5
-    @test_skip @test_throws DimensionMismatch Diagonal(Fill(1,1)) * Ones(10)
+    @test_throws DimensionMismatch Diagonal(Fill(1,1)) * Ones(10)
     @test_throws DimensionMismatch Diagonal(Fill(1,1)) * Ones(10,5)
     @test_throws DimensionMismatch Ones(5,10) * Diagonal(Fill(1,1))
 
@@ -1578,4 +1655,52 @@ end
     @test Base.setindex(Zeros(5), 2, 2) ≡ OneElement(2.0, 2, 5)
     @test Base.setindex(Zeros(5,3), 2, 2, 3) ≡ OneElement(2.0, (2,3), (5,3))
     @test_throws BoundsError Base.setindex(Zeros(5), 2, 6)
+
+    @testset "matmul" begin
+        A = rand(3,3)
+        @testset "vector" begin
+            w = zeros(size(A,1))
+            w2 = MVector{length(w)}(w)
+            for ind in (size(A,2)-1, size(A,2)+1)
+                x = OneElement(3, ind, size(A,2))
+                xarr = Array(x)
+                @test A * x ≈ A * xarr
+                @test A' * x ≈ A' * xarr
+                @test transpose(A) * x ≈ transpose(A) * xarr
+
+                @test mul!(w, A, x) ≈ A * xarr
+                @test mul!(w, A', x) ≈ A' * xarr
+                w .= 1
+                @test mul!(w, A, x, 1.0, 1.0) ≈ A * xarr .+ 1
+                w .= 1
+                @test mul!(w, A', x, 1.0, 1.0) ≈ A' * xarr .+ 1
+
+                F = Fill(3, size(A))
+                w2 .= 1
+                @test mul!(w2, F, x, 1.0, 1.0) ≈ Array(F) * xarr .+ 1
+            end
+        end
+        @testset "matrix" begin
+            C = zeros(size(A))
+            C2 = MMatrix{size(C)...}(C)
+            for inds in (size(A) .- 1, size(A) .+ 1)
+                B = OneElement(3, inds, size(A))
+                Barr = Array(B)
+                @test A * B ≈ A * Barr
+                @test A' * B ≈ A' * Barr
+                @test transpose(A) * B ≈ transpose(A) * Barr
+
+                @test mul!(C, A, B) ≈ A * Barr
+                @test mul!(C, A', B) ≈ A' * Barr
+                C .= 1
+                @test mul!(C, A, B, 1.0, 1.0) ≈ A * Barr .+ 1
+                C .= 1
+                @test mul!(C, A', B, 1.0, 1.0) ≈ A' * Barr .+ 1
+
+                C2 .= 1
+                F = Fill(3,size(A))
+                @test mul!(C2, F, B, 1.0, 1.0) ≈ Array(F) * Barr .+ 1
+            end
+        end
+    end
 end

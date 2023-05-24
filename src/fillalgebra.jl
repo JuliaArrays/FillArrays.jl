@@ -1,17 +1,13 @@
 ## vec
 
-vec(a::Ones{T}) where T = Ones{T}(length(a))
-vec(a::Zeros{T}) where T = Zeros{T}(length(a))
-vec(a::Fill{T}) where T = Fill{T}(a.value,length(a))
+vec(a::AbstractFill) = fillsimilar(a, length(a))
 
 ## Transpose/Adjoint
 # cannot do this for vectors since that would destroy scalar dot product
 
 
-transpose(a::OnesMatrix{T}) where T = Ones{T}(reverse(a.axes))
-adjoint(a::OnesMatrix{T}) where T = Ones{T}(reverse(a.axes))
-transpose(a::ZerosMatrix{T}) where T = Zeros{T}(reverse(a.axes))
-adjoint(a::ZerosMatrix{T}) where T = Zeros{T}(reverse(a.axes))
+transpose(a::Union{OnesMatrix, ZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
+adjoint(a::Union{OnesMatrix, ZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
 transpose(a::FillMatrix{T}) where T = Fill{T}(transpose(a.value), reverse(a.axes))
 adjoint(a::FillMatrix{T}) where T = Fill{T}(adjoint(a.value), reverse(a.axes))
 
@@ -94,27 +90,154 @@ function *(a::AbstractFillMatrix, b::Diagonal)
     a .* permutedims(parent(b)) # use special broadcast
 end
 
-*(a::Adjoint{T, <:StridedMatrix{T}},   b::FillVector{T}) where T = reshape(sum(conj.(parent(a)); dims=1) .* b.value, size(parent(a), 2))
-*(a::Transpose{T, <:StridedMatrix{T}}, b::FillVector{T}) where T = reshape(sum(parent(a); dims=1) .* b.value, size(parent(a), 2))
-*(a::StridedMatrix{T}, b::FillVector{T}) where T         = reshape(sum(a; dims=2) .* b.value, size(a, 1))
-
-function *(a::Adjoint{T, <:StridedMatrix{T}}, b::FillMatrix{T}) where T
-    fB = similar(parent(a), size(b, 1), size(b, 2))
-    fill!(fB, b.value)
-    return a*fB
+@noinline function check_matmul_sizes(y::AbstractVector, A::AbstractMatrix, x::AbstractVector)
+    Base.require_one_based_indexing(A, x, y)
+    size(A,2) == size(x,1) ||
+        throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match length of x $(length(x))"))
+    size(y,1) == size(A,1) ||
+        throw(DimensionMismatch("first dimension of A, $(size(A,1)) does not match length of y $(length(y))"))
+end
+@noinline function check_matmul_sizes(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix)
+    Base.require_one_based_indexing(A, B, C)
+    size(A,2) == size(B,1) ||
+        throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match first dimension of B, $(size(B,1))"))
+    size(C,1) == size(A,1) && size(C,2) == size(B,2) ||
+        throw(DimensionMismatch("A has size $(size(A)), B has size $(size(B)), C has size $(size(C))"))
 end
 
-function *(a::Transpose{T, <:StridedMatrix{T}}, b::FillMatrix{T}) where T
-    fB = similar(parent(a), size(b, 1), size(b, 2))
-    fill!(fB, b.value)
-    return a*fB
+function mul!(y::AbstractVector, A::AbstractFillMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
+    check_matmul_sizes(y, A, b)
+
+    αAb = alpha * getindex_value(A) * getindex_value(b) * length(b)
+
+    if iszero(beta)
+        y .= αAb
+    else
+        y .= αAb .+ beta .* y
+    end
+    y
 end
 
-function *(a::StridedMatrix{T}, b::FillMatrix{T}) where T
-    fB = similar(a, size(b, 1), size(b, 2))
-    fill!(fB, b.value)
-    return a*fB
+function mul!(y::StridedVector, A::StridedMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
+    check_matmul_sizes(y, A, b)
+
+    αb = alpha * getindex_value(b)
+
+    if iszero(beta)
+        y .= zero(eltype(y))
+        for col in eachcol(A)
+            y .+= αb .* col
+        end
+    else
+        lmul!(beta, y)
+        for col in eachcol(A)
+            y .+= αb .* col
+        end
+    end
+    y
 end
+
+function mul!(y::StridedVector, A::AbstractFillMatrix, b::StridedVector, alpha::Number, beta::Number)
+    check_matmul_sizes(y, A, b)
+
+    αA = alpha * getindex_value(A)
+
+    if iszero(beta)
+        y .= αA .* sum(b)
+    else
+        y .= αA .* sum(b) .+ beta .* y
+    end
+    y
+end
+
+function _mul_adjtrans!(y::AbstractVector, A::AbstractMatrix, b::AbstractVector, alpha, beta, f)
+    α = alpha * getindex_value(b)
+
+    At = f(A)
+
+    if iszero(beta)
+        for (ind, col) in zip(eachindex(y), eachcol(At))
+            y[ind] = α .* f(sum(col))
+        end
+    else
+        for (ind, col) in zip(eachindex(y), eachcol(At))
+            y[ind] = α .* f(sum(col)) .+ beta .* y[ind]
+        end
+    end
+    y
+end
+
+for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
+    @eval function mul!(y::StridedVector, A::$T{<:Any, <:StridedMatrix}, b::AbstractFillVector, alpha::Number, beta::Number)
+        check_matmul_sizes(y, A, b)
+        _mul_adjtrans!(y, A, b, alpha, beta, $f)
+    end
+end
+
+function mul!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
+    check_matmul_sizes(C, A, B)
+    αAB = alpha * getindex_value(A) * getindex_value(B) * size(B,1)
+    if iszero(beta)
+        C .= αAB
+    else
+        C .= αAB .+ beta .* C
+    end
+    C
+end
+
+function copyfirstcol!(C)
+    @views for i in axes(C,2)[2:end]
+        C[:, i] .= C[:, 1]
+    end
+    return C
+end
+function copyfirstcol!(C::Union{Adjoint, Transpose})
+    # in this case, we copy the first row of the parent to others
+    Cp = parent(C)
+    for colind in axes(Cp, 2)
+        Cp[2:end, colind] .= Cp[1, colind]
+    end
+    return C
+end
+
+_firstcol(C::AbstractMatrix) = view(C, :, 1)
+_firstcol(C::Union{Adjoint, Transpose}) = view(parent(C), 1, :)
+
+function _mulfill!(C, A, B::AbstractFillMatrix, alpha, beta)
+    check_matmul_sizes(C, A, B)
+    if iszero(size(B,2))
+        return lmul!(beta, C)
+    end
+    mul!(_firstcol(C), A, view(B, :, 1), alpha, beta)
+    copyfirstcol!(C)
+    C
+end
+
+function mul!(C::StridedMatrix, A::StridedMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
+    _mulfill!(C, A, B, alpha, beta)
+end
+
+for T in (:Adjoint, :Transpose)
+    @eval function mul!(C::StridedMatrix, A::$T{<:Any, <:StridedMatrix}, B::AbstractFillMatrix, alpha::Number, beta::Number)
+        _mulfill!(C, A, B, alpha, beta)
+    end
+end
+
+function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::StridedMatrix, alpha::Number, beta::Number)
+    check_matmul_sizes(C, A, B)
+    for (colC, colB) in zip(eachcol(C), eachcol(B))
+        mul!(colC, A, colB, alpha, beta)
+    end
+    C
+end
+
+for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
+    @eval function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::$T{<:Any, <:StridedMatrix}, alpha::Number, beta::Number)
+        _mulfill!($f(C), $f(B), $f(A), alpha, beta)
+        C
+    end
+end
+
 function _adjvec_mul_zeros(a, b)
     la, lb = length(a), length(b)
     if la ≠ lb
