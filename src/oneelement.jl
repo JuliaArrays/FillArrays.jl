@@ -56,18 +56,24 @@ function Base.setindex(A::Zeros{T,N}, v, kj::Vararg{Int,N}) where {T,N}
     OneElement(convert(T, v), kj, axes(A))
 end
 
+@inline function __mulonel!(y, A, x, alpha, beta)
+    αx = alpha * x.val
+    ind1 = x.ind[1]
+    if iszero(beta)
+        y .= αx .* view(A, :, ind1)
+    else
+        y .= αx .* view(A, :, ind1) .+ beta .* y
+    end
+    return y
+end
+
 function _mulonel!(y, A, x::OneElementVector, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, x)
     if x.ind[1] ∉ axes(x,1) # in this case x is all zeros
         mul!(y, A, Zeros{eltype(x)}(axes(x)), alpha, beta)
         return y
     end
-    αx = alpha * x.val
-    if iszero(beta)
-        y .= αx .* view(A, :, x.ind[1])
-    else
-        y .= αx .* view(A, :, x.ind[1]) .+ beta .* y
-    end
+    __mulonel!(y, A, x, alpha, beta)
     y
 end
 
@@ -77,14 +83,8 @@ function _mulonel!(C, A, B::OneElementMatrix, alpha::Number, beta::Number)
         mul!(C, A, Zeros{eltype(B)}(axes(B)), alpha, beta)
         return C
     end
-    αB = alpha * B.val
-    if iszero(beta)
-        C .= zero(eltype(C))
-        C[:, B.ind[2]] .= αB .* view(A, :, B.ind[1])
-    else
-        lmul!(beta, C)
-        C[:, B.ind[2]] .+= αB .* view(A, :, B.ind[1])
-    end
+    y = @view C[:, B.ind[2]]
+    __mulonel!(y, A, B, alpha, beta)
     C
 end
 
