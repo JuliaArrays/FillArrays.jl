@@ -45,6 +45,9 @@ function Base.getindex(A::OneElement{T,N}, kj::Vararg{Int,N}) where {T,N}
     ifelse(kj == A.ind, A.val, zero(T))
 end
 
+Base.replace_in_print_matrix(o::OneElementVector, k::Integer, j::Integer, s::AbstractString) =
+    o.ind == (k,) ? s : Base.replace_with_centered_mark(s)
+
 Base.replace_in_print_matrix(o::OneElementMatrix, k::Integer, j::Integer, s::AbstractString) =
     o.ind == (k,j) ? s : Base.replace_with_centered_mark(s)
 
