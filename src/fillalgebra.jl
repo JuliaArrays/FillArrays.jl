@@ -52,37 +52,39 @@ function mult_fill(a, b, T::Type = Fill)
     ax_result = (axes(a, 1), axes(b)[2:end]...)
     _mult_fill(a, b, ax_result, T)
 end
+mult_zeros(a, b) = mult_fill(a, b, Zeros)
+mult_ones(a, b) = mult_fill(a, b, Ones)
 
 *(a::AbstractFillVector, b::AbstractFillMatrix) = mult_fill(a,b)
 *(a::AbstractFillMatrix, b::AbstractFillMatrix) = mult_fill(a,b)
 *(a::AbstractFillMatrix, b::AbstractFillVector) = mult_fill(a,b)
 
-*(a::OnesVector, b::OnesMatrix) = mult_fill(a, b, Ones)
+*(a::OnesVector, b::OnesMatrix) = mult_ones(a, b)
 
-*(a::ZerosVector, b::ZerosMatrix) = mult_fill(a, b, Zeros)
-*(a::ZerosMatrix, b::ZerosMatrix) = mult_fill(a, b, Zeros)
-*(a::ZerosMatrix, b::ZerosVector) = mult_fill(a, b, Zeros)
+*(a::ZerosVector, b::ZerosMatrix) = mult_zeros(a, b)
+*(a::ZerosMatrix, b::ZerosMatrix) = mult_zeros(a, b)
+*(a::ZerosMatrix, b::ZerosVector) = mult_zeros(a, b)
 
-*(a::ZerosVector, b::AbstractFillMatrix) = mult_fill(a, b, Zeros)
-*(a::ZerosMatrix, b::AbstractFillMatrix) = mult_fill(a, b, Zeros)
-*(a::ZerosMatrix, b::AbstractFillVector) = mult_fill(a, b, Zeros)
-*(a::AbstractFillVector, b::ZerosMatrix) = mult_fill(a, b, Zeros)
-*(a::AbstractFillMatrix, b::ZerosMatrix) = mult_fill(a, b, Zeros)
-*(a::AbstractFillMatrix, b::ZerosVector) = mult_fill(a, b, Zeros)
+*(a::ZerosVector, b::AbstractFillMatrix) = mult_zeros(a, b)
+*(a::ZerosMatrix, b::AbstractFillMatrix) = mult_zeros(a, b)
+*(a::ZerosMatrix, b::AbstractFillVector) = mult_zeros(a, b)
+*(a::AbstractFillVector, b::ZerosMatrix) = mult_zeros(a, b)
+*(a::AbstractFillMatrix, b::ZerosMatrix) = mult_zeros(a, b)
+*(a::AbstractFillMatrix, b::ZerosVector) = mult_zeros(a, b)
 
-*(a::ZerosVector, b::AbstractMatrix) = mult_fill(a, b, Zeros)
-*(a::ZerosMatrix, b::AbstractMatrix) = mult_fill(a, b, Zeros)
-*(a::AbstractMatrix, b::ZerosVector) = mult_fill(a, b, Zeros)
-*(a::AbstractMatrix, b::ZerosMatrix) = mult_fill(a, b, Zeros)
-*(a::ZerosMatrix, b::AbstractVector) = mult_fill(a, b, Zeros)
-*(a::AbstractVector, b::ZerosMatrix) = mult_fill(a, b, Zeros)
+*(a::ZerosVector, b::AbstractMatrix) = mult_zeros(a, b)
+*(a::ZerosMatrix, b::AbstractMatrix) = mult_zeros(a, b)
+*(a::AbstractMatrix, b::ZerosVector) = mult_zeros(a, b)
+*(a::AbstractMatrix, b::ZerosMatrix) = mult_zeros(a, b)
+*(a::ZerosMatrix, b::AbstractVector) = mult_zeros(a, b)
+*(a::AbstractVector, b::ZerosMatrix) = mult_zeros(a, b)
 
-*(a::ZerosVector, b::AdjOrTransAbsVec) = mult_fill(a, b, Zeros)
+*(a::ZerosVector, b::AdjOrTransAbsVec) = mult_zeros(a, b)
 
-*(a::ZerosVector, b::Diagonal) = mult_fill(a, b, Zeros)
-*(a::ZerosMatrix, b::Diagonal) = mult_fill(a, b, Zeros)
-*(a::Diagonal, b::ZerosVector) = mult_fill(a, b, Zeros)
-*(a::Diagonal, b::ZerosMatrix) = mult_fill(a, b, Zeros)
+*(a::ZerosVector, b::Diagonal) = mult_zeros(a, b)
+*(a::ZerosMatrix, b::Diagonal) = mult_zeros(a, b)
+*(a::Diagonal, b::ZerosVector) = mult_zeros(a, b)
+*(a::Diagonal, b::ZerosMatrix) = mult_zeros(a, b)
 function *(a::Diagonal, b::AbstractFillMatrix)
     size(a,2) == size(b,1) || throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
     parent(a) .* b # use special broadcast
@@ -136,7 +138,7 @@ end
 *(a::TransposeAbsVec, b::ZerosVector) = _adjvec_mul_zeros(a, b)
 *(a::TransposeAbsVec{<:Number}, b::ZerosVector{<:Number}) = _adjvec_mul_zeros(a, b)
 
-*(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::Zeros{<:Any, 1}) = mult_fill(a, b, Zeros)
+*(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::Zeros{<:Any, 1}) = mult_zeros(a, b)
 
 function *(a::Transpose{T, <:AbstractVector{T}}, b::ZerosVector{T}) where T<:Real
     la, lb = length(a), length(b)
@@ -145,7 +147,7 @@ function *(a::Transpose{T, <:AbstractVector{T}}, b::ZerosVector{T}) where T<:Rea
     end
     return zero(T)
 end
-*(a::Transpose{T, <:AbstractMatrix{T}}, b::ZerosVector{T}) where T<:Real = mult_fill(a, b, Zeros)
+*(a::Transpose{T, <:AbstractMatrix{T}}, b::ZerosVector{T}) where T<:Real = mult_zeros(a, b)
 
 # support types with fast sum
 # infinite cases should be supported in InfiniteArrays.jl
