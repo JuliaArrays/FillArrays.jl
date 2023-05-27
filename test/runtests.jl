@@ -1413,8 +1413,8 @@ end
 @testset "eigen" begin
     sortby = x -> (real(x), imag(x))
     @testset "AbstractFill" begin
-        @testset for val in (2.0, -2, 2im, 4 - 5im)
-            F = Fill(val, 4, 4)
+        @testset for val in (2.0, -2, 2im, 4 - 5im), n in (0, 1, 4)
+            F = Fill(val, n, n)
             M = Matrix(F)
             @test eigvals(F; sortby) ≈ eigvals(M; sortby)
             λ, V = eigen(F; sortby)
@@ -1422,8 +1422,8 @@ end
             @test V'V ≈ I
             @test V' * F * V ≈ Diagonal(λ)
         end
-        @testset for MT in (Ones, Zeros), T in (Float64, Int, ComplexF64)
-            F = MT{T}(5,5)
+        @testset for MT in (Ones, Zeros), T in (Float64, Int, ComplexF64), n in (0, 1, 4)
+            F = MT{T}(n,n)
             M = Matrix(F)
             @test eigvals(F; sortby) ≈ eigvals(M; sortby)
             λ, V = eigen(F; sortby)
@@ -1445,7 +1445,9 @@ end
             @test eigvals(T; sortby) ≈ eigvals(Matrix(T); sortby)
 
             T = Hermitian(Tridiagonal(Fill(3-4im, max(0, n-1)), Fill(2+0im, n), Fill(3+4im, max(0, n-1))))
-            @test eigvals(T) ≈ eigvals(Hermitian(Matrix(T)))
+            evT = eigvals(T)
+            @test evT ≈ eigvals(Hermitian(Matrix(T)))
+            @test eltype(evT) <: Real
         end
     end
 end

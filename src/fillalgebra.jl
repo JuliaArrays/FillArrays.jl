@@ -421,10 +421,11 @@ end
 
 function eigvecs(A::AbstractFillMatrix{<:Number}; sortby = nothing)
     Base.require_one_based_indexing(A)
-    val = getindex_value(A)
     n = checksquare(A)
-    ind = _eigenind(val, n, sortby)
     M = similar(A, float(eltype(A)))
+    n == 0 && return M
+    val = getindex_value(A)
+    ind = _eigenind(val, n, sortby)
     # The non-trivial eigenvector is normalize(ones(n))
     M[:, ind] .= 1/sqrt(n)
     # eigenvectors corresponding to zero eigenvalues
