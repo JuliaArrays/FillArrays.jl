@@ -1411,8 +1411,16 @@ end
 end
 
 @testset "eigen" begin
-    for val in (2.0, -2.0, 2im, 4 - 5im)
+    for val in (2.0, -2, 2im, 4 - 5im)
         F = Fill(val, 4, 4)
+        M = Matrix(F)
+        @test eigvals(F) ≈ eigvals(M)
+        λ, V = eigen(F)
+        @test V'V ≈ I
+        @test V' * F * V ≈ Diagonal(λ)
+    end
+    for T in (Ones, Zeros)
+        F = Ones(5,5)
         M = Matrix(F)
         @test eigvals(F) ≈ eigvals(M)
         λ, V = eigen(F)
