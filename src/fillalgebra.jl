@@ -455,7 +455,7 @@ function eigvals(H::Hermitian{T, <:Tridiagonal{T, <:AbstractFillVector{T}}}; sor
     _eigvals_toeplitz(H; sortby)
 end
 
-__eigvals_toeplitz(::Tridiagonal, a, b, c, n) = [a + 2√(b*c) * cospi(k/(n+1)) for k in n:-1:1]
+__eigvals_toeplitz(::Tridiagonal, a, b, c, n) = [a + 2 * √(b*c) * cospi(k/(n+1)) for k in n:-1:1]
 __eigvals_toeplitz(::SymTridiagonal, a, b, c, n) = [a + 2b * cospi(k/(n+1)) for k in n:-1:1]
 __eigvals_toeplitz(::Hermitian{<:Union{Real, Complex}, <:Tridiagonal}, a, b, c, n) =
     [real(a + 2abs(b) * cospi(k/(n+1))) for k in n:-1:1]

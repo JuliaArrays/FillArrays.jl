@@ -1413,7 +1413,7 @@ end
 @testset "eigen" begin
     sortby = x -> (real(x), imag(x))
     @testset "AbstractFill" begin
-        @testset for val in (2.0, -2, 2im, 4 - 5im), n in (0, 1, 4)
+        @testset for val in (2.0, -2, 3+2im, 4 - 5im), n in (0, 1, 4)
             F = Fill(val, n, n)
             M = Matrix(F)
             @test eigvals(F; sortby) ≈ eigvals(M; sortby)
