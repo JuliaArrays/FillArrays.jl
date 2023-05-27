@@ -1411,21 +1411,42 @@ end
 end
 
 @testset "eigen" begin
-    for val in (2.0, -2, 2im, 4 - 5im)
-        F = Fill(val, 4, 4)
-        M = Matrix(F)
-        @test eigvals(F) ≈ eigvals(M)
-        λ, V = eigen(F)
-        @test V'V ≈ I
-        @test V' * F * V ≈ Diagonal(λ)
+    sortby = x -> (real(x), imag(x))
+    @testset "AbstractFill" begin
+        @testset for val in (2.0, -2, 2im, 4 - 5im)
+            F = Fill(val, 4, 4)
+            M = Matrix(F)
+            @test eigvals(F; sortby) ≈ eigvals(M; sortby)
+            λ, V = eigen(F; sortby)
+            @test λ == eigvals(F; sortby)
+            @test V'V ≈ I
+            @test V' * F * V ≈ Diagonal(λ)
+        end
+        @testset for MT in (Ones, Zeros), T in (Float64, Int, ComplexF64)
+            F = MT{T}(5,5)
+            M = Matrix(F)
+            @test eigvals(F; sortby) ≈ eigvals(M; sortby)
+            λ, V = eigen(F; sortby)
+            @test λ == eigvals(F; sortby)
+            @test V'V ≈ I
+            @test V' * F * V ≈ Diagonal(λ)
+        end
     end
-    for T in (Ones, Zeros)
-        F = Ones(5,5)
-        M = Matrix(F)
-        @test eigvals(F) ≈ eigvals(M)
-        λ, V = eigen(F)
-        @test V'V ≈ I
-        @test V' * F * V ≈ Diagonal(λ)
+    @testset "Tridiagonal" begin
+        @testset for n in (0, 1, 6)
+            T = Tridiagonal(Fill(2, max(0, n-1)), Fill(-4, n), Fill(3, max(0,n-1)))
+            @test eigvals(T; sortby) ≈ eigvals(Matrix(T); sortby)
+            T = Tridiagonal(Fill(2+3im, max(0, n-1)), Fill(-4+4im, n), Fill(3im, max(0,n-1)))
+            @test eigvals(T; sortby) ≈ eigvals(Matrix(T); sortby)
+
+            T = SymTridiagonal(Fill(1, n), Fill(3, max(0,n-1)))
+            @test eigvals(T; sortby) ≈ eigvals(Matrix(T); sortby)
+            T = SymTridiagonal(Fill(-4+4im, n), Fill(2+3im, max(0,n-1)))
+            @test eigvals(T; sortby) ≈ eigvals(Matrix(T); sortby)
+
+            T = Hermitian(Tridiagonal(Fill(3-4im, max(0, n-1)), Fill(2+0im, n), Fill(3+4im, max(0, n-1))))
+            @test eigvals(T) ≈ eigvals(Hermitian(Matrix(T)))
+        end
     end
 end
 

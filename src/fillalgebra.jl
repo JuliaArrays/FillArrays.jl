@@ -408,25 +408,27 @@ fillzero(::Type{F}, n, m) where F = throw(ArgumentError("Cannot create a zero ar
 
 diagzero(D::Diagonal{F}, i, j) where F<:AbstractFill = fillzero(F, axes(D.diag[i], 1), axes(D.diag[j], 2))
 
-_eigenind(λ0, n; sortby) = sortby(λ0) <= sortby(zero(λ0)) ? 1 : n
+_eigenind(λ0, n, sortby) = (isnothing(sortby) || sortby(λ0) <= sortby(zero(λ0))) ? 1 : n
 
-function eigvals(A::AbstractFillMatrix{<:Number}; sortby = x -> (real(x), imag(x)))
+function eigvals(A::AbstractFillMatrix{<:Number}; sortby = nothing)
     Base.require_one_based_indexing(A)
     n = checksquare(A)
     # only one non-trivial eigenvalue for a rank-1 matrix
     λ0 = float(getindex_value(A)) * n
-    n = size(A, 1)
-    ind = _eigenind(λ0, n; sortby)
+    ind = _eigenind(λ0, n, sortby)
     OneElement(λ0, ind, n)
 end
 
-function eigvecs(A::AbstractFillMatrix{<:Number}; sortby = x -> (real(x), imag(x)))
+function eigvecs(A::AbstractFillMatrix{<:Number}; sortby = nothing)
     Base.require_one_based_indexing(A)
     val = getindex_value(A)
     n = checksquare(A)
-    ind = _eigenind(val, n; sortby)
+    ind = _eigenind(val, n, sortby)
     M = similar(A, float(eltype(A)))
-    for (i, j) in enumerate(axes(M,1)[(ind == 1) .+ (1:end-1)])
+    # The non-trivial eigenvector is normalize(ones(n))
+    M[:, ind] .= 1/sqrt(n)
+    # eigenvectors corresponding to zero eigenvalues
+    for (i, j) in enumerate(axes(M,2)[(ind == 1) .+ (1:end-1)])
         # The eigenvectors are v = normalize([ones(n-1); -(n-1)]), and sum(v) == 0
         # The ordering is arbitrary,
         # and we choose to order in terms of the number of non-zero elements
@@ -435,11 +437,40 @@ function eigvecs(A::AbstractFillMatrix{<:Number}; sortby = x -> (real(x), imag(x
         M[i+1, j] = -i * nrm
         M[i+2:end, j] .= zero(eltype(M))
     end
-    # The non-trivial eigenvector is normalize(ones(n))
-    M[:, ind] .= 1/sqrt(n)
     return M
 end
 
-function eigen(A::AbstractFillMatrix{<:Number})
-    Eigen(eigvals(A), eigvecs(A))
+function eigen(A::AbstractFillMatrix{<:Number}; sortby = nothing)
+    Eigen(eigvals(A; sortby), eigvecs(A; sortby))
+end
+
+function eigvals(T::Tridiagonal{<:Number, <:AbstractFillVector}; sortby = nothing)
+    _eigvals_toeplitz(T; sortby)
+end
+function eigvals(T::SymTridiagonal{<:Number, <:AbstractFillVector}; sortby = nothing)
+    _eigvals_toeplitz(T; sortby)
+end
+function eigvals(H::Hermitian{T, <:Tridiagonal{T, <:AbstractFillVector{T}}}; sortby = nothing) where {T<:Union{Real, Complex}}
+    _eigvals_toeplitz(H; sortby)
+end
+
+__eigvals_toeplitz(::Tridiagonal, a, b, c, n) = [a + 2√(b*c) * cospi(k/(n+1)) for k in n:-1:1]
+__eigvals_toeplitz(::SymTridiagonal, a, b, c, n) = [a + 2b * cospi(k/(n+1)) for k in n:-1:1]
+__eigvals_toeplitz(::Hermitian{<:Union{Real, Complex}, <:Tridiagonal}, a, b, c, n) =
+    [real(a + 2abs(b) * cospi(k/(n+1))) for k in n:-1:1]
+
+# triangular Toeplitz
+function _eigvals_toeplitz(T; sortby = nothing)
+    Base.require_one_based_indexing(T)
+    n = checksquare(T)
+    # extra care to handle 0x0 and 1x1 matrices
+    # diagonal
+    a = get(T, (1,1), zero(eltype(T)))
+    # subdiagonal
+    b = get(T, (2,1), zero(eltype(T)))
+    # superdiagonal
+    c = get(T, (1,2), zero(eltype(T)))
+    vals = __eigvals_toeplitz(T, a, b, c, n)
+    !isnothing(sortby) && sort!(vals, by = sortby)
+    return vals
 end
