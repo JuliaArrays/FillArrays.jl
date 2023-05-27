@@ -1410,6 +1410,17 @@ end
     end
 end
 
+@testset "eigen" begin
+    for val in (2.0, -2.0, 2im, 4 - 5im)
+        F = Fill(val, 4, 4)
+        M = Matrix(F)
+        @test eigvals(F) ≈ eigvals(M)
+        λ, V = eigen(F)
+        @test V'V ≈ I
+        @test V' * F * V ≈ Diagonal(λ)
+    end
+end
+
 @testset "count" begin
     @test count(Ones{Bool}(10)) == count(Fill(true,10)) == 10
     @test count(Zeros{Bool}(10)) == count(Fill(false,10)) == 0

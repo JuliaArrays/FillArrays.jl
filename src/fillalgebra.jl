@@ -407,3 +407,39 @@ fillzero(::Type{Zeros{T,N,AXIS}}, n, m) where {T,N,AXIS} = Zeros{T,N,AXIS}((n, m
 fillzero(::Type{F}, n, m) where F = throw(ArgumentError("Cannot create a zero array of type $F"))
 
 diagzero(D::Diagonal{F}, i, j) where F<:AbstractFill = fillzero(F, axes(D.diag[i], 1), axes(D.diag[j], 2))
+
+_eigenind(λ0, n; sortby) = sortby(λ0) <= sortby(zero(λ0)) ? 1 : n
+
+function eigvals(A::AbstractFillMatrix{<:Number}; sortby = x -> (real(x), imag(x)))
+    Base.require_one_based_indexing(A)
+    n = checksquare(A)
+    # only one non-trivial eigenvalue for a rank-1 matrix
+    λ0 = float(getindex_value(A)) * n
+    n = size(A, 1)
+    ind = _eigenind(λ0, n; sortby)
+    OneElement(λ0, ind, n)
+end
+
+function eigvecs(A::AbstractFillMatrix{<:Number}; sortby = x -> (real(x), imag(x)))
+    Base.require_one_based_indexing(A)
+    val = getindex_value(A)
+    n = checksquare(A)
+    ind = _eigenind(val, n; sortby)
+    M = similar(A, float(eltype(A)))
+    for (i, j) in enumerate(axes(M,1)[(ind == 1) .+ (1:end-1)])
+        # The eigenvectors are v = normalize([ones(n-1); -(n-1)]), and sum(v) == 0
+        # The ordering is arbitrary,
+        # and we choose to order in terms of the number of non-zero elements
+        nrm = 1/sqrt(i*(i+1))
+        M[1:i, j] .= nrm
+        M[i+1, j] = -i * nrm
+        M[i+2:end, j] .= zero(eltype(M))
+    end
+    # The non-trivial eigenvector is normalize(ones(n))
+    M[:, ind] .= 1/sqrt(n)
+    return M
+end
+
+function eigen(A::AbstractFillMatrix{<:Number})
+    Eigen(eigvals(A), eigvecs(A))
+end
