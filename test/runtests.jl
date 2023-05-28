@@ -1792,19 +1792,21 @@ end
     @testset "multiplication/division by a number" begin
         val = 2
         x = OneElement(val,1,5)
-        @test 3x === OneElement(3val,1,5)
-        @test 3.0 * x === OneElement(3.0*val,1,5)
-        @test 3.0 \ x === OneElement(3.0 \ val,1,5)
-        @test x * 3.0 === OneElement(val * 3.0,1,5)
-        @test x / 3.0 === OneElement(val / 3.0,1,5)
+        y = sparse(x)
+        @test 3x === OneElement(3val,1,5) == 3y
+        @test 3.0 * x === OneElement(3.0*val,1,5) == 3.0 * y
+        @test 3.0 \ x === OneElement(3.0 \ val,1,5) == 3.0 \ y
+        @test x * 3.0 === OneElement(val * 3.0,1,5) == y * 3.0
+        @test x / 3.0 === OneElement(val / 3.0,1,5) == y / 3.0
 
         val = 3im
         A = OneElement(val, (2,2), (3,4))
-        @test 3A === OneElement(3val, (2,2), (3,4))
-        @test 3.0im * A === OneElement(3.0im * val, (2,2), (3,4))
-        @test 3.0im \ A === OneElement(3.0im \ val, (2,2), (3,4))
-        @test A * (2 + 3.0im) === OneElement(val * (2 + 3.0im), (2,2), (3,4))
-        @test A / (2 + 3.0im) === OneElement(val / (2 + 3.0im), (2,2), (3,4))
+        B = sparse(A)
+        @test 3A === OneElement(3val, (2,2), (3,4)) == 3B
+        @test 3.0im * A === OneElement(3.0im * val, (2,2), (3,4)) == 3.0im * B
+        @test 3.0im \ A === OneElement(3.0im \ val, (2,2), (3,4)) == 3.0im \ B
+        @test A * (2 + 3.0im) === OneElement(val * (2 + 3.0im), (2,2), (3,4)) == B * (2 + 3.0im)
+        @test A / (2 + 3.0im) === OneElement(val / (2 + 3.0im), (2,2), (3,4)) == B / (2 + 3.0im)
     end
 end
 
