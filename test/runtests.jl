@@ -1319,7 +1319,7 @@ end
     @test Zeros(10)*Zeros(1,12) ≡ Zeros(10,12)
     @test Zeros(3,10)*Zeros(10,12) ≡ Zeros(3,12)
     @test Zeros(3,10)*Zeros(10) ≡ Zeros(3)
-    
+
     f = Zeros((Base.IdentityUnitRange(1:4), Base.IdentityUnitRange(1:4)))
     @test f * f === f
 
@@ -1787,6 +1787,24 @@ end
                 @test O * v == Array(O) * Array(v)
             end
         end
+    end
+
+    @testset "multiplication/division by a number" begin
+        val = 2
+        x = OneElement(val,1,5)
+        @test 3x === OneElement(3val,1,5)
+        @test 3.0 * x === OneElement(3.0*val,1,5)
+        @test 3.0 \ x === OneElement(3.0 \ val,1,5)
+        @test x * 3.0 === OneElement(val * 3.0,1,5)
+        @test x / 3.0 === OneElement(val / 3.0,1,5)
+
+        val = 3im
+        A = OneElement(val, (2,2), (3,4))
+        @test 3A === OneElement(3val, (2,2), (3,4))
+        @test 3.0im * A === OneElement(3.0im * val, (2,2), (3,4))
+        @test 3.0im \ A === OneElement(3.0im \ val, (2,2), (3,4))
+        @test A * (2 + 3.0im) === OneElement(val * (2 + 3.0im), (2,2), (3,4))
+        @test A / (2 + 3.0im) === OneElement(val / (2 + 3.0im), (2,2), (3,4))
     end
 end
 
