@@ -1433,7 +1433,7 @@ end
         end
     end
     @testset "Tridiagonal" begin
-        @testset for n in (0, 1, 6)
+        @testset for n in (0, 1, 2, 6)
             T = Tridiagonal(Fill(2, max(0, n-1)), Fill(-4, n), Fill(3, max(0,n-1)))
             @test eigvals(T; sortby) ≈ eigvals(Matrix(T); sortby)
             T = Tridiagonal(Fill(2+3im, max(0, n-1)), Fill(-4+4im, n), Fill(3im, max(0,n-1)))
