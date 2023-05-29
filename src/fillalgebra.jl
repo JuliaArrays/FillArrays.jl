@@ -554,8 +554,11 @@ function _eigvecs_toeplitz(T; sortby = nothing)
     prefactors = _eigvec_prefactors(T, cm1, c1)
     for q in axes(M,2)
         qrev = n+1-q # match the default eigenvalue sorting
-        for j in axes(M,1)
+        for j in 1:cld(n,2)
             M[j, q] = prefactors[j] * sinpi(j*qrev/(n+1))
+        end
+        for j in cld(n,2)+1:n
+            M[j, q] = (-1)^(n+q) * prefactors[2j-n] * M[n+1-j,q]
         end
         normalize!(view(M, :, q))
     end
