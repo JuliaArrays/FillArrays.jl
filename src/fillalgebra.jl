@@ -562,8 +562,12 @@ function _eigvecs_toeplitz(T; sortby = nothing)
     prefactors = _eigvec_prefactors(T, cm1, c1)
     for q in axes(M,2)
         qrev = n+1-q # match the default eigenvalue sorting
+        x = qrev/(n+1)
+        cs = cispi(x)
+        cs1 = copy(cs)
         for j in 1:cld(n,2)
-            M[j, q] = prefactors[j] * sinpi(j*qrev/(n+1))
+            M[j, q] = prefactors[j] * imag(cs)
+            cs *= cs1
         end
         phase = iseven(n+q) ? 1 : -1
         for j in cld(n,2)+1:n
