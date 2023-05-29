@@ -543,6 +543,14 @@ function permutecols!!(A::AbstractMatrix, p::AbstractVector{<:Integer})
     A
 end
 
+_normalizecols!(M, T) = foreach(normalize!, eachcol(M))
+function _normalizecols!(M, T::Union{SymTridiagonal, Symmetric{<:Number, <:Tridiagonal}})
+    n = size(M,1)
+    invnrm = sqrt(2/(n+1))
+    M .*= invnrm
+    return M
+end
+
 function _eigvecs_toeplitz(T; sortby = nothing)
     Base.require_one_based_indexing(T)
     n = checksquare(T)
@@ -557,11 +565,12 @@ function _eigvecs_toeplitz(T; sortby = nothing)
         for j in 1:cld(n,2)
             M[j, q] = prefactors[j] * sinpi(j*qrev/(n+1))
         end
+        phase = iseven(n+q) ? 1 : -1
         for j in cld(n,2)+1:n
-            M[j, q] = (-1)^(n+q) * prefactors[2j-n] * M[n+1-j,q]
+            M[j, q] = phase * prefactors[2j-n] * M[n+1-j,q]
         end
-        normalize!(view(M, :, q))
     end
+    _normalizecols!(M, T)
     if !isnothing(sortby)
         perm = sortperm(eigvals(T), by = sortby)
         permutecols!!(M, perm)
