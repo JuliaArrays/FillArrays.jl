@@ -1453,7 +1453,7 @@ end
                 ev = Fill(3, max(0,n-1))
                 for ST in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
                     evST = eigvals(ST; sortby)
-                    @test evST ≈ eigvals(Symmetric(Matrix(ST)); sortby)
+                    @test evST ≈ eigvals(Matrix(ST); sortby)
                     @test eltype(evST) <: Real
                     λ, V = eigen(ST)
                     @test V'V ≈ I

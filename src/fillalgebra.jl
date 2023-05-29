@@ -496,7 +496,7 @@ _eigvec_prefactors(A::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, cm
 _eigvec_eltype(A::SymTridiagonal) = float(eltype(A))
 _eigvec_eltype(A) = complex(float(eltype(A)))
 
-# The following methods are copied from Julia Base, which is under the MIT License
+# The functions swapcols! and permutecols!! are copied from Julia Base, which is under the MIT License
 # https://github.com/JuliaLang/julia/blob/master/LICENSE.md
 #=
 MIT License
