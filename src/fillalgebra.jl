@@ -486,9 +486,9 @@ end
 _eigvec_prefactor(A, cm1, c1, m) = sqrt(complex(cm1/c1))^m
 _eigvec_prefactor(A::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, cm1, c1, m) = oneunit(_eigvec_eltype(A))
 
-_eigvec_prefactors(A, cm1, c1) = [_eigvec_prefactor(T, cm1, c1, j-1) for j in axes(T,1)]
+_eigvec_prefactors(A, cm1, c1) = [_eigvec_prefactor(A, cm1, c1, j-1) for j in axes(A,1)]
 _eigvec_prefactors(A::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, cm1, c1) =
-    Fill(_eigvec_prefactor(A, cm1, c1, 1), size(T,1))
+    Fill(_eigvec_prefactor(A, cm1, c1, 1), size(A,1))
 
 _eigvec_eltype(A::SymTridiagonal) = float(eltype(A))
 _eigvec_eltype(A) = complex(float(eltype(A)))
