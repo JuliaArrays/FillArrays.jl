@@ -68,7 +68,7 @@ function *(A::OneElementMatrix, B::OneElementVecOrMat)
     check_matmul_sizes(A, B)
     valA = getindex_value(A)
     valB = getindex_value(B)
-    val = valA * valB
+    val = valA * valB * (A.ind[2] == B.ind[1])
     OneElement(val, (A.ind[1], B.ind[2:end]...), (axes(A,1), axes(B)[2:end]...))
 end
 

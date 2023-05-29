@@ -1717,7 +1717,9 @@ end
         A = reshape(Float64[1:9;], 3, 3)
         testinds(w::AbstractArray) = testinds(size(w))
         testinds(szw::Tuple{Int}) = (szw .- 1, szw .+ 1)
-        testinds(szA::Tuple{Int,Int}) = (szA .- 1, szA .+ 1, szA .+ (1,-1), szA .+ (-1,1))
+        function testinds(szA::Tuple{Int,Int})
+            (szA .- 1, szA .+ (-1,0), szA .+ (0,-1), szA .+ 1, szA .+ (1,-1), szA .+ (-1,1))
+        end
         function test_A_mul_OneElement(A, (w, w2))
             @testset for ind in testinds(w)
                 x = OneElement(3, ind, size(w))
@@ -1759,6 +1761,9 @@ end
                 @test O * B isa OneElement
                 @test O * B == Array(O) * Array(B)
             end
+
+            @test OneElement(3, (2,3), (5,4)) * OneElement(2, 2, 4) == Zeros(5)
+            @test OneElement(3, (2,3), (5,4)) * OneElement(2, (2,1), (4,2)) == Zeros(5,2)
         end
         @testset "AbstractFillMatrix * OneElementVector" begin
             F = Fill(3, size(A))
