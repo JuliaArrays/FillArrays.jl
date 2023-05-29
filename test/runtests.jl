@@ -1715,8 +1715,9 @@ end
 
     @testset "matmul" begin
         A = reshape(Float64[1:9;], 3, 3)
-        testinds(w::AbstractVector) = (size(w) .- 1, size(w) .+ 1)
-        testinds(A::AbstractMatrix) = (size(A) .- 1, size(A) .+ 1, size(A) .+ (1,-1), size(A) .+ (-1,1))
+        testinds(w::AbstractArray) = testinds(size(w))
+        testinds(szw::Tuple{Int}) = (szw .- 1, szw .+ 1)
+        testinds(szA::Tuple{Int,Int}) = (szA .- 1, szA .+ 1, szA .+ (1,-1), szA .+ (-1,1))
         function test_A_mul_OneElement(A, (w, w2))
             @testset for ind in testinds(w)
                 x = OneElement(3, ind, size(w))
@@ -1741,18 +1742,32 @@ end
             w = zeros(size(A,1))
             w2 = MVector{length(w)}(w)
             test_A_mul_OneElement(A, (w, w2))
-
-            F = Fill(3, size(A))
-            @testset for ind in testinds(w)
-                x = OneElement(3, ind, size(w))
-                @test F * x isa Fill
-                @test F * x == Array(F) * Array(x)
-            end
         end
         @testset "Matrix * OneElementMatrix" begin
             C = zeros(size(A))
             C2 = MMatrix{size(C)...}(C)
             test_A_mul_OneElement(A, (C, C2))
+        end
+        @testset "OneElementMatrix * OneElement" begin
+            @testset for ind in testinds(A)
+                O = OneElement(3, ind, size(A))
+                v = OneElement(4, ind[1], size(A,1))
+                @test O * v isa OneElement
+                @test O * v == Array(O) * Array(v)
+
+                B = OneElement(4, ind, size(A))
+                @test O * B isa OneElement
+                @test O * B == Array(O) * Array(B)
+            end
+        end
+        @testset "AbstractFillMatrix * OneElementVector" begin
+            F = Fill(3, size(A))
+            sw = (size(A,1),)
+            @testset for ind in testinds(sw)
+                x = OneElement(3, ind, sw)
+                @test F * x isa Fill
+                @test F * x == Array(F) * Array(x)
+            end
         end
         @testset "OneElementMatrix * AbstractFillVector" begin
             @testset for ind in testinds(A)

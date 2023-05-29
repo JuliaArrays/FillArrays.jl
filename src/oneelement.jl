@@ -46,6 +46,8 @@ function Base.getindex(A::OneElement{T,N}, kj::Vararg{Int,N}) where {T,N}
     ifelse(kj == A.ind, A.val, zero(T))
 end
 
+getindex_value(A::OneElement) = all(in.(A.ind, axes(A))) ? A.val : zero(eltype(A))
+
 Base.AbstractArray{T,N}(A::OneElement{<:Any,N}) where {T,N} = OneElement(T(A.val), A.ind, A.axes)
 
 Base.replace_in_print_matrix(o::OneElementVector, k::Integer, j::Integer, s::AbstractString) =
@@ -62,15 +64,23 @@ end
 # multiplication
 # Fill and OneElement
 
+function *(A::OneElementMatrix, B::OneElementVecOrMat)
+    check_matmul_sizes(A, B)
+    valA = getindex_value(A)
+    valB = getindex_value(B)
+    val = valA * valB
+    OneElement(val, (A.ind[1], B.ind[2:end]...), (axes(A,1), axes(B)[2:end]...))
+end
+
 function *(A::AbstractFillMatrix, x::OneElementVector)
     check_matmul_sizes(A, x)
-    val = getindex_value(A) * (x.ind[1] in axes(x,1) ? x.val : zero(eltype(x)))
+    val = getindex_value(A) * getindex_value(x)
     Fill(val, (axes(A,1),))
 end
 
 function *(A::OneElementMatrix, B::AbstractFillVector)
     check_matmul_sizes(A, B)
-    val = (A.ind[2] in axes(A,2) ? A.val : zero(eltype(A))) * getindex_value(B)
+    val = getindex_value(A) * getindex_value(B)
     OneElement(val, A.ind[1], size(A,1))
 end
 
