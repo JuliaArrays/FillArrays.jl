@@ -1713,6 +1713,16 @@ end
     @test Base.setindex(Zeros(5,3), 2, 2, 3) ≡ OneElement(2.0, (2,3), (5,3))
     @test_throws BoundsError Base.setindex(Zeros(5), 2, 6)
 
+    @testset "adjoint/transpose" begin
+        A = OneElement(3im, (2,4), (4,6))
+        @test A' === OneElement(-3im, (4,2), (6,4))
+        @test transpose(A) === OneElement(3im, (4,2), (6,4))
+
+        A = OneElement(3, (2,2), (4,4))
+        @test adjoint(A) === A
+        @test transpose(A) === A
+    end
+
     @testset "matmul" begin
         A = reshape(Float64[1:9;], 3, 3)
         testinds(w::AbstractArray) = testinds(size(w))
