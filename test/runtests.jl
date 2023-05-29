@@ -1753,7 +1753,7 @@ end
         @testset "OneElementMatrix * OneElement" begin
             @testset for ind in testinds(A)
                 O = OneElement(3, ind, size(A))
-                v = OneElement(4, ind[1], size(A,1))
+                v = OneElement(4, ind[2], size(A,1))
                 @test O * v isa OneElement
                 @test O * v == Array(O) * Array(v)
 
