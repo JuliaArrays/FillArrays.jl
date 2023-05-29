@@ -484,7 +484,11 @@ function _eigvals_toeplitz(T; sortby = nothing)
 end
 
 _eigvec_prefactor(A, cm1, c1, m) = sqrt(complex(cm1/c1))^m
-_eigvec_prefactor(A::SymTridiagonal, cm1, c1, m) = oneunit(_eigvec_eltype(A))
+_eigvec_prefactor(A::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, cm1, c1, m) = oneunit(_eigvec_eltype(A))
+
+_eigvec_prefactors(A, cm1, c1) = [_eigvec_prefactor(T, cm1, c1, j-1) for j in axes(T,1)]
+_eigvec_prefactors(A::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, cm1, c1) =
+    Fill(_eigvec_prefactor(A, cm1, c1, 1), size(T,1))
 
 _eigvec_eltype(A::SymTridiagonal) = float(eltype(A))
 _eigvec_eltype(A) = complex(float(eltype(A)))
@@ -497,10 +501,11 @@ function _eigvecs_toeplitz(T; sortby = nothing)
     n == 1 && return fill!(M, oneunit(eltype(M)))
     cm1 = T[2,1] # subdiagonal
     c1 = T[1,2]  # superdiagonal
+    prefactors = _eigvec_prefactors(T, cm1, c1)
     for q in reverse(axes(M,2))
         qrev = n+1-q # match the default eigenvalue sorting
         for j in axes(M,1)
-            M[j, q] = _eigvec_prefactor(T, cm1, c1, j) * sinpi(j*qrev/(n+1))
+            M[j, q] = prefactors[j] * sinpi(j*qrev/(n+1))
         end
         normalize!(view(M, :, q))
     end
