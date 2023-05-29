@@ -14,6 +14,7 @@ end
 
 const OneElementVector{T,I,A} = OneElement{T,1,I,A}
 const OneElementMatrix{T,I,A} = OneElement{T,2,I,A}
+const OneElementVecOrMat{T,I,A} = Union{OneElementVector{T,I,A}, OneElementMatrix{T,I,A}}
 
 OneElement(val, inds::NTuple{N,Int}, sz::NTuple{N,Integer}) where N = OneElement(val, inds, oneto.(sz))
 """
@@ -56,6 +57,21 @@ Base.replace_in_print_matrix(o::OneElementMatrix, k::Integer, j::Integer, s::Abs
 function Base.setindex(A::Zeros{T,N}, v, kj::Vararg{Int,N}) where {T,N}
     @boundscheck checkbounds(A, kj...)
     OneElement(convert(T, v), kj, axes(A))
+end
+
+# multiplication
+# Fill and OneElement
+
+function *(A::AbstractFillMatrix, x::OneElementVector)
+    check_matmul_sizes(A, x)
+    val = getindex_value(A) * (x.ind[1] in axes(x,1) ? x.val : zero(eltype(x)))
+    Fill(val, (axes(A,1),))
+end
+
+function *(A::OneElementMatrix, B::AbstractFillVector)
+    check_matmul_sizes(A, B)
+    val = (A.ind[2] in axes(A,2) ? A.val : zero(eltype(A))) * getindex_value(B)
+    OneElement(val, A.ind[1], size(A,1))
 end
 
 @inline function __mulonel!(y, A, x, alpha, beta)

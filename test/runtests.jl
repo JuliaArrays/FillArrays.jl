@@ -1715,11 +1715,11 @@ end
 
     @testset "matmul" begin
         A = reshape(Float64[1:9;], 3, 3)
-        @testset "vector" begin
-            w = zeros(size(A,1))
-            w2 = MVector{length(w)}(w)
-            for ind in (size(A,2)-1, size(A,2)+1)
-                x = OneElement(3, ind, size(A,2))
+        testinds(w::AbstractVector) = (size(w) .- 1, size(w) .+ 1)
+        testinds(A::AbstractMatrix) = (size(A) .- 1, size(A) .+ 1, size(A) .+ (1,-1), size(A) .+ (-1,1))
+        function test_A_mul_OneElement(A, (w, w2))
+            @testset for ind in testinds(w)
+                x = OneElement(3, ind, size(w))
                 xarr = Array(x)
                 @test A * x ≈ A * xarr
                 @test A' * x ≈ A' * xarr
@@ -1737,26 +1737,29 @@ end
                 @test mul!(w2, F, x, 1.0, 1.0) ≈ Array(F) * xarr .+ 1
             end
         end
-        @testset "matrix" begin
+        @testset "Matrix * OneElementVector" begin
+            w = zeros(size(A,1))
+            w2 = MVector{length(w)}(w)
+            test_A_mul_OneElement(A, (w, w2))
+
+            F = Fill(3, size(A))
+            @testset for ind in testinds(w)
+                x = OneElement(3, ind, size(w))
+                @test F * x isa Fill
+                @test F * x == Array(F) * Array(x)
+            end
+        end
+        @testset "Matrix * OneElementMatrix" begin
             C = zeros(size(A))
             C2 = MMatrix{size(C)...}(C)
-            for inds in (size(A) .- 1, size(A) .+ 1)
-                B = OneElement(3, inds, size(A))
-                Barr = Array(B)
-                @test A * B ≈ A * Barr
-                @test A' * B ≈ A' * Barr
-                @test transpose(A) * B ≈ transpose(A) * Barr
-
-                @test mul!(C, A, B) ≈ A * Barr
-                @test mul!(C, A', B) ≈ A' * Barr
-                C .= 1
-                @test mul!(C, A, B, 1.0, 1.0) ≈ A * Barr .+ 1
-                C .= 1
-                @test mul!(C, A', B, 1.0, 1.0) ≈ A' * Barr .+ 1
-
-                C2 .= 1
-                F = Fill(3,size(A))
-                @test mul!(C2, F, B, 1.0, 1.0) ≈ Array(F) * Barr .+ 1
+            test_A_mul_OneElement(A, (C, C2))
+        end
+        @testset "OneElementMatrix * AbstractFillVector" begin
+            @testset for ind in testinds(A)
+                O = OneElement(3, ind, size(A))
+                v = Fill(2, size(O,1))
+                @test O * v isa OneElement
+                @test O * v == Array(O) * Array(v)
             end
         end
     end

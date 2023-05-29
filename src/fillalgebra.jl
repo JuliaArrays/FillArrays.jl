@@ -90,6 +90,16 @@ function *(a::AbstractFillMatrix, b::Diagonal)
     a .* permutedims(parent(b)) # use special broadcast
 end
 
+@noinline function check_matmul_sizes(A::AbstractMatrix, x::AbstractVector)
+    Base.require_one_based_indexing(A, x)
+    size(A,2) == size(x,1) ||
+        throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match length of x $(length(x))"))
+end
+@noinline function check_matmul_sizes(A::AbstractMatrix, B::AbstractMatrix)
+    Base.require_one_based_indexing(A, B)
+    size(A,2) == size(B,1) ||
+        throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match first dimension of B, $(size(B,1))"))
+end
 @noinline function check_matmul_sizes(y::AbstractVector, A::AbstractMatrix, x::AbstractVector)
     Base.require_one_based_indexing(A, x, y)
     size(A,2) == size(x,1) ||
