@@ -552,7 +552,7 @@ function _eigvecs_toeplitz(T; sortby = nothing)
     cm1 = T[2,1] # subdiagonal
     c1 = T[1,2]  # superdiagonal
     prefactors = _eigvec_prefactors(T, cm1, c1)
-    for q in reverse(axes(M,2))
+    for q in axes(M,2)
         qrev = n+1-q # match the default eigenvalue sorting
         for j in axes(M,1)
             M[j, q] = prefactors[j] * sinpi(j*qrev/(n+1))
