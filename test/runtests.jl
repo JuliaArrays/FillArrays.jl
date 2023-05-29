@@ -1432,22 +1432,52 @@ end
             @test V' * F * V ≈ Diagonal(λ)
         end
     end
-    @testset "Tridiagonal" begin
+    @testset "Tridiagonal Toeplitz" begin
         @testset for n in (0, 1, 2, 6)
-            T = Tridiagonal(Fill(2, max(0, n-1)), Fill(-4, n), Fill(3, max(0,n-1)))
-            @test eigvals(T; sortby) ≈ eigvals(Matrix(T); sortby)
-            T = Tridiagonal(Fill(2+3im, max(0, n-1)), Fill(-4+4im, n), Fill(3im, max(0,n-1)))
-            @test eigvals(T; sortby) ≈ eigvals(Matrix(T); sortby)
+            @testset "Tridiagonal" begin
+                for (dl, d, du) in (
+                    (Fill(2, max(0, n-1)), Fill(-4, n), Fill(3, max(0,n-1))),
+                    (Fill(2+3im, max(0, n-1)), Fill(-4+4im, n), Fill(3im, max(0,n-1)))
+                    )
+                    T = Tridiagonal(dl, d, du)
+                    @test eigvals(T; sortby) ≈ eigvals(Matrix(T); sortby)
+                    λ, V = eigen(T)
+                    @test T * V ≈ V * Diagonal(λ)
+                end
+            end
 
-            T = SymTridiagonal(Fill(1, n), Fill(3, max(0,n-1)))
-            @test eigvals(T; sortby) ≈ eigvals(Matrix(T); sortby)
-            T = SymTridiagonal(Fill(-4+4im, n), Fill(2+3im, max(0,n-1)))
-            @test eigvals(T; sortby) ≈ eigvals(Matrix(T); sortby)
+            @testset "SymTridiagonal/Symmetric" begin
+                dv = Fill(1, n)
+                ev = Fill(3, max(0,n-1))
+                for ST in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
+                    evST = eigvals(ST; sortby)
+                    @test evST ≈ eigvals(Symmetric(Matrix(ST)); sortby)
+                    @test eltype(evST) <: Real
+                    λ, V = eigen(ST)
+                    @test V'V ≈ I
+                    @test V' * ST * V ≈ Diagonal(λ)
+                end
+                dv = Fill(-4+4im, n)
+                ev = Fill(2+3im, max(0,n-1))
+                for ST2 in (SymTridiagonal(dv, ev), Symmetric(Tridiagonal(ev, dv, ev)))
+                    @test eigvals(ST2; sortby) ≈ eigvals(Matrix(ST2); sortby)
+                    λ, V = eigen(ST2)
+                    @test ST2 * V ≈ V * Diagonal(λ)
+                end
+            end
 
-            T = Hermitian(Tridiagonal(Fill(3-4im, max(0, n-1)), Fill(2+0im, n), Fill(3+4im, max(0, n-1))))
-            evT = eigvals(T)
-            @test evT ≈ eigvals(Hermitian(Matrix(T)))
-            @test eltype(evT) <: Real
+            @testset "Hermitian Tridiagonal" begin
+                for (dv, ev) in ((Fill(2+0im, n), Fill(3-4im, max(0, n-1))),
+                                    (Fill(2, n), Fill(3, max(0, n-1))))
+                    HT = Hermitian(Tridiagonal(ev, dv, ev))
+                    evHT = eigvals(HT; sortby)
+                    @test evHT ≈ eigvals(Hermitian(Matrix(HT)); sortby)
+                    @test eltype(evHT) <: Real
+                    λ, V = eigen(HT)
+                    @test V'V ≈ I
+                    @test V' * HT * V ≈ Diagonal(λ)
+                end
+            end
         end
     end
 end

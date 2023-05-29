@@ -445,20 +445,27 @@ function eigen(A::AbstractFillMatrix{<:Number}; sortby = nothing)
     Eigen(eigvals(A; sortby), eigvecs(A; sortby))
 end
 
-function eigvals(T::Tridiagonal{<:Number, <:AbstractFillVector}; sortby = nothing)
-    _eigvals_toeplitz(T; sortby)
-end
-function eigvals(T::SymTridiagonal{<:Number, <:AbstractFillVector}; sortby = nothing)
-    _eigvals_toeplitz(T; sortby)
-end
-function eigvals(H::Hermitian{T, <:Tridiagonal{T, <:AbstractFillVector{T}}}; sortby = nothing) where {T<:Union{Real, Complex}}
-    _eigvals_toeplitz(H; sortby)
+# Tridiagonal Toeplitz eigen following Trench (1985)
+# "On the eigenvalue problem for Toeplitz band matrices"
+# https://www.sciencedirect.com/science/article/pii/0024379585902770
+
+for MT in (:(Tridiagonal{<:Union{Real, Complex}, <:AbstractFillVector}),
+            :(SymTridiagonal{<:Union{Real, Complex}, <:AbstractFillVector}),
+            :(HermOrSym{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real, Complex}})
+            )
+    @eval function eigvals(A::$MT; sortby = nothing)
+        _eigvals_toeplitz(A; sortby)
+    end
 end
 
-__eigvals_toeplitz(::Tridiagonal, a, b, c, n) = [a + 2 * √(b*c) * cospi(k/(n+1)) for k in n:-1:1]
-__eigvals_toeplitz(::SymTridiagonal, a, b, c, n) = [a + 2b * cospi(k/(n+1)) for k in n:-1:1]
-__eigvals_toeplitz(::Hermitian{<:Union{Real, Complex}, <:Tridiagonal}, a, b, c, n) =
-    [real(a + 2abs(b) * cospi(k/(n+1))) for k in n:-1:1]
+___eigvals_toeplitz(a, sqrtbc, n) = [a + 2 * sqrtbc * cospi(q/(n+1)) for q in n:-1:1]
+
+__eigvals_toeplitz(::AbstractMatrix, a, b, c, n) =
+    ___eigvals_toeplitz(a, √(b*c), n)
+__eigvals_toeplitz(::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, a, b, c, n) =
+    ___eigvals_toeplitz(a, b, n)
+__eigvals_toeplitz(::Hermitian{<:Any, <:Tridiagonal}, a, b, c, n) =
+    ___eigvals_toeplitz(real(a), abs(b), n)
 
 # triangular Toeplitz
 function _eigvals_toeplitz(T; sortby = nothing)
@@ -475,3 +482,45 @@ function _eigvals_toeplitz(T; sortby = nothing)
     !isnothing(sortby) && sort!(vals, by = sortby)
     return vals
 end
+
+_eigvec_prefactor(A, cm1, c1, m) = sqrt(complex(cm1/c1))^m
+_eigvec_prefactor(A::SymTridiagonal, cm1, c1, m) = oneunit(_eigvec_eltype(A))
+
+_eigvec_eltype(A::SymTridiagonal) = float(eltype(A))
+_eigvec_eltype(A) = complex(float(eltype(A)))
+
+function _eigvecs_toeplitz(T; sortby = nothing)
+    Base.require_one_based_indexing(T)
+    n = checksquare(T)
+    M = Matrix{_eigvec_eltype(T)}(undef, n, n)
+    n == 0 && return M
+    n == 1 && return fill!(M, oneunit(eltype(M)))
+    cm1 = T[2,1] # subdiagonal
+    c1 = T[1,2]  # superdiagonal
+    for q in reverse(axes(M,2))
+        qrev = n+1-q # match the default eigenvalue sorting
+        for j in axes(M,1)
+            M[j, q] = _eigvec_prefactor(T, cm1, c1, j) * sinpi(j*qrev/(n+1))
+        end
+        normalize!(view(M, :, q))
+    end
+    !isnothing(sortby) && sort!(M, dims=2, by = sortby)
+    return M
+end
+
+for MT in (:(Tridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
+            :(SymTridiagonal{<:Union{Real,Complex}, <:AbstractFillVector}),
+            :(HermOrSym{T, <:Tridiagonal{T, <:AbstractFillVector{T}}} where {T<:Union{Real,Complex}}),
+            )
+
+    @eval begin
+        function eigvecs(A::$MT; sortby = nothing)
+            _eigvecs_toeplitz(A; sortby)
+        end
+        function eigen(T::$MT; sortby = nothing)
+            Eigen(eigvals(T; sortby), eigvecs(T; sortby))
+        end
+    end
+end
+
+
