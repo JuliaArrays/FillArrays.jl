@@ -496,6 +496,53 @@ _eigvec_prefactors(A::Union{SymTridiagonal, Symmetric{<:Any, <:Tridiagonal}}, cm
 _eigvec_eltype(A::SymTridiagonal) = float(eltype(A))
 _eigvec_eltype(A) = complex(float(eltype(A)))
 
+# The following methods are copied from Julia Base, which is under the MIT License
+# https://github.com/JuliaLang/julia/blob/master/LICENSE.md
+#=
+MIT License
+Copyright (c) 2009-2022: Jeff Bezanson, Stefan Karpinski, Viral B. Shah,
+and other contributors: https://github.com/JuliaLang/julia/contributors
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies
+or substantial portions of the Software.
+=#
+# swap columns i and j of a, in-place
+function swapcols!(a::AbstractMatrix, i, j)
+    i == j && return
+    cols = axes(a,2)
+    @boundscheck i in cols || throw(BoundsError(a, (:,i)))
+    @boundscheck j in cols || throw(BoundsError(a, (:,j)))
+    for k in axes(a,1)
+        @inbounds a[k,i],a[k,j] = a[k,j],a[k,i]
+    end
+end
+
+function permutecols!!(A::AbstractMatrix, p::AbstractVector{<:Integer})
+    Base.require_one_based_indexing(A, p)
+    count = 0
+    start = 0
+    while count < length(p)
+        ptr = start = findnext(!iszero, p, start+1)
+        next = p[start]
+        count += 1
+        while next != start
+            swapcols!(A, ptr, next)
+            p[ptr] = 0
+            ptr = next
+            next = p[next]
+            count += 1
+        end
+        p[ptr] = 0
+    end
+    A
+end
+
 function _eigvecs_toeplitz(T; sortby = nothing)
     Base.require_one_based_indexing(T)
     n = checksquare(T)
@@ -512,7 +559,10 @@ function _eigvecs_toeplitz(T; sortby = nothing)
         end
         normalize!(view(M, :, q))
     end
-    !isnothing(sortby) && sort!(M, dims=2, by = sortby)
+    if !isnothing(sortby)
+        perm = sortperm(eigvals(T), by = sortby)
+        permutecols!!(M, perm)
+    end
     return M
 end
 
