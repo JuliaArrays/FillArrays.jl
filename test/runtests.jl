@@ -1718,9 +1718,21 @@ end
         @test A' === OneElement(-3im, (4,2), (6,4))
         @test transpose(A) === OneElement(3im, (4,2), (6,4))
 
+        A = OneElement(3im, 2, 3)
+        @test A' isa Adjoint
+        @test transpose(A) isa Transpose
+        @test A' == OneElement(-3im, (1,2), (1,3))
+        @test transpose(A) == OneElement(3im, (1,2), (1,3))
+
         A = OneElement(3, (2,2), (4,4))
         @test adjoint(A) === A
         @test transpose(A) === A
+
+        A = OneElement(3, 2, 4)
+        @test transpose(A) isa Transpose
+        @test adjoint(A) isa Adjoint
+        @test transpose(A) == OneElement(3, (1,2), (1,4))
+        @test adjoint(A) == OneElement(3, (1,2), (1,4))
     end
 
     @testset "matmul" begin
