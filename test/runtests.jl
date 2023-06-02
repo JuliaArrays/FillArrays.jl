@@ -1641,12 +1641,12 @@ end
     @test e₁ == [0,1,0,0,0]
     @test_throws BoundsError e₁[6]
 
-    @test AbstractArray{Float64}(e₁) isa AbstractArray{Float64}
-    @test AbstractArray{Float64}(e₁) isa OneElement
-    @test AbstractArray{Float64}(e₁) == e₁
-    @test AbstractVector{Float64}(e₁) isa AbstractVector{Float64}
-    @test AbstractVector{Float64}(e₁) isa OneElement
-    @test AbstractVector{Float64}(e₁) == e₁
+    f₁ = AbstractArray{Float64}(e₁)
+    @test f₁ isa OneElement{Float64,1}
+    @test f₁ == e₁
+    fv₁ = AbstractVector{Float64}(e₁)
+    @test fv₁ isa OneElement{Float64,1}
+    @test fv₁ == e₁
 
     @test stringmime("text/plain", e₁) == "5-element OneElement{$Int, 1, Tuple{$Int}, Tuple{Base.OneTo{$Int}}}:\n ⋅\n 1\n ⋅\n ⋅\n ⋅"
 
@@ -1659,12 +1659,12 @@ end
     V = OneElement(2, (2,3), (3,4))
     @test V == [0 0 0 0; 0 0 2 0; 0 0 0 0]
 
-    @test AbstractArray{Float64}(V) isa AbstractArray{Float64}
-    @test AbstractArray{Float64}(V) isa OneElement
-    @test AbstractArray{Float64}(V) == V
-    @test AbstractMatrix{Float64}(V) isa AbstractMatrix{Float64}
-    @test AbstractMatrix{Float64}(V) isa OneElement
-    @test AbstractMatrix{Float64}(V) == V
+    Vf = AbstractArray{Float64}(V)
+    @test Vf isa OneElement{Float64,2}
+    @test Vf == V
+    VMf = AbstractMatrix{Float64}(V)
+    @test VMf isa OneElement{Float64,2}
+    @test VMf == V
 
     @test stringmime("text/plain", V) == "3×4 OneElement{$Int, 2, Tuple{$Int, $Int}, Tuple{Base.OneTo{$Int}, Base.OneTo{$Int}}}:\n ⋅  ⋅  ⋅  ⋅\n ⋅  ⋅  2  ⋅\n ⋅  ⋅  ⋅  ⋅"
 
