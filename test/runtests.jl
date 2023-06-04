@@ -340,16 +340,16 @@ equal_or_undef(a, b) = all(equal_or_undef.(a, b))
 function test_addition_subtraction_dot(As, Bs, Tout::Type)
     for A in As, B in Bs
         @testset "$(typeof(A)) and $(typeof(B))" begin
-            @test A + B isa Tout{promote_type(eltype(A), eltype(B))}
+            @test @inferred(A + B) isa Tout{promote_type(eltype(A), eltype(B))}
             @test equal_or_undef(as_array(A + B), as_array(A) + as_array(B))
 
-            @test A - B isa Tout{promote_type(eltype(A), eltype(B))}
+            @test @inferred(A - B) isa Tout{promote_type(eltype(A), eltype(B))}
             @test equal_or_undef(as_array(A - B), as_array(A) - as_array(B))
 
-            @test B + A isa Tout{promote_type(eltype(B), eltype(A))}
+            @test @inferred(B + A) isa Tout{promote_type(eltype(B), eltype(A))}
             @test equal_or_undef(as_array(B + A), as_array(B) + as_array(A))
 
-            @test B - A isa Tout{promote_type(eltype(B), eltype(A))}
+            @test @inferred(B - A) isa Tout{promote_type(eltype(B), eltype(A))}
             @test equal_or_undef(as_array(B - A), as_array(B) - as_array(A))
 
             # Julia 1.6 doesn't support dot(UniformScaling)
@@ -438,6 +438,21 @@ end
     )
     for A in As_special_nonsquare, B in Bs_us
         test_addition_and_subtraction_dim_mismatch(A, B)
+    end
+
+    @testset "Zeros" begin
+        As = ([1,2], Float64[1,2], Int8[1,2], ComplexF16[2,4])
+        Zs = (TZ -> Zeros{TZ}(2)).((Int, Float64, Int8, ComplexF64))
+        test_addition_subtraction_dot(As, Zs, Vector)
+        for A in As, Z in (TZ -> Zeros{TZ}(3)).((Int, Float64, Int8, ComplexF64))
+            test_addition_and_subtraction_dim_mismatch(A, Z)
+        end
+
+        As = (@SArray([1,2]), @SArray(Float64[1,2]), @SArray(Int8[1,2]), @SArray(ComplexF16[2,4]))
+        test_addition_subtraction_dot(As, Zs, SVector{2})
+        for A in As, Z in (TZ -> Zeros{TZ}(3)).((Int, Float64, Int8, ComplexF64))
+            test_addition_and_subtraction_dim_mismatch(A, Z)
+        end
     end
 end
 
