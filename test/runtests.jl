@@ -1700,7 +1700,7 @@ end
     @test_throws BoundsError Base.setindex(Zeros(5), 2, 6)
 
     @testset "matmul" begin
-        A = rand(3,3)
+        A = reshape(Float64[1:9;], 3, 3)
         @testset "vector" begin
             w = zeros(size(A,1))
             w2 = MVector{length(w)}(w)
