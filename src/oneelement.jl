@@ -14,6 +14,7 @@ end
 
 const OneElementVector{T,I,A} = OneElement{T,1,I,A}
 const OneElementMatrix{T,I,A} = OneElement{T,2,I,A}
+const OneElementVecOrMat{T,I,A} = Union{OneElementVector{T,I,A}, OneElementMatrix{T,I,A}}
 
 OneElement(val, inds::NTuple{N,Int}, sz::NTuple{N,Integer}) where N = OneElement(val, inds, oneto.(sz))
 """
@@ -45,6 +46,8 @@ function Base.getindex(A::OneElement{T,N}, kj::Vararg{Int,N}) where {T,N}
     ifelse(kj == A.ind, A.val, zero(T))
 end
 
+getindex_value(A::OneElement) = all(in.(A.ind, axes(A))) ? A.val : zero(eltype(A))
+
 Base.AbstractArray{T,N}(A::OneElement{<:Any,N}) where {T,N} = OneElement(T(A.val), A.ind, A.axes)
 
 Base.replace_in_print_matrix(o::OneElementVector, k::Integer, j::Integer, s::AbstractString) =
@@ -56,6 +59,29 @@ Base.replace_in_print_matrix(o::OneElementMatrix, k::Integer, j::Integer, s::Abs
 function Base.setindex(A::Zeros{T,N}, v, kj::Vararg{Int,N}) where {T,N}
     @boundscheck checkbounds(A, kj...)
     OneElement(convert(T, v), kj, axes(A))
+end
+
+# multiplication
+# Fill and OneElement
+
+function *(A::OneElementMatrix, B::OneElementVecOrMat)
+    check_matmul_sizes(A, B)
+    valA = getindex_value(A)
+    valB = getindex_value(B)
+    val = valA * valB * (A.ind[2] == B.ind[1])
+    OneElement(val, (A.ind[1], B.ind[2:end]...), (axes(A,1), axes(B)[2:end]...))
+end
+
+function *(A::AbstractFillMatrix, x::OneElementVector)
+    check_matmul_sizes(A, x)
+    val = getindex_value(A) * getindex_value(x)
+    Fill(val, (axes(A,1),))
+end
+
+function *(A::OneElementMatrix, B::AbstractFillVector)
+    check_matmul_sizes(A, B)
+    val = getindex_value(A) * getindex_value(B)
+    OneElement(val, A.ind[1], size(A,1))
 end
 
 @inline function __mulonel!(y, A, x, alpha, beta)
@@ -84,6 +110,14 @@ function _mulonel!(C, A, B::OneElementMatrix, alpha::Number, beta::Number)
     if B.ind[1] ∉ axes(B,1) || B.ind[2] ∉ axes(B,2) # in this case x is all zeros
         mul!(C, A, Zeros{eltype(B)}(axes(B)), alpha, beta)
         return C
+    end
+    if iszero(beta)
+        C .= zero(eltype(C))
+    else
+        @views begin
+            C[:, 1:B.ind[2]-1] .*= beta
+            C[:, B.ind[2]+1:end] .*= beta
+        end
     end
     y = @view C[:, B.ind[2]]
     __mulonel!(y, A, B, alpha, beta)

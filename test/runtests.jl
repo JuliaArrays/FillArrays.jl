@@ -1715,48 +1715,76 @@ end
 
     @testset "matmul" begin
         A = reshape(Float64[1:9;], 3, 3)
-        @testset "vector" begin
-            w = zeros(size(A,1))
-            w2 = MVector{length(w)}(w)
-            for ind in (size(A,2)-1, size(A,2)+1)
-                x = OneElement(3, ind, size(A,2))
+        testinds(w::AbstractArray) = testinds(size(w))
+        testinds(szw::Tuple{Int}) = (szw .- 1, szw .+ 1)
+        function testinds(szA::Tuple{Int,Int})
+            (szA .- 1, szA .+ (-1,0), szA .+ (0,-1), szA .+ 1, szA .+ (1,-1), szA .+ (-1,1))
+        end
+        function test_A_mul_OneElement(A, (w, w2))
+            @testset for ind in testinds(w)
+                x = OneElement(3, ind, size(w))
                 xarr = Array(x)
-                @test A * x ≈ A * xarr
-                @test A' * x ≈ A' * xarr
+                Axarr = A * xarr
+                Aadjxarr = A' * xarr
+
+                @test A * x ≈ Axarr
+                @test A' * x ≈ Aadjxarr
                 @test transpose(A) * x ≈ transpose(A) * xarr
 
-                @test mul!(w, A, x) ≈ A * xarr
-                @test mul!(w, A', x) ≈ A' * xarr
+                @test mul!(w, A, x) ≈ Axarr
+                # check columnwise to ensure zero columns
+                @test all(((c1, c2),) -> c1 ≈ c2, zip(eachcol(w), eachcol(Axarr)))
+                @test mul!(w, A', x) ≈ Aadjxarr
                 w .= 1
-                @test mul!(w, A, x, 1.0, 1.0) ≈ A * xarr .+ 1
+                @test mul!(w, A, x, 1.0, 2.0) ≈ Axarr .+ 2
                 w .= 1
-                @test mul!(w, A', x, 1.0, 1.0) ≈ A' * xarr .+ 1
+                @test mul!(w, A', x, 1.0, 2.0) ≈ Aadjxarr .+ 2
 
                 F = Fill(3, size(A))
                 w2 .= 1
                 @test mul!(w2, F, x, 1.0, 1.0) ≈ Array(F) * xarr .+ 1
             end
         end
-        @testset "matrix" begin
+        @testset "Matrix * OneElementVector" begin
+            w = zeros(size(A,1))
+            w2 = MVector{length(w)}(w)
+            test_A_mul_OneElement(A, (w, w2))
+        end
+        @testset "Matrix * OneElementMatrix" begin
             C = zeros(size(A))
             C2 = MMatrix{size(C)...}(C)
-            for inds in (size(A) .- 1, size(A) .+ 1)
-                B = OneElement(3, inds, size(A))
-                Barr = Array(B)
-                @test A * B ≈ A * Barr
-                @test A' * B ≈ A' * Barr
-                @test transpose(A) * B ≈ transpose(A) * Barr
+            test_A_mul_OneElement(A, (C, C2))
+        end
+        @testset "OneElementMatrix * OneElement" begin
+            @testset for ind in testinds(A)
+                O = OneElement(3, ind, size(A))
+                v = OneElement(4, ind[2], size(A,1))
+                @test O * v isa OneElement
+                @test O * v == Array(O) * Array(v)
 
-                @test mul!(C, A, B) ≈ A * Barr
-                @test mul!(C, A', B) ≈ A' * Barr
-                C .= 1
-                @test mul!(C, A, B, 1.0, 1.0) ≈ A * Barr .+ 1
-                C .= 1
-                @test mul!(C, A', B, 1.0, 1.0) ≈ A' * Barr .+ 1
+                B = OneElement(4, ind, size(A))
+                @test O * B isa OneElement
+                @test O * B == Array(O) * Array(B)
+            end
 
-                C2 .= 1
-                F = Fill(3,size(A))
-                @test mul!(C2, F, B, 1.0, 1.0) ≈ Array(F) * Barr .+ 1
+            @test OneElement(3, (2,3), (5,4)) * OneElement(2, 2, 4) == Zeros(5)
+            @test OneElement(3, (2,3), (5,4)) * OneElement(2, (2,1), (4,2)) == Zeros(5,2)
+        end
+        @testset "AbstractFillMatrix * OneElementVector" begin
+            F = Fill(3, size(A))
+            sw = (size(A,1),)
+            @testset for ind in testinds(sw)
+                x = OneElement(3, ind, sw)
+                @test F * x isa Fill
+                @test F * x == Array(F) * Array(x)
+            end
+        end
+        @testset "OneElementMatrix * AbstractFillVector" begin
+            @testset for ind in testinds(A)
+                O = OneElement(3, ind, size(A))
+                v = Fill(2, size(O,1))
+                @test O * v isa OneElement
+                @test O * v == Array(O) * Array(v)
             end
         end
     end
