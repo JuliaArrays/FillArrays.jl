@@ -340,16 +340,16 @@ equal_or_undef(a, b) = all(equal_or_undef.(a, b))
 function test_addition_subtraction_dot(As, Bs, Tout::Type)
     for A in As, B in Bs
         @testset "$(typeof(A)) and $(typeof(B))" begin
-            @test A + B isa Tout{promote_type(eltype(A), eltype(B))}
+            @test @inferred(A + B) isa Tout{promote_type(eltype(A), eltype(B))}
             @test equal_or_undef(as_array(A + B), as_array(A) + as_array(B))
 
-            @test A - B isa Tout{promote_type(eltype(A), eltype(B))}
+            @test @inferred(A - B) isa Tout{promote_type(eltype(A), eltype(B))}
             @test equal_or_undef(as_array(A - B), as_array(A) - as_array(B))
 
-            @test B + A isa Tout{promote_type(eltype(B), eltype(A))}
+            @test @inferred(B + A) isa Tout{promote_type(eltype(B), eltype(A))}
             @test equal_or_undef(as_array(B + A), as_array(B) + as_array(A))
 
-            @test B - A isa Tout{promote_type(eltype(B), eltype(A))}
+            @test @inferred(B - A) isa Tout{promote_type(eltype(B), eltype(A))}
             @test equal_or_undef(as_array(B - A), as_array(B) - as_array(A))
 
             # Julia 1.6 doesn't support dot(UniformScaling)
@@ -438,6 +438,21 @@ end
     )
     for A in As_special_nonsquare, B in Bs_us
         test_addition_and_subtraction_dim_mismatch(A, B)
+    end
+
+    @testset "Zeros" begin
+        As = ([1,2], Float64[1,2], Int8[1,2], ComplexF16[2,4])
+        Zs = (TZ -> Zeros{TZ}(2)).((Int, Float64, Int8, ComplexF64))
+        test_addition_subtraction_dot(As, Zs, Vector)
+        for A in As, Z in (TZ -> Zeros{TZ}(3)).((Int, Float64, Int8, ComplexF64))
+            test_addition_and_subtraction_dim_mismatch(A, Z)
+        end
+
+        As = (@SArray([1,2]), @SArray(Float64[1,2]), @SArray(Int8[1,2]), @SArray(ComplexF16[2,4]))
+        test_addition_subtraction_dot(As, Zs, SVector{2})
+        for A in As, Z in (TZ -> Zeros{TZ}(3)).((Int, Float64, Int8, ComplexF64))
+            test_addition_and_subtraction_dim_mismatch(A, Z)
+        end
     end
 end
 
@@ -871,13 +886,39 @@ end
             @test Zeros{Int}(5,6) ./ Zeros{Int}(5) ≡ Zeros{Int}(5) .\ Zeros{Int}(5,6) ≡ Fill(NaN,5,6)
         end
 
-        @testset "Addition" begin
+        @testset "Addition/Subtraction" begin
             @test Zeros{Int}(5) .+ (1:5) ≡ (1:5) .+ Zeros{Int}(5) ≡ (1:5) .- Zeros{Int}(5) ≡ 1:5
             @test Zeros{Int}(1) .+ (1:5) ≡ (1:5) .+ Zeros{Int}(1) ≡ (1:5) .- Zeros{Int}(1) ≡ 1:5
             @test Zeros(5) .+ (1:5) == (1:5) .+ Zeros(5) == (1:5) .- Zeros(5) == 1:5
             @test Zeros{Int}(5) .+ Fill(1,5) ≡ Fill(1,5) .+ Zeros{Int}(5) ≡ Fill(1,5) .- Zeros{Int}(5) ≡ Fill(1,5)
             @test_throws DimensionMismatch Zeros{Int}(2) .+ (1:5)
             @test_throws DimensionMismatch (1:5) .+ Zeros{Int}(2)
+
+            for v in ([1:5;], SVector{5}(1:5), SVector{5,ComplexF16}(1:5))
+                a = Zeros{Int}(5) .+ v
+                b = v .+ Zeros{Int}(5)
+                c = v .- Zeros{Int}(5)
+                @test a == b == c == v
+                @test all(x -> x isa AbstractVector{promote_type(eltype(v), Int)}, (a,b,c))
+
+                a = Zeros{Int}(1) .+ v
+                b = v .+ Zeros{Int}(1)
+                c = v .- Zeros{Int}(1)
+                @test a == b == c == 1:5
+                @test all(x -> x isa AbstractVector{promote_type(eltype(v), Int)}, (a,b,c))
+
+                a = Zeros{Float64}(5) .+ v
+                b = v .+ Zeros{Float64}(5)
+                c = v .- Zeros{Float64}(5)
+                @test a == b == c == v
+                @test all(x -> x isa AbstractVector{promote_type(eltype(v), Float64)}, (a,b,c))
+
+                a = Zeros{Float64}(1) .+ v
+                b = v .+ Zeros{Float64}(1)
+                c = v .- Zeros{Float64}(1)
+                @test a == b == c == v
+                @test all(x -> x isa AbstractVector{promote_type(eltype(v), Float64)}, (a,b,c))
+            end
         end
     end
 

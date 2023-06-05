@@ -172,7 +172,6 @@ getindex_value
 
 @inline getindex_value(F::Fill) = F.value
 
-AbstractArray{T}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 AbstractArray{T,N}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 AbstractFill{T}(F::AbstractFill) where T = AbstractArray{T}(F)
 AbstractFill{T,N}(F::AbstractFill) where {T,N} = AbstractArray{T,N}(F)
@@ -339,11 +338,6 @@ For example, if `a isa Zeros` then so is the returned object.
 fillsimilar(a::Ones{T}, axes...) where T = Ones{T}(axes...)
 fillsimilar(a::Zeros{T}, axes...) where T = Zeros{T}(axes...)
 fillsimilar(a::AbstractFill, axes...) = Fill(getindex_value(a), axes...)
-
-
-rank(F::Zeros) = 0
-rank(F::Ones) = 1
-
 
 struct RectDiagonal{T,V<:AbstractVector{T},Axes<:Tuple{Vararg{AbstractUnitRange,2}}} <: AbstractMatrix{T}
     diag::V
