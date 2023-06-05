@@ -1682,6 +1682,13 @@ end
     @test e₁ == [0,1,0,0,0]
     @test_throws BoundsError e₁[6]
 
+    f₁ = AbstractArray{Float64}(e₁)
+    @test f₁ isa OneElement{Float64,1}
+    @test f₁ == e₁
+    fv₁ = AbstractVector{Float64}(e₁)
+    @test fv₁ isa OneElement{Float64,1}
+    @test fv₁ == e₁
+
     @test stringmime("text/plain", e₁) == "5-element OneElement{$Int, 1, Tuple{$Int}, Tuple{Base.OneTo{$Int}}}:\n ⋅\n 1\n ⋅\n ⋅\n ⋅"
 
     e₁ = OneElement{Float64}(2, 5)
@@ -1692,6 +1699,13 @@ end
 
     V = OneElement(2, (2,3), (3,4))
     @test V == [0 0 0 0; 0 0 2 0; 0 0 0 0]
+
+    Vf = AbstractArray{Float64}(V)
+    @test Vf isa OneElement{Float64,2}
+    @test Vf == V
+    VMf = AbstractMatrix{Float64}(V)
+    @test VMf isa OneElement{Float64,2}
+    @test VMf == V
 
     @test stringmime("text/plain", V) == "3×4 OneElement{$Int, 2, Tuple{$Int, $Int}, Tuple{Base.OneTo{$Int}, Base.OneTo{$Int}}}:\n ⋅  ⋅  ⋅  ⋅\n ⋅  ⋅  2  ⋅\n ⋅  ⋅  ⋅  ⋅"
 
