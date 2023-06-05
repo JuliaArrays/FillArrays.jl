@@ -1724,16 +1724,21 @@ end
             @testset for ind in testinds(w)
                 x = OneElement(3, ind, size(w))
                 xarr = Array(x)
-                @test A * x ≈ A * xarr
-                @test A' * x ≈ A' * xarr
+                Axarr = A * xarr
+                Aadjxarr = A' * xarr
+
+                @test A * x ≈ Axarr
+                @test A' * x ≈ Aadjxarr
                 @test transpose(A) * x ≈ transpose(A) * xarr
 
-                @test mul!(w, A, x) ≈ A * xarr
-                @test mul!(w, A', x) ≈ A' * xarr
+                @test mul!(w, A, x) ≈ Axarr
+                # check columnwise to ensure zero columns
+                @test all(((c1, c2),) -> c1 ≈ c2, zip(eachcol(w), eachcol(Axarr)))
+                @test mul!(w, A', x) ≈ Aadjxarr
                 w .= 1
-                @test mul!(w, A, x, 1.0, 1.0) ≈ A * xarr .+ 1
+                @test mul!(w, A, x, 1.0, 2.0) ≈ Axarr .+ 2
                 w .= 1
-                @test mul!(w, A', x, 1.0, 1.0) ≈ A' * xarr .+ 1
+                @test mul!(w, A', x, 1.0, 2.0) ≈ Aadjxarr .+ 2
 
                 F = Fill(3, size(A))
                 w2 .= 1

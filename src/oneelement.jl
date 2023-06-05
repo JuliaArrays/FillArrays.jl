@@ -111,6 +111,14 @@ function _mulonel!(C, A, B::OneElementMatrix, alpha::Number, beta::Number)
         mul!(C, A, Zeros{eltype(B)}(axes(B)), alpha, beta)
         return C
     end
+    if iszero(beta)
+        C .= zero(eltype(C))
+    else
+        @views begin
+            C[:, 1:B.ind[2]-1] .*= beta
+            C[:, B.ind[2]+1:end] .*= beta
+        end
+    end
     y = @view C[:, B.ind[2]]
     __mulonel!(y, A, B, alpha, beta)
     C
