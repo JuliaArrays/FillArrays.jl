@@ -41,7 +41,7 @@ OneElement{T}(inds::Int, sz::Int) where T = OneElement(one(T), inds, sz)
 
 Base.size(A::OneElement) = map(length, A.axes)
 Base.axes(A::OneElement) = A.axes
-function Base.getindex(A::OneElement{T,N}, kj::Vararg{Int,N}) where {T,N}
+Base.@propagate_inbounds function Base.getindex(A::OneElement{T,N}, kj::Vararg{Int,N}) where {T,N}
     @boundscheck checkbounds(A, kj...)
     ifelse(kj == A.ind, A.val, zero(T))
 end
@@ -56,14 +56,19 @@ Base.replace_in_print_matrix(o::OneElementVector, k::Integer, j::Integer, s::Abs
 Base.replace_in_print_matrix(o::OneElementMatrix, k::Integer, j::Integer, s::AbstractString) =
     o.ind == (k,j) ? s : Base.replace_with_centered_mark(s)
 
-function Base.setindex(A::Zeros{T,N}, v, kj::Vararg{Int,N}) where {T,N}
+Base.@propagate_inbounds function Base.setindex(A::Zeros{T,N}, v, kj::Vararg{Int,N}) where {T,N}
     @boundscheck checkbounds(A, kj...)
     OneElement(convert(T, v), kj, axes(A))
 end
 
-# multiplication
-# Fill and OneElement
+*(x::OneElement, b::Number) = OneElement(x.val * b, x.ind, x.axes)
+*(b::Number, x::OneElement) = OneElement(b * x.val, x.ind, x.axes)
+/(x::OneElement, b::Number) = OneElement(x.val / b, x.ind, x.axes)
+\(b::Number, x::OneElement) = OneElement(b \ x.val, x.ind, x.axes)
 
+# matrix-vector and matrix-matrix multiplication
+
+# Fill and OneElement
 function *(A::OneElementMatrix, B::OneElementVecOrMat)
     check_matmul_sizes(A, B)
     valA = getindex_value(A)
