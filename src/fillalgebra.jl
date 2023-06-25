@@ -273,6 +273,23 @@ end
 
 *(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::Zeros{<:Any, 1}) = mult_zeros(a, b)
 
+*(a::AdjointAbsVec{<:Any,<:ZerosVector}, D::Diagonal) = (D*a')'
+*(a::TransposeAbsVec{<:Any,<:ZerosVector}, D::Diagonal) = transpose(D*transpose(a))
+function _triple_zeromul(x, D::Diagonal, y)
+    if !(length(x) == length(D.diag) == length(y))
+        throw(DimensionMismatch("x has length $(length(x)), D has size $(size(D)), and y has $(length(y))"))
+    end
+    zero(promote_type(eltype(x), eltype(D), eltype(y)))
+end
+
+*(x::AdjointAbsVec{<:Any,<:ZerosVector}, D::Diagonal, y::AbstractVector) = _triple_zeromul(x, D, y)
+*(x::TransposeAbsVec{<:Any,<:ZerosVector}, D::Diagonal, y::AbstractVector) = _triple_zeromul(x, D, y)
+*(x::AdjointAbsVec, D::Diagonal, y::ZerosVector) = _triple_zeromul(x, D, y)
+*(x::TransposeAbsVec, D::Diagonal, y::ZerosVector) = _triple_zeromul(x, D, y)
+*(x::AdjointAbsVec{<:Any,<:ZerosVector}, D::Diagonal, y::ZerosVector) = _triple_zeromul(x, D, y)
+*(x::TransposeAbsVec{<:Any,<:ZerosVector}, D::Diagonal, y::ZerosVector) = _triple_zeromul(x, D, y)
+
+
 function *(a::Transpose{T, <:AbstractVector{T}}, b::ZerosVector{T}) where T<:Real
     la, lb = length(a), length(b)
     if la ≠ lb
