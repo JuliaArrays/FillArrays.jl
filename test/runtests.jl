@@ -593,6 +593,21 @@ end
 
         @test transpose([[1,2]]) * Zeros{SVector{2,Int}}(1) ≡ 0
         @test_broken transpose([[1,2,3]]) * Zeros{SVector{2,Int}}(1)
+
+        @testset "Diagonal mul introduced in v1.9" begin
+            @test Zeros(5)'*Diagonal(1:5) ≡ Zeros(5)'
+            @test transpose(Zeros(5))*Diagonal(1:5) ≡ transpose(Zeros(5))
+            @test Zeros(5)'*Diagonal(1:5)*(1:5) ==
+                (1:5)'*Diagonal(1:5)*Zeros(5) ==
+                transpose(1:5)*Diagonal(1:5)*Zeros(5) ==
+                Zeros(5)'*Diagonal(1:5)*Zeros(5) ==
+                transpose(Zeros(5))*Diagonal(1:5)*Zeros(5) ==
+                transpose(Zeros(5))*Diagonal(1:5)*(1:5)
+
+            @test_throws DimensionMismatch Zeros(6)'*Diagonal(1:5)*Zeros(5)
+            @test_throws DimensionMismatch Zeros(5)'*Diagonal(1:6)*Zeros(5)
+            @test_throws DimensionMismatch Zeros(5)'*Diagonal(1:5)*Zeros(6)
+        end
     end
 
     z1, z2 = Zeros{Float64}(4), Zeros{Int}(4)
