@@ -601,7 +601,12 @@ end
                 (1:5)'*Diagonal(1:5)*Zeros(5) ==
                 transpose(1:5)*Diagonal(1:5)*Zeros(5) ==
                 Zeros(5)'*Diagonal(1:5)*Zeros(5) ==
+                transpose(Zeros(5))*Diagonal(1:5)*Zeros(5) ==
                 transpose(Zeros(5))*Diagonal(1:5)*(1:5)
+
+            @test_throws DimensionMismatch Zeros(6)'*Diagonal(1:5)*Zeros(5)
+            @test_throws DimensionMismatch Zeros(5)'*Diagonal(1:6)*Zeros(5)
+            @test_throws DimensionMismatch Zeros(5)'*Diagonal(1:5)*Zeros(6)
         end
     end
 
