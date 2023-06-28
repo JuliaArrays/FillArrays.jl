@@ -443,6 +443,12 @@ function _kron(f::AbstractFill, g::AbstractFill, sz)
     v = getindex_value(f)*getindex_value(g)
     Fill(v, sz)
 end
+function _kron(f::Zeros, g::AbstractFill, sz)
+    Zeros{promote_type(eltype(f), eltype(g))}(sz)
+end
+function _kron(f::AbstractFill, g::Zeros, sz)
+    Zeros{promote_type(eltype(f), eltype(g))}(sz)
+end
 function _kron(f::Zeros, g::Zeros, sz)
     Zeros{promote_type(eltype(f), eltype(g))}(sz)
 end

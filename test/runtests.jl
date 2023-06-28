@@ -1486,14 +1486,20 @@ end
     for T in (Fill, Zeros, Ones), sz in ((2,), (2,2))
         f = T{Int}((T == Fill ? (3,sz...) : sz)...)
         g = Ones{Int}(2)
+        z = Zeros{Int}(2)
         fc = collect(f)
         gc = collect(g)
+        zc = collect(z)
         @test kron(f, f) == kron(fc, fc)
         @test kron(f, f) isa T{Int,length(sz)}
         @test kron(f, g) == kron(fc, gc)
         @test kron(f, g) isa AbstractFill{Int,length(sz)}
         @test kron(g, f) == kron(gc, fc)
         @test kron(g, f) isa AbstractFill{Int,length(sz)}
+        @test kron(f, z) == kron(fc, zc)
+        @test kron(f, z) isa Zeros{Int,length(sz)}
+        @test kron(z, f) == kron(zc, fc)
+        @test kron(z, f) isa Zeros{Int,length(sz)}
         @test kron(f, f .+ 0.5) == kron(fc, fc .+ 0.5)
         @test kron(f, f .+ 0.5) isa AbstractFill{Float64,length(sz)}
         @test kron(f, g .+ 0.5) isa AbstractFill{Float64,length(sz)}
