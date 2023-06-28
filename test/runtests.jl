@@ -1506,8 +1506,12 @@ end
     end
 
     E = Eye(2)
-    @test kron(E, E) isa typeof(E)
-    @test kron(E, E) == kron(collect(E), collect(E))
+    K = kron(E, E)
+    @test K isa Diagonal
+    if VERSION >= v"1.9"
+        @test K isa typeof(E)
+    end
+    @test K == kron(collect(E), collect(E))
 end
 
 @testset "dot products" begin
