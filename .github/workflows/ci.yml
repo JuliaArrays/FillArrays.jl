@@ -4,6 +4,11 @@ on:
     branches:
       - master
   pull_request:
+
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
 jobs:
   pre_job:
     # continue-on-error: true # Uncomment once integration is finished
