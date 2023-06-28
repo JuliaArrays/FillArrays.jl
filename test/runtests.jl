@@ -1505,6 +1505,10 @@ end
         @test kron(f, g .+ 0.5) isa AbstractFill{Float64,length(sz)}
     end
 
+    f = Fill(Fill(2,2,2), 3,3)
+    g = fill(fill(2,2,2), 3,3)
+    @test kron(f, f) == kron(g, g)
+
     E = Eye(2)
     K = kron(E, E)
     @test K isa Diagonal
