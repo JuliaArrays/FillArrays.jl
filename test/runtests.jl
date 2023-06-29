@@ -1497,9 +1497,9 @@ end
         @test kron(g, f) == kron(gc, fc)
         @test kron(g, f) isa AbstractFill{Int,length(sz)}
         @test kron(f, z) == kron(fc, zc)
-        @test kron(f, z) isa Zeros{Int,length(sz)}
+        @test kron(f, z) isa AbstractFill{Int,length(sz)}
         @test kron(z, f) == kron(zc, fc)
-        @test kron(z, f) isa Zeros{Int,length(sz)}
+        @test kron(z, f) isa AbstractFill{Int,length(sz)}
         @test kron(f, f .+ 0.5) == kron(fc, fc .+ 0.5)
         @test kron(f, f .+ 0.5) isa AbstractFill{Float64,length(sz)}
         @test kron(f, g .+ 0.5) isa AbstractFill{Float64,length(sz)}
@@ -1510,6 +1510,8 @@ end
         g = fill(m, sz)
         @test kron(f, f) == kron(g, g)
     end
+
+    @test_throws MethodError kron(Fill("a",2), Zeros(1)) # can't multiply String and Float64
 
     E = Eye(2)
     K = kron(E, E)
