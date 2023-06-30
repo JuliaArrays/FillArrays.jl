@@ -481,7 +481,21 @@ function convert(::Type{T}, A::AbstractFillMatrix) where T<:Diagonal
     isdiag(A) ? T(A) : throw(InexactError(:convert, T, A))
 end
 
+#################
+# Structured matrix types
+#################
+
+for SMT in (:Diagonal, :Bidiagonal, :Tridiagonal, :SymTridiagonal)
+    @eval function diag(D::$SMT{<:Number,<:AbstractFillVector}, k::Integer=0)
+        inds = (1,1) .+ (k >= 0 ? (0,k) : (-k,0))
+        v = get(D, inds, zero(eltype(D)))
+        Fill(v, length(diagind(D, k)))
+    end
+end
+
+##################
 ## Sparse arrays
+##################
 SparseVector{T}(Z::ZerosVector) where T = spzeros(T, length(Z))
 SparseVector{Tv,Ti}(Z::ZerosVector) where {Tv,Ti} = spzeros(Tv, Ti, length(Z))
 
