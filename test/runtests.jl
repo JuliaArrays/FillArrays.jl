@@ -1519,7 +1519,14 @@ end
     if VERSION >= v"1.9"
         @test K isa typeof(E)
     end
-    @test K == kron(collect(E), collect(E))
+    C = collect(E)
+    @test K == kron(C, C)
+
+    E = Eye(2,3)
+    K = kron(E, E)
+    C = collect(E)
+    @test K == kron(C, C)
+    @test issparse(kron(E,E))
 end
 
 @testset "dot products" begin

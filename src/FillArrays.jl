@@ -411,6 +411,7 @@ Base.replace_in_print_matrix(A::RectDiagonal, i::Integer, j::Integer, s::Abstrac
 
 
 const RectOrDiagonal{T,V,Axes} = Union{RectDiagonal{T,V,Axes}, Diagonal{T,V}}
+const RectDiagonalEye{T} = RectDiagonal{T,<:Ones{T,1}}
 const SquareEye{T,Axes} = Diagonal{T,Ones{T,1,Tuple{Axes}}}
 const Eye{T,Axes} = RectOrDiagonal{T,Ones{T,1,Tuple{Axes}}}
 
