@@ -434,7 +434,7 @@ const Eye{T,Axes} = RectOrDiagonal{T,Ones{T,1,Tuple{Axes}}}
 
 isone(::SquareEye) = true
 
-function LinearAlgebra.diag(E::Eye, k::Integer=0)
+function diag(E::Eye, k::Integer=0)
     v = k == 0 ? oneunit(eltype(E)) : zero(eltype(E))
     len = length(diagind(E, k))
     Fill(v, len)
