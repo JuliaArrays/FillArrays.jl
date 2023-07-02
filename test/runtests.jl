@@ -1952,3 +1952,24 @@ end
         @test_throws ArgumentError repeat(Fill(2,3,4), outer=(1,))
     end
 end
+
+@testset "structured matrix" begin
+    # strange bug on Julia v1.6, see
+    # https://discourse.julialang.org/t/strange-seemingly-out-of-bounds-access-bug-in-julia-v1-6/101041
+    bands = if VERSION >= v"1.9"
+        ((Fill(2,3), Fill(6,2)), (Zeros(3), Zeros(2)))
+    else
+        ((Fill(2,3), Fill(6,2)),)
+    end
+    @testset for (dv, ev) in bands
+        for D in (Diagonal(dv), Bidiagonal(dv, ev, :U),
+                    Tridiagonal(ev, dv, ev), SymTridiagonal(dv, ev))
+
+            M = Matrix(D)
+            for k in -5:5
+                @test diag(D, k) isa FillArrays.AbstractFill{eltype(D),1}
+                @test diag(D, k) == diag(M, k)
+            end
+        end
+    end
+end
