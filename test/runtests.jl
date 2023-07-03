@@ -470,6 +470,13 @@ end
     @test Diagonal(Eye(8,5)) == Diagonal(ones(5))
     @test convert(Diagonal, Eye(5)) == Diagonal(ones(5))
     @test convert(Diagonal{Int}, Eye(5)) == Diagonal(ones(Int,5))
+
+    for E in (Eye(2,4), Eye(3))
+        M = collect(E)
+        for i in -5:5
+            @test diag(E, i) == diag(M, i)
+        end
+    end
 end
 
 @testset "one" begin
