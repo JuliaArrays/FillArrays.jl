@@ -434,3 +434,23 @@ fillzero(::Type{Zeros{T,N,AXIS}}, n, m) where {T,N,AXIS} = Zeros{T,N,AXIS}((n, m
 fillzero(::Type{F}, n, m) where F = throw(ArgumentError("Cannot create a zero array of type $F"))
 
 diagzero(D::Diagonal{F}, i, j) where F<:AbstractFill = fillzero(F, axes(D.diag[i], 1), axes(D.diag[j], 2))
+
+# kron
+
+_kronsize(f::AbstractFillVector, g::AbstractFillVector) = (size(f,1)*size(g,1),)
+_kronsize(f::AbstractFillVecOrMat, g::AbstractFillVecOrMat) = (size(f,1)*size(g,1), size(f,2)*size(g,2))
+function _kron(f::AbstractFill, g::AbstractFill, sz)
+    v = getindex_value(f)*getindex_value(g)
+    Fill(v, sz)
+end
+function _kron(f::Zeros, g::Zeros, sz)
+    Zeros{promote_type(eltype(f), eltype(g))}(sz)
+end
+function _kron(f::Ones, g::Ones, sz)
+    Ones{promote_type(eltype(f), eltype(g))}(sz)
+end
+function kron(f::AbstractFillVecOrMat, g::AbstractFillVecOrMat)
+    sz = _kronsize(f, g)
+    _kron(f, g, sz)
+end
+kron(E1::RectDiagonalEye, E2::RectDiagonalEye) = kron(sparse(E1), sparse(E2))
