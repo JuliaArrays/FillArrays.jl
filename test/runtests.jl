@@ -514,6 +514,22 @@ end
                 convert(AbstractSparseMatrix{Float64,Int},Mat) ==
                 SMat
     end
+
+    for f in (Fill(Int8(4),3), Ones{Int8}(3), Zeros{Int8}(3))
+        for sz in ((3,6), (6,3), (3,3))
+            E = RectDiagonal(f, sz)
+            S = @inferred SparseMatrixCSC(E)
+            @test S == E
+            S = @inferred SparseMatrixCSC{Float64}(E)
+            @test S == E
+            @test S isa SparseMatrixCSC{Float64}
+            @test convert(SparseMatrixCSC{Float64}, E) == S
+            S = @inferred SparseMatrixCSC{Float64,Int32}(E)
+            @test S == E
+            @test S isa SparseMatrixCSC{Float64,Int32}
+            @test convert(SparseMatrixCSC{Float64,Int32}, E) == S
+        end
+    end
 end
 
 @testset "==" begin
@@ -1534,6 +1550,12 @@ end
     C = collect(E)
     @test K == kron(C, C)
     @test issparse(kron(E,E))
+
+    E = RectDiagonal(Fill(4,3), (6,3))
+    C = collect(E)
+    K = kron(E, E)
+    @test K == kron(C, C)
+    @test issparse(K)
 end
 
 @testset "dot products" begin

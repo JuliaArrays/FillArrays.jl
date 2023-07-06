@@ -411,7 +411,8 @@ Base.replace_in_print_matrix(A::RectDiagonal, i::Integer, j::Integer, s::Abstrac
 
 
 const RectOrDiagonal{T,V,Axes} = Union{RectDiagonal{T,V,Axes}, Diagonal{T,V}}
-const RectDiagonalEye{T} = RectDiagonal{T,<:Ones{T,1}}
+const RectDiagonalFill{T,V<:AbstractFillVector{T}} = RectDiagonal{T,V}
+const RectDiagonalEye{T} = RectDiagonalFill{T,<:OnesVector{T}}
 const SquareEye{T,Axes} = Diagonal{T,Ones{T,1,Tuple{Axes}}}
 const Eye{T,Axes} = RectOrDiagonal{T,Ones{T,1,Tuple{Axes}}}
 
@@ -537,6 +538,15 @@ convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
 convert(::Type{AbstractSparseArray{Tv,Ti,2}}, Z::Eye{T}) where {T,Tv,Ti} =
     convert(SparseMatrixCSC{Tv,Ti}, Z)
 
+function SparseMatrixCSC{Tv}(R::RectDiagonalFill) where {Tv}
+    SparseMatrixCSC{Tv,eltype(axes(R,1))}(R)
+end
+function SparseMatrixCSC{Tv,Ti}(R::RectDiagonalFill) where {Tv,Ti}
+    Base.require_one_based_indexing(R)
+    v = R.diag
+    J = getindex_value(v)*I
+    SparseMatrixCSC{Tv,Ti}(J, size(R))
+end
 
 #########
 # maximum/minimum
