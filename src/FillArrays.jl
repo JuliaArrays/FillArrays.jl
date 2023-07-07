@@ -6,7 +6,8 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero,
-    show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat
+    show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
+    parent
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
@@ -369,6 +370,8 @@ axes(T::UpperOrLowerTriangular{<:Any,<:AbstractFill}) = axes(parent(T))
 axes(rd::RectDiagonal) = rd.axes
 size(rd::RectDiagonal) = map(length, rd.axes)
 
+parent(rd::RectDiagonal) = rd.diag
+
 @inline function getindex(rd::RectDiagonal{T}, i::Integer, j::Integer) where T
     @boundscheck checkbounds(rd, i, j)
     if i == j
@@ -411,7 +414,8 @@ Base.replace_in_print_matrix(A::RectDiagonal, i::Integer, j::Integer, s::Abstrac
 
 
 const RectOrDiagonal{T,V,Axes} = Union{RectDiagonal{T,V,Axes}, Diagonal{T,V}}
-const RectDiagonalEye{T} = RectDiagonal{T,<:Ones{T,1}}
+const RectOrDiagonalFill{T,V<:AbstractFillVector{T},Axes} = RectOrDiagonal{T,V,Axes}
+const RectDiagonalFill{T,V<:AbstractFillVector{T}} = RectDiagonal{T,V}
 const SquareEye{T,Axes} = Diagonal{T,Ones{T,1,Tuple{Axes}}}
 const Eye{T,Axes} = RectOrDiagonal{T,Ones{T,1,Tuple{Axes}}}
 
@@ -537,6 +541,15 @@ convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
 convert(::Type{AbstractSparseArray{Tv,Ti,2}}, Z::Eye{T}) where {T,Tv,Ti} =
     convert(SparseMatrixCSC{Tv,Ti}, Z)
 
+function SparseMatrixCSC{Tv}(R::RectOrDiagonalFill) where {Tv}
+    SparseMatrixCSC{Tv,eltype(axes(R,1))}(R)
+end
+function SparseMatrixCSC{Tv,Ti}(R::RectOrDiagonalFill) where {Tv,Ti}
+    Base.require_one_based_indexing(R)
+    v = parent(R)
+    J = getindex_value(v)*I
+    SparseMatrixCSC{Tv,Ti}(J, size(R))
+end
 
 #########
 # maximum/minimum
