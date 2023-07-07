@@ -185,12 +185,14 @@ _range_convert(::Type{AbstractVector{T}}, a::AbstractRange) where T = convert(T,
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::OnesVector{T}, b::AbstractRange{V}) where {T,V}
     broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-    return _range_convert(AbstractVector{promote_type(T,V)}, b)
+    TT = typeof(zero(T) * zero(V))
+    return _range_convert(AbstractVector{TT}, b)
 end
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b::OnesVector{T}) where {T,V}
     broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-    return _range_convert(AbstractVector{promote_type(T,V)}, a)
+    TT = typeof(zero(V) * zero(T))
+    return _range_convert(AbstractVector{TT}, a)
 end
 
 _copy_oftype(A::AbstractArray, ::Type{S}) where {S} = eltype(A) == S ? copy(A) : AbstractArray{S}(A)
@@ -200,11 +202,12 @@ for op in (:+, :-)
     @eval begin
         function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractRange{T}, b::ZerosVector{V}) where {T,V}
             broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-            _copy_oftype(a, promote_type(T,V))
+            TT = typeof($op(zero(T), zero(V)))
+            _copy_oftype(a, TT)
         end
         function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector{T}, b::ZerosVector{V}) where {T,V}
             broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-            TT = promote_type(T,V)
+            TT = typeof($op(zero(T), zero(V)))
             broadcasted(TT, a)
         end
 
