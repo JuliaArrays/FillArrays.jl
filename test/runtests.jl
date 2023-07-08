@@ -938,30 +938,17 @@ end
             @test_throws DimensionMismatch Zeros{Int}(2) .+ (1:5)
             @test_throws DimensionMismatch (1:5) .+ Zeros{Int}(2)
 
-            for v in ([1:5;], SVector{5}(1:5), SVector{5,ComplexF16}(1:5))
-                a = Zeros{Int}(5) .+ v
-                b = v .+ Zeros{Int}(5)
-                c = v .- Zeros{Int}(5)
+            for v in (rand(Bool, 5), [1:5;], SVector{5}(1:5), SVector{5,ComplexF16}(1:5)), T in (Bool, Int, Float64)
+                TT = eltype(v + zeros(T, 5))
+                S = v isa SVector ? SVector{5,TT} : Vector{TT}
+                
+                a = Zeros{T}(5) .+ v
+                b = v .+ Zeros{T}(5)
+                c = v .- Zeros{T}(5)
                 @test a == b == c == v
-                @test all(x -> x isa AbstractVector{promote_type(eltype(v), Int)}, (a,b,c))
-
-                a = Zeros{Int}(1) .+ v
-                b = v .+ Zeros{Int}(1)
-                c = v .- Zeros{Int}(1)
-                @test a == b == c == 1:5
-                @test all(x -> x isa AbstractVector{promote_type(eltype(v), Int)}, (a,b,c))
-
-                a = Zeros{Float64}(5) .+ v
-                b = v .+ Zeros{Float64}(5)
-                c = v .- Zeros{Float64}(5)
-                @test a == b == c == v
-                @test all(x -> x isa AbstractVector{promote_type(eltype(v), Float64)}, (a,b,c))
-
-                a = Zeros{Float64}(1) .+ v
-                b = v .+ Zeros{Float64}(1)
-                c = v .- Zeros{Float64}(1)
-                @test a == b == c == v
-                @test all(x -> x isa AbstractVector{promote_type(eltype(v), Float64)}, (a,b,c))
+                d = Zeros{T}(5) .- v
+                @test d == -v
+                @test all(Base.Fix2(isa, S), (a,b,c,d))
             end
         end
     end
