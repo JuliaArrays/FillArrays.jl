@@ -203,12 +203,12 @@ for op in (:+, :-)
         function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractRange{T}, b::ZerosVector{V}) where {T,V}
             broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
             TT = typeof($op(zero(T), zero(V)))
-            _copy_oftype(a, TT)
+            _range_convert(AbstractVector{TT}, a)
         end
         function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector{T}, b::ZerosVector{V}) where {T,V}
             broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
             TT = typeof($op(zero(T), zero(V)))
-            _copy_oftype(a, TT)
+            convert(AbstractVector{TT}, a)
         end
 
         broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFillVector{T}, b::ZerosVector) where T =
