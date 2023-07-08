@@ -183,48 +183,46 @@ _range_convert(::Type{AbstractVector{T}}, a::AbstractRange) where T = convert(T,
 #     end
 # end
 
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::OnesVector{T}, b::AbstractRange{V}) where {T,V}
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::OnesVector, b::AbstractRange)
     broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-    TT = typeof(zero(T) * zero(V))
+    TT = typeof(zero(eltype(a)) * zero(eltype(b)))
     return _range_convert(AbstractVector{TT}, b)
 end
 
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange{V}, b::OnesVector{T}) where {T,V}
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::OnesVector)
     broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-    TT = typeof(zero(V) * zero(T))
+    TT = typeof(zero(eltype(a)) * zero(eltype(b)))
     return _range_convert(AbstractVector{TT}, a)
 end
 
-_copy_oftype(A::AbstractArray, ::Type{S}) where {S} = eltype(A) == S ? copy(A) : AbstractArray{S}(A)
-_copy_oftype(A::AbstractRange, ::Type{S}) where {S} = eltype(A) == S ? copy(A) : map(S, A)
-
 for op in (:+, :-)
     @eval begin
-        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractRange{T}, b::ZerosVector{V}) where {T,V}
+        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector, b::ZerosVector)
             broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-            TT = typeof($op(zero(T), zero(V)))
-            _range_convert(AbstractVector{TT}, a)
-        end
-        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector{T}, b::ZerosVector{V}) where {T,V}
-            broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-            TT = typeof($op(zero(T), zero(V)))
-            convert(AbstractVector{TT}, a)
+            TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
+            # Use x -> TT(x) to fix AD issues 
+            eltype(a) === TT ? a : broadcasted(x -> TT(x), a)
         end
 
-        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFillVector{T}, b::ZerosVector) where T =
+        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFillVector, b::ZerosVector) =
+            Base.invoke(broadcasted, Tuple{DefaultArrayStyle, typeof($op), AbstractFill, AbstractFill}, DefaultArrayStyle{1}(), $op, a, b)
+
+        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::ZerosVector, b::AbstractFillVector) =
             Base.invoke(broadcasted, Tuple{DefaultArrayStyle, typeof($op), AbstractFill, AbstractFill}, DefaultArrayStyle{1}(), $op, a, b)
     end
 end
 
-function broadcasted(S::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector, b::AbstractRange)
-    broadcasted(S, +, b, a)
-end
-function broadcasted(S::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector, b::AbstractVector)
-    broadcasted(S, +, b, a)
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector, b::AbstractVector)
+    broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $a to a Vector first."))
+    TT = typeof(zero(eltype(a)) + zero(eltype(b)))
+    eltype(b) === TT ? b : broadcasted(x -> TT(x), b)
 end
 
-broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector, b::AbstractFillVector) =
-            Base.invoke(broadcasted, Tuple{DefaultArrayStyle, typeof(+), AbstractFill, AbstractFill}, DefaultArrayStyle{1}(), +, a, b)
+function broadcasted(::DefaultArrayStyle{1}, ::typeof(-), a::ZerosVector, b::AbstractVector)
+    broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $a to a Vector first."))
+    TT = typeof(zero(eltype(a)) - zero(eltype(b)))
+    broadcasted(TT ∘ (-), b)
+end
 
 # Need to prevent array-valued fills from broadcasting over entry
 _broadcast_getindex_value(a::AbstractFill{<:Number}) = getindex_value(a)

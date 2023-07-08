@@ -1003,20 +1003,39 @@ end
     end
 
     @testset "issue #208" begin
-        u = rand(2); v = Zeros(2)
-        @test Broadcast.broadcasted(-, u, v) isa Broadcast.Broadcasted
-        @test Broadcast.broadcasted(+, u, v) isa Broadcast.Broadcasted
-        @test Broadcast.broadcasted(-, v, u) isa Broadcast.Broadcasted
-        @test Broadcast.broadcasted(+, v, u) isa Broadcast.Broadcasted
+        TS = (Bool, Int, Float32, Float64)
+        for S in TS, T in TS
+            u = rand(S, 2)
+            v = Zeros(T, 2)
+            if zero(S) + zero(T) isa S
+                @test Broadcast.broadcasted(-, u, v) === u
+                @test Broadcast.broadcasted(+, u, v) === u
+                @test Broadcast.broadcasted(+, v, u) === u
+            else
+                @test Broadcast.broadcasted(-, u, v) isa Broadcast.Broadcasted
+                @test Broadcast.broadcasted(+, u, v) isa Broadcast. Broadcasted
+                @test Broadcast.broadcasted(+, v, u) isa Broadcast.Broadcasted
+            end
+            @test Broadcast.broadcasted(-, v, u) isa Broadcast.Broadcasted
+        end
     end
 
     @testset "Zero .*" begin
-        @test Zeros{Int}(10) .* Zeros{Int}(10) ≡ Zeros{Int}(10)
-        @test randn(10) .* Zeros(10) ≡ Zeros(10)
-        @test Zeros(10) .* randn(10) ≡ Zeros(10)
-        @test (1:10) .* Zeros(10) ≡ Zeros(10)
-        @test Zeros(10) .* (1:10) ≡ Zeros(10)
-        @test_throws DimensionMismatch (1:11) .* Zeros(10)
+        TS = (Bool, Int, Float32, Float64)
+        for S in TS, T in TS
+            U = typeof(zero(S) * zero(T))
+            @test Zeros{S}(10) .* Zeros{T}(10) ≡ Zeros{U}(10)
+            @test rand(S, 10) .* Zeros(T, 10) ≡ Zeros(U, 10)
+            @test Zeros(S, 10) .* rand(T, 10) ≡ Zeros(U, 10)
+            if S !== Bool
+                @test (S(1):S(10)) .* Zeros(T, 10) ≡ Zeros(U, 10)
+                @test_throws DimensionMismatch (S(1):S(11)) .* Zeros(T, 10)
+            end
+            if T !== Bool
+                @test Zeros(S, 10) .* (T(1):T(10)) ≡ Zeros(U, 10)
+                @test_throws DimensionMismatch Zeros(S, 10) .* (T(1):T(11))
+            end
+        end        
     end
 end
 
@@ -1253,16 +1272,6 @@ end
 
     @test copy(m) ≡ m
     @test copy(D) ≡ D
-    @test FillArrays._copy_oftype(m, eltype(m)) ≡ m
-    @test FillArrays._copy_oftype(m, Int) ≡ Eye{Int}(10)
-    @test FillArrays._copy_oftype(D, eltype(D)) ≡ D
-    @test FillArrays._copy_oftype(D, Float64) ≡ Diagonal(Fill(2.0,10))
-
-    # test that _copy_oftype does, in fact, copy the array
-    D2 = Diagonal([1,1])
-    @test FillArrays._copy_oftype(D2, Float64) isa Diagonal{Float64}
-    @test FillArrays._copy_oftype(D2, eltype(D2)) == D2
-    @test FillArrays._copy_oftype(D2, eltype(D2)) !== D2
 end
 
 @testset "Issue #31" begin
