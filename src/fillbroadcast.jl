@@ -195,13 +195,20 @@ function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::O
     return _range_convert(AbstractVector{TT}, a)
 end
 
+# To fix AD issues with `broadcast(T, x)`
+# Avoids type inference issues with x -> T(x)
+struct Constructor{T} end
+
+function (::Constructor{T})(x) where {T}
+    return T(x)
+end
+
 for op in (:+, :-)
     @eval begin
         function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector, b::ZerosVector)
             broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
-            # Use x -> TT(x) to fix AD issues 
-            eltype(a) === TT ? a : broadcasted(x -> TT(x), a)
+            eltype(a) === TT ? a : broadcasted(Constructor{TT}(), a)
         end
 
         broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFillVector, b::ZerosVector) =
@@ -215,7 +222,7 @@ end
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector, b::AbstractVector)
     broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $a to a Vector first."))
     TT = typeof(zero(eltype(a)) + zero(eltype(b)))
-    eltype(b) === TT ? b : broadcasted(x -> TT(x), b)
+    eltype(b) === TT ? b : broadcasted(Constructor{TT}(), b)
 end
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(-), a::ZerosVector, b::AbstractVector)

@@ -941,7 +941,7 @@ end
             for v in (rand(Bool, 5), [1:5;], SVector{5}(1:5), SVector{5,ComplexF16}(1:5)), T in (Bool, Int, Float64)
                 TT = eltype(v + zeros(T, 5))
                 S = v isa SVector ? SVector{5,TT} : Vector{TT}
-                
+
                 a = @inferred(Zeros{T}(5) .+ v)
                 b = @inferred(v .+ Zeros{T}(5))
                 c = @inferred(v .- Zeros{T}(5))
