@@ -1003,7 +1003,7 @@ end
                 @test @inferred(Broadcast.broadcasted(+, u, v)) isa Broadcast. Broadcasted
                 @test @inferred(Broadcast.broadcasted(+, v, u)) isa Broadcast.Broadcasted
             end
-            @test Broadcast.broadcasted(-, v, u) isa Broadcast.Broadcasted
+            @test @inferred(Broadcast.broadcasted(-, v, u)) isa Broadcast.Broadcasted
         end
     end
 
