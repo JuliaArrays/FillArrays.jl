@@ -223,8 +223,8 @@ Base.@propagate_inbounds @inline function _fill_getindex(A::AbstractFill, kr::Ab
    fillsimilar(A, count(kr))
 end
 
-Base.@propagate_inbounds @inline Base._unsafe_getindex(::IndexStyle, F::AbstractFill, I::Vararg{Union{Real, AbstractArray}, N}) where N =
-    @inbounds(return _fill_getindex(F, I...))
+Base.@propagate_inbounds @inline Base._unsafe_getindex(::IndexStyle, F::AbstractFill, I::Vararg{Union{Real, AbstractArray}}) =
+    _fill_getindex(F, I...)
 
 
 
