@@ -7,7 +7,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
-    parent, similar
+    parent, similar, issorted
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
@@ -223,8 +223,8 @@ Base.@propagate_inbounds @inline function _fill_getindex(A::AbstractFill, kr::Ab
    fillsimilar(A, count(kr))
 end
 
-Base.@propagate_inbounds @inline Base._unsafe_getindex(::IndexStyle, F::AbstractFill, I::Vararg{Union{Real, AbstractArray}, N}) where N =
-    @inbounds(return _fill_getindex(F, I...))
+Base.@propagate_inbounds @inline Base._unsafe_getindex(::IndexStyle, F::AbstractFill, I::Vararg{Union{Real, AbstractArray}}) =
+    _fill_getindex(F, I...)
 
 
 
@@ -237,8 +237,22 @@ Base.@propagate_inbounds getindex(A::AbstractFill, kr::AbstractArray{Bool}) = _f
     v, (v, n+1)
 end
 
-sort(a::AbstractFill; kwds...) = a
-sort!(a::AbstractFill; kwds...) = a
+#################
+# Sorting
+#################
+function issorted(f::AbstractFill; kw...)
+    v = getindex_value(f)
+    issorted((v, v); kw...)
+end
+function sort(a::AbstractFill; kwds...)
+    issorted(a; kwds...) # ensure that the values may be compared
+    return a
+end
+function sort!(a::AbstractFill; kwds...)
+    issorted(a; kwds...) # ensure that the values may be compared
+    return a
+end
+
 svdvals!(a::AbstractFillMatrix) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(min(size(a)...)-1)]
 
 function fill_reshape(parent, dims::Integer...)
