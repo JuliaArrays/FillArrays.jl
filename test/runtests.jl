@@ -942,11 +942,11 @@ end
                 TT = eltype(v + zeros(T, 5))
                 S = v isa SVector ? SVector{5,TT} : Vector{TT}
                 
-                a = Zeros{T}(5) .+ v
-                b = v .+ Zeros{T}(5)
-                c = v .- Zeros{T}(5)
+                a = @inferred(Zeros{T}(5) .+ v)
+                b = @inferred(v .+ Zeros{T}(5))
+                c = @inferred(v .- Zeros{T}(5))
                 @test a == b == c == v
-                d = Zeros{T}(5) .- v
+                d = @inferred(Zeros{T}(5) .- v)
                 @test d == -v
                 @test all(Base.Fix2(isa, S), (a,b,c,d))
             end
@@ -995,13 +995,13 @@ end
             u = rand(S, 2)
             v = Zeros(T, 2)
             if zero(S) + zero(T) isa S
-                @test Broadcast.broadcasted(-, u, v) === u
-                @test Broadcast.broadcasted(+, u, v) === u
-                @test Broadcast.broadcasted(+, v, u) === u
+                @test @inferred(Broadcast.broadcasted(-, u, v)) === u
+                @test @inferred(Broadcast.broadcasted(+, u, v)) === u
+                @test @inferred(Broadcast.broadcasted(+, v, u)) === u
             else
-                @test Broadcast.broadcasted(-, u, v) isa Broadcast.Broadcasted
-                @test Broadcast.broadcasted(+, u, v) isa Broadcast. Broadcasted
-                @test Broadcast.broadcasted(+, v, u) isa Broadcast.Broadcasted
+                @test @inferred(Broadcast.broadcasted(-, u, v)) isa Broadcast.Broadcasted
+                @test @inferred(Broadcast.broadcasted(+, u, v)) isa Broadcast. Broadcasted
+                @test @inferred(Broadcast.broadcasted(+, v, u)) isa Broadcast.Broadcasted
             end
             @test Broadcast.broadcasted(-, v, u) isa Broadcast.Broadcasted
         end
