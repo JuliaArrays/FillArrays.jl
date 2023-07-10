@@ -1265,6 +1265,20 @@ end
     @test FillArrays._copy_oftype(D2, eltype(D2)) !== D2
 end
 
+@testset "Eye broadcast" begin
+    E = Eye(2,3)
+    M = Matrix(E)
+    F = E .+ E
+    @test F isa FillArrays.RectDiagonal
+    @test F == M + M
+
+    F = E .+ 1
+    @test F == M .+ 1
+
+    E = Eye((SOneTo(2), SOneTo(2)))
+    @test axes(E .+ E) === axes(E)
+end
+
 @testset "Issue #31" begin
     @test convert(SparseMatrixCSC{Float64,Int64}, Zeros{Float64}(3, 3)) == spzeros(3, 3)
     @test sparse(Zeros(4, 2)) == spzeros(4, 2)
