@@ -7,14 +7,14 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
-    parent, issorted
+    parent, similar, issorted
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
     issymmetric, ishermitian, AdjOrTransAbsVec, checksquare, mul!, kron
 
 
-import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
+import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape, BroadcastStyle, Broadcasted
 
 import Statistics: mean, std, var, cov, cor
 
@@ -481,6 +481,14 @@ end
 @inline Eye{T}(A::AbstractMatrix) where T = Eye{T}(size(A)...)
 @inline Eye(A::AbstractMatrix) = Eye{eltype(A)}(size(A)...)
 
+# This may break, as it uses undocumented internals of LinearAlgebra
+# Ideally this should be copied over to this package
+# Also, maybe this should reuse the broadcasting behavior of the parent,
+# once AbstractFill types implement their own BroadcastStyle
+BroadcastStyle(::Type{<:RectDiagonal}) = LinearAlgebra.StructuredMatrixStyle{RectDiagonal}()
+LinearAlgebra.structured_broadcast_alloc(bc, ::Type{<:RectDiagonal}, ::Type{ElType}, n) where {ElType} =
+    RectDiagonal(Array{ElType}(undef, n), axes(bc))
+@inline LinearAlgebra.fzero(S::RectDiagonal{T}) where {T} = zero(T)
 
 #########
 #  Special matrix types
