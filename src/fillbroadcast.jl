@@ -195,20 +195,18 @@ function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::O
     return _range_convert(AbstractVector{TT}, a)
 end
 
-# To fix AD issues with `broadcast(T, x)`
-# Avoids type inference issues with x -> T(x)
-struct Constructor{T} end
-
-function (::Constructor{T})(x) where {T}
-    return T(x)
-end
-
 for op in (:+, :-)
     @eval begin
         function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector, b::ZerosVector)
             broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
-            eltype(a) === TT ? a : broadcasted(Constructor{TT}(), a)
+            # Use `TT ∘ (+)` to fix AD issues with `broadcasted(TT, x)`
+            eltype(a) === TT ? a : broadcasted(TT ∘ (+), a)
+        end
+        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::ZerosVector, b::AbstractVector)
+            broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $a to a Vector first."))
+            TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
+            $op === (+) && eltype(b) === TT ? b : broadcasted(TT ∘ ($op), b)
         end
 
         broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFillVector, b::ZerosVector) =
@@ -217,18 +215,6 @@ for op in (:+, :-)
         broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::ZerosVector, b::AbstractFillVector) =
             Base.invoke(broadcasted, Tuple{DefaultArrayStyle, typeof($op), AbstractFill, AbstractFill}, DefaultArrayStyle{1}(), $op, a, b)
     end
-end
-
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::ZerosVector, b::AbstractVector)
-    broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $a to a Vector first."))
-    TT = typeof(zero(eltype(a)) + zero(eltype(b)))
-    eltype(b) === TT ? b : broadcasted(Constructor{TT}(), b)
-end
-
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(-), a::ZerosVector, b::AbstractVector)
-    broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $a to a Vector first."))
-    TT = typeof(zero(eltype(a)) - zero(eltype(b)))
-    broadcasted(TT ∘ (-), b)
 end
 
 # Need to prevent array-valued fills from broadcasting over entry
