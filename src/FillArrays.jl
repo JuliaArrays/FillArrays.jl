@@ -358,10 +358,10 @@ struct RectDiagonal{T,V<:AbstractVector{T},Axes<:Tuple{Vararg{AbstractUnitRange,
     axes::Axes
 
     @inline function RectDiagonal{T,V}(A::V, axes::Axes) where {T,V<:AbstractVector{T},Axes<:Tuple{Vararg{AbstractUnitRange,2}}}
-        @assert !Base.has_offset_axes(A)
+        Base.require_one_based_indexing(A)
         @assert any(length(ax) == length(A) for ax in axes)
         rd = new{T,V,Axes}(A, axes)
-        @assert !Base.has_offset_axes(rd)
+        Base.require_one_based_indexing(rd)
         return rd
     end
 end
