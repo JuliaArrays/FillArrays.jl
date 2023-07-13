@@ -1,4 +1,4 @@
-using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, Random, Base64, Test, Statistics
+using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 using Aqua
@@ -2070,4 +2070,13 @@ end
             end
         end
     end
+end
+
+@testset "ReverseDiff with Zeros" begin
+    # MWE in https://github.com/JuliaArrays/FillArrays.jl/issues/252
+    @test ReverseDiff.gradient(x -> sum(abs2.((Zeros(5) .- zeros(5)) ./ x)), rand(5)) == zeros(5)
+    @test ReverseDiff.gradient(x -> sum(abs2.((zeros(5) .- Zeros(5)) ./ x)), rand(5)) == zeros(5)
+    # MWE in https://github.com/JuliaArrays/FillArrays.jl/pull/278
+    @test ReverseDiff.gradient(x -> sum(abs2.((Zeros{eltype(x)}(5) .- zeros(5)) ./ x)), rand(5)) == zeros(5)
+    @test ReverseDiff.gradient(x -> sum(abs2.((zeros(5) .- Zeros{eltype(x)}(5)) ./ x)), rand(5)) == zeros(5)
 end
