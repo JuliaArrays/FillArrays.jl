@@ -259,7 +259,8 @@ function _adjvec_mul_zeros(a, b)
     # ensure that all the elements of `a` are of the same size,
     # so that ∑ᵢaᵢbᵢ = b₁∑ᵢaᵢ makes sense
     if la == 0
-        return dot(parent(a), b)
+        # this errors if a is a nested array, and zero isn't well-defined
+        return zero(eltype(a)) * zero(eltype(b))
     end
     a1 = a[1]
     sza1 = size(a1)

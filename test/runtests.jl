@@ -1432,26 +1432,32 @@ end
         for n in 0:3
             v = fill(s, 1)
             z = zeros(TSM, n)
-            A = Zeros{TSM}(n) * Diagonal(v)
+            A = @inferred Zeros{TSM}(n) * Diagonal(v)
             B = z * Diagonal(v)
             @test A == B
 
             w = fill(s, n)
-            A = Diagonal(w) * Zeros{TSM}(n)
+            A = @inferred Diagonal(w) * Zeros{TSM}(n)
             B = Diagonal(w) * z
             @test A == B
 
-            A = Zeros{TSM}(2n, n) * Diagonal(w)
+            A = @inferred Zeros{TSM}(2n, n) * Diagonal(w)
             B = zeros(TSM, 2n, n) * Diagonal(w)
             @test A == B
 
-            A = Diagonal(w) * Zeros{TSM}(n, 2n)
+            A = @inferred Diagonal(w) * Zeros{TSM}(n, 2n)
             B = Diagonal(w) * zeros(TSM, n, 2n)
             @test A == B
         end
 
         D = Diagonal([[1 2; 3 4], [1 2 3; 4 5 6]])
-        @test Zeros(TSM, 2,2) * D == zeros(TSM, 2,2) * D
+        @test @inferred(Zeros(TSM, 2,2) * D) == zeros(TSM, 2,2) * D
+
+        # doubly nested
+        A = [[[1,2]]]'
+        Z = Zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)
+        Z2 = zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)
+        @test A * Z == A * Z2
     end
 
     for W in (zeros(3,4), @MMatrix zeros(3,4))
