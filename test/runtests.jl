@@ -605,7 +605,7 @@ end
         @test size(A) == (3,)
         @test A[1] == x * z
         @test_throws DimensionMismatch Fill(x, 1, 1) * ZV
-        @test_throws DimensionMismatch Fill([1;;], 1, length(ZV)) * ZV
+        @test_throws DimensionMismatch Fill(oneton(1,1), 1, length(ZV)) * ZV
 
         @test_throws DimensionMismatch Ones(SMatrix{3,3,Int,9},2) * Ones(SMatrix{2,2,Int,4},1,2)
     end
