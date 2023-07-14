@@ -1449,6 +1449,9 @@ end
             B = Diagonal(w) * zeros(TSM, n, 2n)
             @test A == B
         end
+
+        D = Diagonal([[1 2; 3 4], [1 2 3; 4 5 6]])
+        @test Zeros(TSM, 2,2) * D == zeros(TSM, 2,2) * D
     end
 
     for W in (zeros(3,4), @MMatrix zeros(3,4))
