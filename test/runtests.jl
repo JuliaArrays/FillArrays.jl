@@ -8,6 +8,10 @@ end
 
 include("infinitearrays.jl")
 
+# we may use this instead of rand(n) to generate deterministic arrays
+oneton(T::Type, sz...) = reshape(T.(1:prod(sz)), sz)
+oneton(sz...) = oneton(Float64, sz...)
+
 @testset "fill array constructors and convert" begin
     for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
         @eval begin
@@ -607,18 +611,21 @@ end
     end
 
     @testset "Check multiplication by Adjoint vectors works as expected." begin
-        @test @inferred(randn(4, 3)' * Zeros(4)) ≡ Zeros(3)
-        @test @inferred(randn(4)' * Zeros(4)) ≡ @inferred(transpose(randn(4)) * Zeros(4)) ≡ zero(Float64)
+        @test @inferred(oneton(4, 3)' * Zeros(4)) ≡ Zeros(3)
+        @test @inferred(oneton(4)' * Zeros(4)) ≡ @inferred(transpose(oneton(4)) * Zeros(4)) == 0.0
         @test [1, 2, 3]' * Zeros{Int}(3) ≡ zero(Int)
         @test [SVector(1,2)', SVector(2,3)', SVector(3,4)']' * Zeros{Int}(3) === SVector(0,0)
-        @test_throws DimensionMismatch randn(4)' * Zeros(3)
-        @test Zeros(5)' * randn(5,3) ≡ Zeros(5)'*Zeros(5,3) ≡ Zeros(5)'*Ones(5,3) ≡ Zeros(3)'
-        @test abs(Zeros(5)' * randn(5)) ≡ abs(Zeros(5)' * Zeros(5)) ≡ abs(Zeros(5)' * Ones(5)) ≡ 0.0
+        @test_throws DimensionMismatch oneton(4)' * Zeros(3)
+        @test Zeros(5)' * oneton(5,3) ≡ Zeros(5)'*Zeros(5,3) ≡ Zeros(5)'*Ones(5,3) ≡ Zeros(3)'
+        @test abs(Zeros(5)' * oneton(5)) == abs(Zeros(5)' * Zeros(5)) ≡ abs(Zeros(5)' * Ones(5)) == 0.0
         @test Zeros(5) * Zeros(6)' ≡ Zeros(5,1) * Zeros(6)' ≡ Zeros(5,6)
-        @test randn(5) * Zeros(6)' ≡ randn(5,1) * Zeros(6)' ≡ Zeros(5,6)
-        @test Zeros(5) * randn(6)' ≡ Zeros(5,6)
+        @test oneton(5) * Zeros(6)' ≡ oneton(5,1) * Zeros(6)' ≡ Zeros(5,6)
+        @test Zeros(5) * oneton(6)' ≡ Zeros(5,6)
 
         @test @inferred(Zeros{Int}(0)' * Zeros{Int}(0)) === zero(Int)
+
+        @test Any[1,2.0]' * Zeros{Int}(2) == 0
+        @test Real[1,2.0]' * Zeros{Int}(2) == 0
 
         @test @inferred(([[1,2]])' * Zeros{SVector{2,Int}}(1)) ≡ 0
         @test ([[1,2], [1,2]])' * Zeros{SVector{2,Int}}(2) ≡ 0
@@ -627,18 +634,21 @@ end
     end
 
     @testset "Check multiplication by Transpose-d vectors works as expected." begin
-        @test transpose(randn(4, 3)) * Zeros(4) === Zeros(3)
-        @test transpose(randn(4)) * Zeros(4) === zero(Float64)
+        @test transpose(oneton(4, 3)) * Zeros(4) === Zeros(3)
+        @test transpose(oneton(4)) * Zeros(4) == 0.0
         @test transpose([1, 2, 3]) * Zeros{Int}(3) === zero(Int)
-        @test_throws DimensionMismatch transpose(randn(4)) * Zeros(3)
-        @test transpose(Zeros(5)) * randn(5,3) ≡ transpose(Zeros(5))*Zeros(5,3) ≡ transpose(Zeros(5))*Ones(5,3) ≡ transpose(Zeros(3))
-        @test abs(transpose(Zeros(5)) * randn(5)) ≡ abs(transpose(Zeros(5)) * Zeros(5)) ≡ abs(transpose(Zeros(5)) * Ones(5)) ≡ 0.0
-        @test randn(5) * transpose(Zeros(6)) ≡ randn(5,1) * transpose(Zeros(6)) ≡ Zeros(5,6)
-        @test Zeros(5) * transpose(randn(6)) ≡ Zeros(5,6)
-        @test transpose(randn(5)) * Zeros(5) == 0.0
-        @test transpose(randn(5) .+ im) * Zeros(5) == 0.0 + 0im
+        @test_throws DimensionMismatch transpose(oneton(4)) * Zeros(3)
+        @test transpose(Zeros(5)) * oneton(5,3) ≡ transpose(Zeros(5))*Zeros(5,3) ≡ transpose(Zeros(5))*Ones(5,3) ≡ transpose(Zeros(3))
+        @test abs(transpose(Zeros(5)) * oneton(5)) ≡ abs(transpose(Zeros(5)) * Zeros(5)) ≡ abs(transpose(Zeros(5)) * Ones(5)) ≡ 0.0
+        @test oneton(5) * transpose(Zeros(6)) ≡ oneton(5,1) * transpose(Zeros(6)) ≡ Zeros(5,6)
+        @test Zeros(5) * transpose(oneton(6)) ≡ Zeros(5,6)
+        @test transpose(oneton(5)) * Zeros(5) == 0.0
+        @test transpose(oneton(5) .+ im) * Zeros(5) == 0.0 + 0im
 
         @test @inferred(transpose(Zeros{Int}(0)) * Zeros{Int}(0)) === zero(Int)
+
+        @test transpose(Any[1,2.0]) * Zeros{Int}(2) == 0
+        @test transpose(Real[1,2.0]) * Zeros{Int}(2) == 0
 
         @test @inferred(transpose([[1,2]]) * Zeros{SVector{2,Int}}(1)) ≡ 0
         @test transpose([[1,2], [1,2]]) * Zeros{SVector{2,Int}}(2) ≡ 0
