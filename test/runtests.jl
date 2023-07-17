@@ -2079,4 +2079,10 @@ end
     # MWE in https://github.com/JuliaArrays/FillArrays.jl/pull/278
     @test ReverseDiff.gradient(x -> sum(abs2.((Zeros{eltype(x)}(5) .- zeros(5)) ./ x)), rand(5)) == zeros(5)
     @test ReverseDiff.gradient(x -> sum(abs2.((zeros(5) .- Zeros{eltype(x)}(5)) ./ x)), rand(5)) == zeros(5)
+
+    # Corresponding tests with +
+    @test ReverseDiff.gradient(x -> sum(abs2.((Zeros(5) .+ zeros(5)) ./ x)), rand(5)) == zeros(5)
+    @test ReverseDiff.gradient(x -> sum(abs2.((zeros(5) .+ Zeros(5)) ./ x)), rand(5)) == zeros(5)
+    @test ReverseDiff.gradient(x -> sum(abs2.((Zeros{eltype(x)}(5) .+ zeros(5)) ./ x)), rand(5)) == zeros(5)
+    @test ReverseDiff.gradient(x -> sum(abs2.((zeros(5) .+ Zeros{eltype(x)}(5)) ./ x)), rand(5)) == zeros(5)
 end
