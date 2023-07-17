@@ -631,6 +631,11 @@ end
         @test ([[1,2], [1,2]])' * Zeros{SVector{2,Int}}(2) ≡ 0
         @test_throws DimensionMismatch ([[1,2,3]])' * Zeros{SVector{2,Int}}(1)
         @test_throws DimensionMismatch ([[1,2,3], [1,2]])' * Zeros{SVector{2,Int}}(2)
+
+        A = SMatrix{2,1,Int,2}[]'
+        B = Zeros(SVector{2,Int},0)
+        C = collect(B)
+        @test @inferred(A * B) == @inferred(A * C)
     end
 
     @testset "Check multiplication by Transpose-d vectors works as expected." begin
@@ -654,6 +659,11 @@ end
         @test transpose([[1,2], [1,2]]) * Zeros{SVector{2,Int}}(2) ≡ 0
         @test_throws DimensionMismatch transpose([[1,2,3]]) * Zeros{SVector{2,Int}}(1)
         @test_throws DimensionMismatch transpose([[1,2,3], [1,2]]) * Zeros{SVector{2,Int}}(2)
+
+        A = transpose(SMatrix{2,1,Int,2}[])
+        B = Zeros(SVector{2,Int},0)
+        C = collect(B)
+        @test @inferred(A * B) == @inferred(A * C)
 
         @testset "Diagonal mul introduced in v1.9" begin
             @test Zeros(5)'*Diagonal(1:5) ≡ Zeros(5)'
