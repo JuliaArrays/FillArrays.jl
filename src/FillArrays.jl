@@ -519,7 +519,7 @@ end
 #################
 
 for SMT in (:Diagonal, :Bidiagonal, :Tridiagonal, :SymTridiagonal)
-    @eval function diag(D::$SMT{<:Number,<:AbstractFillVector}, k::Integer=0)
+    @eval function diag(D::$SMT{T,<:AbstractFillVector{T}}, k::Integer=0) where {T<:Number}
         inds = (1,1) .+ (k >= 0 ? (0,k) : (-k,0))
         v = get(D, inds, zero(eltype(D)))
         Fill(v, length(diagind(D, k)))
