@@ -8,6 +8,10 @@ end
 
 include("infinitearrays.jl")
 
+# we may use this instead of rand(n) to generate deterministic arrays
+oneton(T::Type, sz...) = reshape(T.(1:prod(sz)), sz)
+oneton(sz...) = oneton(Float64, sz...)
+
 @testset "fill array constructors and convert" begin
     for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
         @eval begin
@@ -592,36 +596,74 @@ end
     @test [1,2,3]*Zeros(1,3) ≡ Zeros(3,3)
     @test_throws MethodError [1,2,3]*Zeros(3) # Not defined for [1,2,3]*[0,0,0] either
 
+    @testset "Matrix multiplication with array elements" begin
+        x = [1 2; 3 4]
+        z = zero(SVector{2,Int})
+        ZV = Zeros{typeof(z)}(2)
+        A = Fill(x, 3, 2) * ZV
+        @test A isa Fill
+        @test size(A) == (3,)
+        @test A[1] == x * z
+        @test_throws DimensionMismatch Fill(x, 1, 1) * ZV
+        @test_throws DimensionMismatch Fill(oneton(1,1), 1, length(ZV)) * ZV
+
+        @test_throws DimensionMismatch Ones(SMatrix{3,3,Int,9},2) * Ones(SMatrix{2,2,Int,4},1,2)
+    end
+
     @testset "Check multiplication by Adjoint vectors works as expected." begin
-        @test randn(4, 3)' * Zeros(4) ≡ Zeros(3)
-        @test randn(4)' * Zeros(4) ≡ transpose(randn(4)) * Zeros(4) ≡ zero(Float64)
+        @test @inferred(oneton(4, 3)' * Zeros(4)) ≡ Zeros(3)
+        @test @inferred(oneton(4)' * Zeros(4)) ≡ @inferred(transpose(oneton(4)) * Zeros(4)) == 0.0
         @test [1, 2, 3]' * Zeros{Int}(3) ≡ zero(Int)
         @test [SVector(1,2)', SVector(2,3)', SVector(3,4)']' * Zeros{Int}(3) === SVector(0,0)
-        @test_throws DimensionMismatch randn(4)' * Zeros(3)
-        @test Zeros(5)' * randn(5,3) ≡ Zeros(5)'*Zeros(5,3) ≡ Zeros(5)'*Ones(5,3) ≡ Zeros(3)'
-        @test abs(Zeros(5)' * randn(5)) ≡ abs(Zeros(5)' * Zeros(5)) ≡ abs(Zeros(5)' * Ones(5)) ≡ 0.0
+        @test_throws DimensionMismatch oneton(4)' * Zeros(3)
+        @test Zeros(5)' * oneton(5,3) ≡ Zeros(5)'*Zeros(5,3) ≡ Zeros(5)'*Ones(5,3) ≡ Zeros(3)'
+        @test abs(Zeros(5)' * oneton(5)) == abs(Zeros(5)' * Zeros(5)) ≡ abs(Zeros(5)' * Ones(5)) == 0.0
         @test Zeros(5) * Zeros(6)' ≡ Zeros(5,1) * Zeros(6)' ≡ Zeros(5,6)
-        @test randn(5) * Zeros(6)' ≡ randn(5,1) * Zeros(6)' ≡ Zeros(5,6)
-        @test Zeros(5) * randn(6)' ≡ Zeros(5,6)
+        @test oneton(5) * Zeros(6)' ≡ oneton(5,1) * Zeros(6)' ≡ Zeros(5,6)
+        @test Zeros(5) * oneton(6)' ≡ Zeros(5,6)
 
-        @test ([[1,2]])' * Zeros{SVector{2,Int}}(1) ≡ 0
-        @test_broken ([[1,2,3]])' * Zeros{SVector{2,Int}}(1)
+        @test @inferred(Zeros{Int}(0)' * Zeros{Int}(0)) === zero(Int)
+
+        @test Any[1,2.0]' * Zeros{Int}(2) == 0
+        @test Real[1,2.0]' * Zeros{Int}(2) == 0
+
+        @test @inferred(([[1,2]])' * Zeros{SVector{2,Int}}(1)) ≡ 0
+        @test ([[1,2], [1,2]])' * Zeros{SVector{2,Int}}(2) ≡ 0
+        @test_throws DimensionMismatch ([[1,2,3]])' * Zeros{SVector{2,Int}}(1)
+        @test_throws DimensionMismatch ([[1,2,3], [1,2]])' * Zeros{SVector{2,Int}}(2)
+
+        A = SMatrix{2,1,Int,2}[]'
+        B = Zeros(SVector{2,Int},0)
+        C = collect(B)
+        @test @inferred(A * B) == @inferred(A * C)
     end
 
     @testset "Check multiplication by Transpose-d vectors works as expected." begin
-        @test transpose(randn(4, 3)) * Zeros(4) === Zeros(3)
-        @test transpose(randn(4)) * Zeros(4) === zero(Float64)
+        @test transpose(oneton(4, 3)) * Zeros(4) === Zeros(3)
+        @test transpose(oneton(4)) * Zeros(4) == 0.0
         @test transpose([1, 2, 3]) * Zeros{Int}(3) === zero(Int)
-        @test_throws DimensionMismatch transpose(randn(4)) * Zeros(3)
-        @test transpose(Zeros(5)) * randn(5,3) ≡ transpose(Zeros(5))*Zeros(5,3) ≡ transpose(Zeros(5))*Ones(5,3) ≡ transpose(Zeros(3))
-        @test abs(transpose(Zeros(5)) * randn(5)) ≡ abs(transpose(Zeros(5)) * Zeros(5)) ≡ abs(transpose(Zeros(5)) * Ones(5)) ≡ 0.0
-        @test randn(5) * transpose(Zeros(6)) ≡ randn(5,1) * transpose(Zeros(6)) ≡ Zeros(5,6)
-        @test Zeros(5) * transpose(randn(6)) ≡ Zeros(5,6)
-        @test transpose(randn(5)) * Zeros(5) ≡ 0.0
-        @test transpose(randn(5) .+ im) * Zeros(5) ≡ 0.0 + 0im
+        @test_throws DimensionMismatch transpose(oneton(4)) * Zeros(3)
+        @test transpose(Zeros(5)) * oneton(5,3) ≡ transpose(Zeros(5))*Zeros(5,3) ≡ transpose(Zeros(5))*Ones(5,3) ≡ transpose(Zeros(3))
+        @test abs(transpose(Zeros(5)) * oneton(5)) ≡ abs(transpose(Zeros(5)) * Zeros(5)) ≡ abs(transpose(Zeros(5)) * Ones(5)) ≡ 0.0
+        @test oneton(5) * transpose(Zeros(6)) ≡ oneton(5,1) * transpose(Zeros(6)) ≡ Zeros(5,6)
+        @test Zeros(5) * transpose(oneton(6)) ≡ Zeros(5,6)
+        @test transpose(oneton(5)) * Zeros(5) == 0.0
+        @test transpose(oneton(5) .+ im) * Zeros(5) == 0.0 + 0im
 
-        @test transpose([[1,2]]) * Zeros{SVector{2,Int}}(1) ≡ 0
-        @test_broken transpose([[1,2,3]]) * Zeros{SVector{2,Int}}(1)
+        @test @inferred(transpose(Zeros{Int}(0)) * Zeros{Int}(0)) === zero(Int)
+
+        @test transpose(Any[1,2.0]) * Zeros{Int}(2) == 0
+        @test transpose(Real[1,2.0]) * Zeros{Int}(2) == 0
+
+        @test @inferred(transpose([[1,2]]) * Zeros{SVector{2,Int}}(1)) ≡ 0
+        @test transpose([[1,2], [1,2]]) * Zeros{SVector{2,Int}}(2) ≡ 0
+        @test_throws DimensionMismatch transpose([[1,2,3]]) * Zeros{SVector{2,Int}}(1)
+        @test_throws DimensionMismatch transpose([[1,2,3], [1,2]]) * Zeros{SVector{2,Int}}(2)
+
+        A = transpose(SMatrix{2,1,Int,2}[])
+        B = Zeros(SVector{2,Int},0)
+        C = collect(B)
+        @test @inferred(A * B) == @inferred(A * C)
 
         @testset "Diagonal mul introduced in v1.9" begin
             @test Zeros(5)'*Diagonal(1:5) ≡ Zeros(5)'
@@ -1385,6 +1427,48 @@ end
 
     f = Zeros((Base.IdentityUnitRange(3:4), Base.IdentityUnitRange(3:4)))
     @test_throws ArgumentError f * f
+
+    @testset "Arrays as elements" begin
+        SMT = SMatrix{2,2,Int,4}
+        SVT = SVector{2,Int}
+        @test @inferred(Zeros{SMT}(0,0) * Fill([1 2; 3 4], 0, 0)) == Zeros{SMT}(0,0)
+        @test @inferred(Zeros{SMT}(4,2) * Fill([1 2; 3 4], 2, 3)) == Zeros{SMT}(4,3)
+        @test @inferred(Fill([1 2; 3 4], 2, 3) * Zeros{SMT}(3, 4)) == Zeros{SMT}(2,4)
+        @test @inferred(Zeros{SMT}(4,2) * Fill([1, 2], 2, 3)) == Zeros{SVT}(4,3)
+        @test @inferred(Fill([1 2], 2, 3) * Zeros{SMT}(3,4)) == Zeros{SMatrix{1,2,Int,2}}(2,4)
+
+        TSM = SMatrix{2,2,Int,4}
+        s = TSM(1:4)
+        for n in 0:3
+            v = fill(s, 1)
+            z = zeros(TSM, n)
+            A = @inferred Zeros{TSM}(n) * Diagonal(v)
+            B = z * Diagonal(v)
+            @test A == B
+
+            w = fill(s, n)
+            A = @inferred Diagonal(w) * Zeros{TSM}(n)
+            B = Diagonal(w) * z
+            @test A == B
+
+            A = @inferred Zeros{TSM}(2n, n) * Diagonal(w)
+            B = zeros(TSM, 2n, n) * Diagonal(w)
+            @test A == B
+
+            A = @inferred Diagonal(w) * Zeros{TSM}(n, 2n)
+            B = Diagonal(w) * zeros(TSM, n, 2n)
+            @test A == B
+        end
+
+        D = Diagonal([[1 2; 3 4], [1 2 3; 4 5 6]])
+        @test @inferred(Zeros(TSM, 2,2) * D) == zeros(TSM, 2,2) * D
+
+        # doubly nested
+        A = [[[1,2]]]'
+        Z = Zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)
+        Z2 = zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)
+        @test A * Z == A * Z2
+    end
 
     for W in (zeros(3,4), @MMatrix zeros(3,4))
         mW, nW = size(W)

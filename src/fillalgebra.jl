@@ -36,8 +36,10 @@ function _mult_fill(a::AbstractFill, b::AbstractFill, ax, ::Type{Fill})
     return Fill(val, ax)
 end
 
-function _mult_fill(a, b, ax, ::Type{OnesZeros}) where {OnesZeros}
-    ElType = promote_type(eltype(a), eltype(b))
+function _mult_fill(a, b, ax, ::Type{OnesZeros}) where {OnesZeros<:Union{Ones,Zeros}}
+    # This is currently only used in contexts where zero is defined
+    # might need a rethink
+    ElType = typeof(zero(eltype(a)) * zero(eltype(b)))
     return OnesZeros{ElType}(ax)
 end
 
@@ -48,47 +50,48 @@ function mult_fill(a, b, T::Type = Fill)
     ax_result = (axes(a, 1), axes(b)[2:end]...)
     _mult_fill(a, b, ax_result, T)
 end
-mult_zeros(a, b) = mult_fill(a, b, Zeros)
+# for arrays of numbers, we assume that zero is defined for the result
+# in this case, we may express the result as a Zeros
+mult_zeros(a::AbstractArray{<:Number}, b::AbstractArray{<:Number}) = mult_fill(a, b, Zeros)
+# In general, we create a Fill that doesn't assume anything about the
+# properties of the element type
+mult_zeros(a, b) = mult_fill(a, b, Fill)
 mult_ones(a, b) = mult_fill(a, b, Ones)
 
-*(a::AbstractFillVector, b::AbstractFillMatrix) = mult_fill(a,b)
 *(a::AbstractFillMatrix, b::AbstractFillMatrix) = mult_fill(a,b)
 *(a::AbstractFillMatrix, b::AbstractFillVector) = mult_fill(a,b)
 
+# this treats a size (n,) vector as a nx1 matrix, so b needs to have 1 row
+# special cased, as OnesMatrix * OnesMatrix isn't a Ones
 *(a::OnesVector, b::OnesMatrix) = mult_ones(a, b)
 
-*(a::ZerosVector, b::ZerosMatrix) = mult_zeros(a, b)
 *(a::ZerosMatrix, b::ZerosMatrix) = mult_zeros(a, b)
 *(a::ZerosMatrix, b::ZerosVector) = mult_zeros(a, b)
 
-*(a::ZerosVector, b::AbstractFillMatrix) = mult_zeros(a, b)
 *(a::ZerosMatrix, b::AbstractFillMatrix) = mult_zeros(a, b)
 *(a::ZerosMatrix, b::AbstractFillVector) = mult_zeros(a, b)
-*(a::AbstractFillVector, b::ZerosMatrix) = mult_zeros(a, b)
 *(a::AbstractFillMatrix, b::ZerosMatrix) = mult_zeros(a, b)
 *(a::AbstractFillMatrix, b::ZerosVector) = mult_zeros(a, b)
 
-*(a::ZerosVector, b::AbstractMatrix) = mult_zeros(a, b)
 *(a::ZerosMatrix, b::AbstractMatrix) = mult_zeros(a, b)
 *(a::AbstractMatrix, b::ZerosVector) = mult_zeros(a, b)
 *(a::AbstractMatrix, b::ZerosMatrix) = mult_zeros(a, b)
 *(a::ZerosMatrix, b::AbstractVector) = mult_zeros(a, b)
-*(a::AbstractVector, b::ZerosMatrix) = mult_zeros(a, b)
 
-*(a::ZerosVector, b::AdjOrTransAbsVec) = mult_zeros(a, b)
-
-*(a::ZerosVector, b::Diagonal) = mult_zeros(a, b)
-*(a::ZerosMatrix, b::Diagonal) = mult_zeros(a, b)
-*(a::Diagonal, b::ZerosVector) = mult_zeros(a, b)
-*(a::Diagonal, b::ZerosMatrix) = mult_zeros(a, b)
-function *(a::Diagonal, b::AbstractFillMatrix)
+function lmul_diag(a::Diagonal, b)
     size(a,2) == size(b,1) || throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
     parent(a) .* b # use special broadcast
 end
-function *(a::AbstractFillMatrix, b::Diagonal)
+function rmul_diag(a, b::Diagonal)
     size(a,2) == size(b,1) || throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
     a .* permutedims(parent(b)) # use special broadcast
 end
+
+*(a::ZerosMatrix, b::Diagonal) = rmul_diag(a, b)
+*(a::Diagonal, b::ZerosVector) = lmul_diag(a, b)
+*(a::Diagonal, b::ZerosMatrix) = lmul_diag(a, b)
+*(a::Diagonal, b::AbstractFillMatrix) = lmul_diag(a, b)
+*(a::AbstractFillMatrix, b::Diagonal) = rmul_diag(a, b)
 
 @noinline function check_matmul_sizes(A::AbstractMatrix, x::AbstractVector)
     Base.require_one_based_indexing(A, x)
@@ -253,7 +256,18 @@ function _adjvec_mul_zeros(a, b)
     if la ≠ lb
         throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))
     end
-    return zero(Base.promote_op(*, eltype(a), eltype(b)))
+    # ensure that all the elements of `a` are of the same size,
+    # so that ∑ᵢaᵢbᵢ = b₁∑ᵢaᵢ makes sense
+    if la == 0
+        # this errors if a is a nested array, and zero isn't well-defined
+        return zero(eltype(a)) * zero(eltype(b))
+    end
+    a1 = a[1]
+    sza1 = size(a1)
+    all(x -> size(x) == sza1, a) || throw(DimensionMismatch("not all elements of A are of size $sza1"))
+    # we replace b₁∑ᵢaᵢ by b₁a₁, as we know that b₁ is zero.
+    # Each term in the summation is zero, so the sum is equal to the first term
+    return a1 * b[1]
 end
 
 *(a::AdjointAbsVec{<:Any,<:ZerosVector}, b::AbstractMatrix) = (b' * a')'
