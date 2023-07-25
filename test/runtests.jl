@@ -13,64 +13,70 @@ oneton(T::Type, sz...) = reshape(T.(1:prod(sz)), sz)
 oneton(sz...) = oneton(Float64, sz...)
 
 @testset "fill array constructors and convert" begin
-    for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
-        @eval begin
-            @test $Typ((-1,5)) == $Typ((0,5))
-            @test $Typ(5) isa AbstractVector{Float64}
-            @test $Typ(5,5) isa AbstractMatrix{Float64}
-            @test $Typ(5) == $Typ((5,))
-            @test $Typ(5,5) == $Typ((5,5))
-            @test eltype($Typ(5,5)) == Float64
+    for (Typ, funcs) in ((Zeros, zeros), (Ones, ones))
+        @test Typ((-1,5)) == Typ((0,5))
+        @test Typ(5) isa AbstractVector{Float64}
+        @test Typ(5,5) isa AbstractMatrix{Float64}
+        @test Typ(5) == Typ((5,))
+        @test Typ(5,5) == Typ((5,5))
+        @test eltype(Typ(5,5)) == Float64
 
-            for T in (Int, Float64)
-                Z = $Typ{T}(5)
-                @test $Typ(T, 5) ≡ Z
-                @test eltype(Z) == T
-                @test Array(Z) == $funcs(T,5)
-                @test Array{T}(Z) == $funcs(T,5)
-                @test Array{T,1}(Z) == $funcs(T,5)
+        for T in (Int, Float64)
+            Z = Typ{T}(5)
+            @test Typ(T, 5) ≡ Z
+            @test eltype(Z) == T
+            @test Array(Z) == funcs(T,5)
+            @test Array{T}(Z) == funcs(T,5)
+            @test Array{T,1}(Z) == funcs(T,5)
 
-                @test convert(AbstractArray,Z) ≡ Z
-                @test convert(AbstractArray{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
-                @test convert(AbstractVector{T},Z) ≡ AbstractVector{T}(Z) ≡ Z
-                @test convert(AbstractFill{T},Z) ≡ AbstractFill{T}(Z) ≡ Z
+            @test convert(AbstractArray,Z) ≡ Z
+            @test convert(AbstractArray{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
+            @test convert(AbstractVector{T},Z) ≡ AbstractVector{T}(Z) ≡ Z
+            @test convert(AbstractFill{T},Z) ≡ AbstractFill{T}(Z) ≡ Z
 
-                @test $Typ{T,1}(2ones(T,5)) == Z
-                @test $Typ{T}(2ones(T,5)) == Z
-                @test $Typ(2ones(T,5)) == Z
+            @test Typ{T,1}(2ones(T,5)) == Z
+            @test Typ{T}(2ones(T,5)) == Z
+            @test Typ(2ones(T,5)) == Z
 
-                Z = $Typ{T}(5, 5)
-                @test $Typ(T, 5, 5) ≡ Z
-                @test eltype(Z) == T
-                @test Array(Z) == $funcs(T,5,5)
-                @test Array{T}(Z) == $funcs(T,5,5)
-                @test Array{T,2}(Z) == $funcs(T,5,5)
+            Z = Typ{T}(5, 5)
+            @test Typ(T, 5, 5) ≡ Z
+            @test eltype(Z) == T
+            @test Array(Z) == funcs(T,5,5)
+            @test Array{T}(Z) == funcs(T,5,5)
+            @test Array{T,2}(Z) == funcs(T,5,5)
 
-                @test convert(AbstractArray,Z) ≡ convert(AbstractFill,Z) ≡ Z
-                @test convert(AbstractArray{T},Z) ≡ convert(AbstractFill{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
-                @test convert(AbstractMatrix{T},Z) ≡ convert(AbstractFill{T,2},Z) ≡ AbstractMatrix{T}(Z) ≡ Z
+            @test convert(AbstractArray,Z) ≡ convert(AbstractFill,Z) ≡ Z
+            @test convert(AbstractArray{T},Z) ≡ convert(AbstractFill{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
+            @test convert(AbstractMatrix{T},Z) ≡ convert(AbstractFill{T,2},Z) ≡ AbstractMatrix{T}(Z) ≡ Z
 
-                @test_throws Exception convert(Fill{Float64}, [1,1,2])
-                @test_throws Exception convert(Fill, [])
-                @test convert(Fill{Float64}, [1,1,1]) ≡ Fill(1.0, 3)
-                @test convert(Fill, Float64[1,1,1]) ≡ Fill(1.0, 3)
-                @test convert(Fill{Float64}, Fill(1.0,2)) ≡ Fill(1.0, 2) # was ambiguous
-                @test convert(Fill{Int}, Ones(20)) ≡ Fill(1, 20)
-                @test convert(Fill{Int,1}, Ones(20)) ≡ Fill(1, 20)
-                @test convert(Fill{Int,1,Tuple{Base.OneTo{Int}}}, Ones(20)) ≡ Fill(1, 20)
-                @test convert(AbstractFill{Int}, Ones(20)) ≡ AbstractFill{Int}(Ones(20)) ≡ Ones{Int}(20)
-                @test convert(AbstractFill{Int,1}, Ones(20)) ≡ AbstractFill{Int,1}(Ones(20)) ≡ Ones{Int}(20)
-                @test convert(AbstractFill{Int,1,Tuple{Base.OneTo{Int}}}, Ones(20)) ≡ AbstractFill{Int,1,Tuple{Base.OneTo{Int}}}(Ones(20)) ≡ Ones{Int}(20)
+            @test_throws Exception convert(Fill{Float64}, [1,1,2])
+            @test_throws Exception convert(Fill, [])
+            @test convert(Fill{Float64}, [1,1,1]) ≡ Fill(1.0, 3)
+            @test convert(Fill, Float64[1,1,1]) ≡ Fill(1.0, 3)
+            @test convert(Fill{Float64}, Fill(1.0,2)) ≡ Fill(1.0, 2) # was ambiguous
+            @test convert(Fill{Int}, Ones(20)) ≡ Fill(1, 20)
+            @test convert(Fill{Int,1}, Ones(20)) ≡ Fill(1, 20)
+            @test convert(Fill{Int,1,Tuple{Base.OneTo{Int}}}, Ones(20)) ≡ Fill(1, 20)
+            @test convert(AbstractFill{Int}, Ones(20)) ≡ AbstractFill{Int}(Ones(20)) ≡ Ones{Int}(20)
+            @test convert(AbstractFill{Int,1}, Ones(20)) ≡ AbstractFill{Int,1}(Ones(20)) ≡ Ones{Int}(20)
+            @test convert(AbstractFill{Int,1,Tuple{Base.OneTo{Int}}}, Ones(20)) ≡ AbstractFill{Int,1,Tuple{Base.OneTo{Int}}}(Ones(20)) ≡ Ones{Int}(20)
 
-                @test $Typ{T,2}(2ones(T,5,5)) ≡ $Typ{T}(5,5)
-                @test $Typ{T}(2ones(T,5,5)) ≡ $Typ{T}(5,5)
-                @test $Typ(2ones(T,5,5)) ≡ $Typ{T}(5,5)
+            @test Typ{T,2}(2ones(T,5,5)) ≡ Typ{T}(5,5)
+            @test Typ{T}(2ones(T,5,5)) ≡ Typ{T}(5,5)
+            @test Typ(2ones(T,5,5)) ≡ Typ{T}(5,5)
 
-                @test $Typ(Z) ≡ $Typ{T}(Z) ≡ $Typ{T,2}(Z) ≡ typeof(Z)(Z) ≡ Z
+            z = Typ{T}()[]
+            @test convert(Typ, Fill(z,2)) === Typ{T}(2)
+            z = Typ{Int8}()[]
+            @test convert(Typ{T}, Fill(z,2)) === Typ{T}(2)
+            @test convert(Typ{T,1}, Fill(z,2)) === Typ{T}(2)
+            @test convert(Typ{T,1,Tuple{Base.OneTo{Int}}}, Fill(z,2)) === Typ{T}(2)
+            @test_throws ArgumentError convert(Typ, Fill(2,2))
 
-                @test AbstractArray{Float32}(Z) ≡ $Typ{Float32}(5,5)
-                @test AbstractArray{Float32,2}(Z) ≡ $Typ{Float32}(5,5)
-            end
+            @test Typ(Z) ≡ Typ{T}(Z) ≡ Typ{T,2}(Z) ≡ typeof(Z)(Z) ≡ Z
+
+            @test AbstractArray{Float32}(Z) ≡ Typ{Float32}(5,5)
+            @test AbstractArray{Float32,2}(Z) ≡ Typ{Float32}(5,5)
         end
     end
 
