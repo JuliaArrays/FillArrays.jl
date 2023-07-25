@@ -1719,7 +1719,11 @@ end
     @test Base.replace_in_print_matrix(Zeros(5,3), 1, 2, "0.0") == " ⋅ "
 
     # 2-arg show, compact printing
+    @test repr(Zeros{Int}()) == "Zeros{$Int}()"
+    @test repr(Zeros{Int}(3)) == "Zeros{$Int}(3)"
     @test repr(Zeros(3)) == "Zeros(3)"
+    @test repr(Ones{Int}(3)) == "Ones{$Int}(3)"
+    @test repr(Ones{Int}(3,2)) == "Ones{$Int}(3, 2)"
     @test repr(Ones(3,2)) == "Ones(3, 2)"
     @test repr(Fill(7,3,2)) == "Fill(7, 3, 2)"
     @test repr(Fill(1f0,10)) == "Fill(1.0f0, 10)"  # Float32!
