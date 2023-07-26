@@ -1,7 +1,7 @@
 """ `FillArrays` module to lazily represent matrices with a single value """
 module FillArrays
 
-using LinearAlgebra, SparseArrays, Statistics
+using LinearAlgebra
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
@@ -15,9 +15,6 @@ import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose,
 
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape, BroadcastStyle, Broadcasted
-
-import Statistics: mean, std, var, cov, cor
-
 
 export Zeros, Ones, Fill, Eye, Trues, Falses, OneElement
 
@@ -542,52 +539,6 @@ for SMT in (:Diagonal, :Bidiagonal, :Tridiagonal, :SymTridiagonal)
     end
 end
 
-##################
-## Sparse arrays
-##################
-SparseVector{T}(Z::ZerosVector) where T = spzeros(T, length(Z))
-SparseVector{Tv,Ti}(Z::ZerosVector) where {Tv,Ti} = spzeros(Tv, Ti, length(Z))
-
-convert(::Type{AbstractSparseVector}, Z::ZerosVector{T}) where T = spzeros(T, length(Z))
-convert(::Type{AbstractSparseVector{T}}, Z::ZerosVector) where T= spzeros(T, length(Z))
-
-SparseMatrixCSC{T}(Z::ZerosMatrix) where T = spzeros(T, size(Z)...)
-SparseMatrixCSC{Tv,Ti}(Z::Zeros{T,2,Axes}) where {Tv,Ti<:Integer,T,Axes} = spzeros(Tv, Ti, size(Z)...)
-
-convert(::Type{AbstractSparseMatrix}, Z::ZerosMatrix{T}) where T = spzeros(T, size(Z)...)
-convert(::Type{AbstractSparseMatrix{T}}, Z::ZerosMatrix) where T = spzeros(T, size(Z)...)
-
-convert(::Type{AbstractSparseArray}, Z::Zeros{T}) where T = spzeros(T, size(Z)...)
-convert(::Type{AbstractSparseArray{Tv}}, Z::Zeros{T}) where {T,Tv} = spzeros(Tv, size(Z)...)
-convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Zeros{T}) where {T,Tv,Ti} = spzeros(Tv, Ti, size(Z)...)
-convert(::Type{AbstractSparseArray{Tv,Ti,N}}, Z::Zeros{T,N}) where {T,Tv,Ti,N} = spzeros(Tv, Ti, size(Z)...)
-
-SparseMatrixCSC{Tv}(Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
-# works around missing `speye`:
-SparseMatrixCSC{Tv,Ti}(Z::Eye{T}) where {T,Tv,Ti<:Integer} =
-    convert(SparseMatrixCSC{Tv,Ti}, SparseMatrixCSC{Tv}(I, size(Z)...))
-
-convert(::Type{AbstractSparseMatrix}, Z::Eye{T}) where {T} = SparseMatrixCSC{T}(I, size(Z)...)
-convert(::Type{AbstractSparseMatrix{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
-
-convert(::Type{AbstractSparseArray}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
-convert(::Type{AbstractSparseArray{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
-
-
-convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
-    convert(SparseMatrixCSC{Tv,Ti}, Z)
-convert(::Type{AbstractSparseArray{Tv,Ti,2}}, Z::Eye{T}) where {T,Tv,Ti} =
-    convert(SparseMatrixCSC{Tv,Ti}, Z)
-
-function SparseMatrixCSC{Tv}(R::RectOrDiagonalFill) where {Tv}
-    SparseMatrixCSC{Tv,eltype(axes(R,1))}(R)
-end
-function SparseMatrixCSC{Tv,Ti}(R::RectOrDiagonalFill) where {Tv,Ti}
-    Base.require_one_based_indexing(R)
-    v = parent(R)
-    J = getindex_value(v)*I
-    SparseMatrixCSC{Tv,Ti}(J, size(R))
-end
 
 #########
 # maximum/minimum
@@ -699,41 +650,17 @@ function in(x, A::RectDiagonal{<:Number})
 end
 
 #########
-# mean, std
-#########
-
-mean(A::AbstractFill; dims=(:)) = mean(identity, A; dims=dims)
-function mean(f::Union{Function, Type}, A::AbstractFill; dims=(:))
-    val = float(f(getindex_value(A)))
-    dims isa Colon ? val :
-        Fill(val, ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
-end
-
-
-function var(A::AbstractFill{T}; corrected::Bool=true, mean=nothing, dims=(:)) where {T<:Number}
-    dims isa Colon ? zero(float(T)) :
-        Zeros{float(T)}(ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
-end
-
-cov(A::AbstractFillVector{T}; corrected::Bool=true) where {T<:Number} = zero(float(T))
-cov(A::AbstractFillMatrix{T}; corrected::Bool=true, dims::Integer=1) where {T<:Number} =
-    Zeros{float(T)}(size(A, 3-dims), size(A, 3-dims))
-
-cor(A::AbstractFillVector{T}) where {T<:Number} = one(float(T))
-function cor(A::AbstractFillMatrix{T}; dims::Integer=1) where {T<:Number}
-    out = fill(float(T)(NaN), size(A, 3-dims), size(A, 3-dims))
-    out[LinearAlgebra.diagind(out)] .= 1
-    out
-end
-
-
-#########
 # include
 #########
 
 include("fillalgebra.jl")
 include("fillbroadcast.jl")
 include("trues.jl")
+
+@static if !isdefined(Base, :get_extension)
+    include("../ext/FillArraysSparseArraysExt.jl")
+    include("../ext/FillArraysStatisticsExt.jl")
+end
 
 ##
 # print
