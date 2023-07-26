@@ -3,7 +3,11 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 using Aqua
 @testset "Project quality" begin
-    Aqua.test_all(FillArrays, ambiguities=false)
+    Aqua.test_all(FillArrays, ambiguities=false,
+        # only test formatting on VERSION >= v1.7
+        # https://github.com/JuliaTesting/Aqua.jl/issues/105#issuecomment-1551405866
+        project_toml_formatting = VERSION >= v"1.7",
+    )
 end
 
 include("infinitearrays.jl")
