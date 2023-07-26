@@ -1,13 +1,10 @@
 module FillArraysStatisticsExt
 
-import Statistics: mean, std, var, cov, cor
+import Statistics: mean, var, cov, cor
+using LinearAlgebra: diagind
 
 using FillArrays
-using FillArrays: AbstractFill, AbstractFillVector, AbstractFillMatrix
-
-#########
-# mean, std
-#########
+using FillArrays: AbstractFill, AbstractFillVector, AbstractFillMatrix, getindex_value
 
 mean(A::AbstractFill; dims=(:)) = mean(identity, A; dims=dims)
 function mean(f::Union{Function, Type}, A::AbstractFill; dims=(:))
@@ -29,7 +26,7 @@ cov(A::AbstractFillMatrix{T}; corrected::Bool=true, dims::Integer=1) where {T<:N
 cor(::AbstractFillVector{T}) where {T<:Number} = one(float(T))
 function cor(A::AbstractFillMatrix{T}; dims::Integer=1) where {T<:Number}
     out = fill(float(T)(NaN), size(A, 3-dims), size(A, 3-dims))
-    out[LinearAlgebra.diagind(out)] .= 1
+    out[diagind(out)] .= 1
     out
 end
 
