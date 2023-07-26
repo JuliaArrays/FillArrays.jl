@@ -781,11 +781,19 @@ function Base.show(io::IO, ::MIME"text/plain", x::Union{Eye, AbstractFill})
 end
 
 function Base.show(io::IO, x::AbstractFill)  # for example (Fill(π,3),)
-    print(io, nameof(typeof(x)), "(")
-    if x isa Union{Zeros, Ones}
+    print(io, nameof(typeof(x)))
+    sz = size(x)
+    args = if x isa Union{Zeros, Ones}
+        T = eltype(x)
+        if T != Float64
+            print(io,"{", T, "}")
+        end
+        print(io, "(")
     else
-        show(io, getindex_value(x))  # show not print to handle (Fill(1f0,2),)
-        ndims(x) > 0 && print(io, ", ")
+        # show, not print, to handle (Fill(1f0,2),)
+        print(io, "(")
+        show(io, getindex_value(x))
+        ndims(x) == 0 || print(io, ", ")
     end
     join(io, size(x), ", ")
     print(io, ")")
