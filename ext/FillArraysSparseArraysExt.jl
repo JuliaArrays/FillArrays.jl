@@ -3,7 +3,8 @@ module FillArraysSparseArraysExt
 using SparseArrays
 import Base: convert, kron
 using FillArrays
-using FillArrays: RectDiagonalFill, RectOrDiagonalFill, ZerosVector, ZerosMatrix
+using FillArrays: RectDiagonalFill, RectOrDiagonalFill, ZerosVector, ZerosMatrix, getindex_value
+using LinearAlgebra
 
 ##################
 ## Sparse arrays
