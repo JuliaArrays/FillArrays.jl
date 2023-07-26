@@ -329,6 +329,22 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         end
         convert(::Type{$Typ{T,N}}, A::$Typ{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
         convert(::Type{$Typ{T}}, A::$Typ{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
+        function convert(::Type{$Typ{T,N,Axes}}, A::AbstractFill{V,N}) where {T,V,N,Axes}
+            axes(A) isa Axes || throw(ArgumentError("cannot convert, as axes of array are not $Axes"))
+            val = getindex_value(A)
+            y = convert(T, val)
+            y == $func(T) || throw(ArgumentError(string("cannot convert an array containinig $val to ", $Typ)))
+            $Typ{T,N,Axes}(axes(A))
+        end
+        function convert(::Type{$Typ{T,N}}, A::AbstractFill{<:Any,N}) where {T,N}
+            convert($Typ{T,N,typeof(axes(A))}, A)
+        end
+        function convert(::Type{$Typ{T}}, A::AbstractFill{<:Any,N}) where {T,N}
+            convert($Typ{T,N}, A)
+        end
+        function convert(::Type{$Typ}, A::AbstractFill{V,N}) where {V,N}
+            convert($Typ{V,N}, A)
+        end
     end
 end
 
