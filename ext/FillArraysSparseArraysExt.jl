@@ -53,7 +53,6 @@ function SparseMatrixCSC{Tv,Ti}(R::RectOrDiagonalFill) where {Tv,Ti}
     SparseMatrixCSC{Tv,Ti}(J, size(R))
 end
 
-# TODO: remove in v2.0
-@deprecate kron(E1::RectDiagonalFill, E2::RectDiagonalFill) kron(sparse(E1), sparse(E2))
+kron_fill(A::RectDiagonalFill, B::RectDiagonalFill) = kron(sparse(A), sparse(B))
 
 end # module

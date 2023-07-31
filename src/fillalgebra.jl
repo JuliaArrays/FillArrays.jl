@@ -467,3 +467,5 @@ function kron(f::AbstractFillVecOrMat, g::AbstractFillVecOrMat)
     sz = _kronsize(f, g)
     _kron(f, g, sz)
 end
+kron(A::RectDiagonalFill, B::RectDiagonalFill) = kron_fill(A, B)
+kron_fill(A, B) = error("Please load SparseArrays.jl")
