@@ -301,6 +301,13 @@ end
         @test A[1,:,1] ≡ A[1,1:6,1] ≡ Fill(2.0,6)
         @test A[:,:,:] ≡ A[1:5,1:6,1:7] ≡ A[1:5,:,1:7] ≡ A[:,1:6,1:7] ≡ A
     end
+
+    @testset "StepRangeLen convert" begin
+        for (z,s) in  ((Zeros{Int}(5), StepRangeLen(0, 0, 5)), (Ones{Int}(5), StepRangeLen(1, 0, 5)), (Fill(2,5), StepRangeLen(2, 0, 5)))
+            @test s == z
+            @test StepRangeLen(z) ≡ convert(StepRangeLen, z) ≡ convert(StepRangeLen{Int}, z) ≡ convert(typeof(s), z) ≡ convert(AbstractRange, z) ≡ s
+        end
+    end
 end
 
 @testset "RectDiagonal" begin
