@@ -530,6 +530,9 @@ function convert(::Type{T}, A::AbstractFillMatrix) where T<:Diagonal
     isdiag(A) ? T(A) : throw(InexactError(:convert, T, A))
 end
 
+Base.StepRangeLen(F::AbstractFillVector{T}) where T = StepRangeLen(getindex_value(F), zero(T), length(F))
+convert(::Type{SL}, F::AbstractFillVector) where SL<:AbstractRange = convert(SL, StepRangeLen(F))
+
 #################
 # Structured matrix types
 #################
