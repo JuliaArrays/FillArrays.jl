@@ -825,6 +825,9 @@ end
     @test diff(Ones{Float64}(10)) ≡ Zeros{Float64}(9)
     @test_throws UndefKeywordError cumsum(Fill(1,1,5))
 
+    @test @inferred(sum([Ones(4)])) ≡ Fill(1.0, 4)
+    @test @inferred(sum([Trues(4)])) ≡ Fill(1, 4)
+
     @testset "infinite arrays" begin
         r = InfiniteArrays.OneToInf()
         A = Ones{Int}((r,))
