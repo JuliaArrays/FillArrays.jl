@@ -633,10 +633,12 @@ end
 
 # In particular, these make iszero(Eye(n))  efficient.
 # use any/all on scalar to get Boolean error message
-any(f::Function, x::AbstractFill) = !isempty(x) && any(f(getindex_value(x)))
-all(f::Function, x::AbstractFill) = isempty(x) || all(f(getindex_value(x)))
-any(x::AbstractFill) = any(identity, x)
-all(x::AbstractFill) = all(identity, x)
+if VERSION < v"1.9.2"
+    any(f::Function, x::AbstractFill) = !isempty(x) && any(f(getindex_value(x)))
+    all(f::Function, x::AbstractFill) = isempty(x) || all(f(getindex_value(x)))
+    any(x::AbstractFill) = any(identity, x)
+    all(x::AbstractFill) = all(identity, x)
+end
 
 count(x::Ones{Bool}) = length(x)
 count(x::Zeros{Bool}) = 0
