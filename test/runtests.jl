@@ -1,4 +1,14 @@
-using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics
+using Base64
+using DSP
+using FillArrays
+using LinearAlgebra
+using Random
+using ReverseDiff
+using SparseArrays
+using StaticArrays
+using Statistics
+using Test
+
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 using Aqua
@@ -2193,4 +2203,10 @@ end
     @test ReverseDiff.gradient(x -> sum(abs2.((zeros(5) .+ Zeros(5)) ./ x)), rand(5)) == zeros(5)
     @test ReverseDiff.gradient(x -> sum(abs2.((Zeros{eltype(x)}(5) .+ zeros(5)) ./ x)), rand(5)) == zeros(5)
     @test ReverseDiff.gradient(x -> sum(abs2.((zeros(5) .+ Zeros{eltype(x)}(5)) ./ x)), rand(5)) == zeros(5)
+end
+
+@testset "DSP" begin
+    @test conv(Fill(2, 3), Ones(4)) == conv(fill(2, 3), ones(4))
+    @test conv(Fill(2, 3), ones(4)) == conv(fill(2, 3), ones(4))
+    @test conv(fill(2, 3), Ones(4)) == conv(fill(2, 3), ones(4))
 end
