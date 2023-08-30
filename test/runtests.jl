@@ -13,7 +13,11 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 using Aqua
 @testset "Project quality" begin
-    Aqua.test_all(FillArrays, ambiguities=false)
+    Aqua.test_all(FillArrays, ambiguities=false,
+        # only test formatting on VERSION >= v1.7
+        # https://github.com/JuliaTesting/Aqua.jl/issues/105#issuecomment-1551405866
+        project_toml_formatting = VERSION >= v"1.7",
+    )
 end
 
 include("infinitearrays.jl")
@@ -306,6 +310,13 @@ end
         @test A[:,1,1] ≡ A[1:5,1,1] ≡ Fill(2.0,5)
         @test A[1,:,1] ≡ A[1,1:6,1] ≡ Fill(2.0,6)
         @test A[:,:,:] ≡ A[1:5,1:6,1:7] ≡ A[1:5,:,1:7] ≡ A[:,1:6,1:7] ≡ A
+    end
+
+    @testset "StepRangeLen convert" begin
+        for (z,s) in  ((Zeros{Int}(5), StepRangeLen(0, 0, 5)), (Ones{Int}(5), StepRangeLen(1, 0, 5)), (Fill(2,5), StepRangeLen(2, 0, 5)))
+            @test s == z
+            @test StepRangeLen(z) ≡ convert(StepRangeLen, z) ≡ convert(StepRangeLen{Int}, z) ≡ convert(typeof(s), z) ≡ convert(AbstractRange, z) ≡ s
+        end
     end
 end
 
@@ -823,6 +834,9 @@ end
     @test diff(Fill(1,10)) ≡ Zeros{Int}(9)
     @test diff(Ones{Float64}(10)) ≡ Zeros{Float64}(9)
     @test_throws UndefKeywordError cumsum(Fill(1,1,5))
+
+    @test @inferred(sum([Ones(4)])) ≡ Fill(1.0, 4)
+    @test @inferred(sum([Trues(4)])) ≡ Fill(1, 4)
 
     @testset "infinite arrays" begin
         r = InfiniteArrays.OneToInf()
@@ -1735,7 +1749,11 @@ end
     @test Base.replace_in_print_matrix(Zeros(5,3), 1, 2, "0.0") == " ⋅ "
 
     # 2-arg show, compact printing
+    @test repr(Zeros{Int}()) == "Zeros{$Int}()"
+    @test repr(Zeros{Int}(3)) == "Zeros{$Int}(3)"
     @test repr(Zeros(3)) == "Zeros(3)"
+    @test repr(Ones{Int}(3)) == "Ones{$Int}(3)"
+    @test repr(Ones{Int}(3,2)) == "Ones{$Int}(3, 2)"
     @test repr(Ones(3,2)) == "Ones(3, 2)"
     @test repr(Fill(7,3,2)) == "Fill(7, 3, 2)"
     @test repr(Fill(1f0,10)) == "Fill(1.0f0, 10)"  # Float32!

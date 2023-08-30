@@ -353,6 +353,8 @@ end
 -(a::Zeros) = a
 -(a::AbstractFill) = Fill(-getindex_value(a), size(a))
 
+# special-cased for type-stability, as Ones + Ones is not a Ones
+Base.reduce_first(::typeof(+), x::Ones) = Fill(Base.reduce_first(+, getindex_value(x)), axes(x))
 
 function +(a::Zeros{T}, b::Zeros{V}) where {T, V} # for disambiguity
     promote_shape(a,b)
@@ -467,4 +469,3 @@ function kron(f::AbstractFillVecOrMat, g::AbstractFillVecOrMat)
     sz = _kronsize(f, g)
     _kron(f, g, sz)
 end
-kron(E1::RectDiagonalFill, E2::RectDiagonalFill) = kron(sparse(E1), sparse(E2))
