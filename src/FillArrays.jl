@@ -5,7 +5,7 @@ using LinearAlgebra
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
-    copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero,
+    copy, vec, setindex!, count, ==, reshape, map, zero,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
     parent, similar, issorted
 
@@ -252,6 +252,9 @@ end
 
 svdvals!(a::AbstractFillMatrix) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(min(size(a)...)-1)]
 
+@noinline function _throw_dmrs(n, str, dims)
+    throw(DimensionMismatch("parent has $n elements, which is incompatible with $str $dims"))
+end
 function fill_reshape(parent, dims::Integer...)
     n = length(parent)
     prod(dims) == n || _throw_dmrs(n, "size", dims)
