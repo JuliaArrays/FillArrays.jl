@@ -199,17 +199,13 @@ function mul!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, a
 end
 
 function copyfirstcol!(C)
-    @views for i in axes(C,2)[2:end]
-        C[:, i] .= C[:, 1]
-    end
+    @views C[:, begin+1:end] .= first(eachcol(C))
     return C
 end
 function copyfirstcol!(C::Union{Adjoint, Transpose})
     # in this case, we copy the first row of the parent to others
     Cp = parent(C)
-    for colind in axes(Cp, 2)
-        Cp[2:end, colind] .= Cp[1, colind]
-    end
+    @views Cp[begin+1:end, :] .= transpose(first(eachrow(Cp)))
     return C
 end
 
