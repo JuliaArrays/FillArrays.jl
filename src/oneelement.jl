@@ -56,7 +56,7 @@ Base.replace_in_print_matrix(o::OneElementVector, k::Integer, j::Integer, s::Abs
 Base.replace_in_print_matrix(o::OneElementMatrix, k::Integer, j::Integer, s::AbstractString) =
     o.ind == (k,j) ? s : Base.replace_with_centered_mark(s)
 
-Base.@propagate_inbounds function Base.setindex(A::Zeros{T,N}, v, kj::Vararg{Int,N}) where {T,N}
+Base.@propagate_inbounds function Base.setindex(A::AbstractZeros{T,N}, v, kj::Vararg{Int,N}) where {T,N}
     @boundscheck checkbounds(A, kj...)
     OneElement(convert(T, v), kj, axes(A))
 end

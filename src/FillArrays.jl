@@ -278,10 +278,18 @@ Base._reshape(parent::AbstractFill, dims::Tuple{Integer,Vararg{Integer}}) = fill
 # Resolves ambiguity error with `_reshape(v::AbstractArray{T, 1}, dims::Tuple{Int})`
 Base._reshape(parent::AbstractFill{T, 1, Axes}, dims::Tuple{Int}) where {T, Axes} = fill_reshape(parent, dims...)
 
-for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
+abstract type AbstractZeros{T, N, Axes} <: AbstractFill{T, N, Axes} end
+abstract type AbstractOnes{T, N, Axes} <: AbstractFill{T, N, Axes} end
+
+for (AbsTyp, Typ, funcs, func) in ((:AbstractZeros, :Zeros, :zeros, :zero), (:AbstractOnes, :Ones, :ones, :one))
     @eval begin
+        abstract type $AbsTyp{T, N, Axes} <: AbstractFill{T, N, Axes} end
+        $(Symbol(AbsTyp,"Vector")){T} = $AbsTyp{T,1}
+        $(Symbol(AbsTyp,"Matrix")){T} = $AbsTyp{T,2}
+        $(Symbol(AbsTyp,"VecOrMat")){T} = Union{$(Symbol(AbsTyp,"Vector")){T},$(Symbol(AbsTyp,"Matrix"))}
+
         """ `$($Typ){T, N, Axes} <: AbstractFill{T, N, Axes}` (lazy `$($funcs)` with axes)"""
-        struct $Typ{T, N, Axes} <: AbstractFill{T, N, Axes}
+        struct $Typ{T, N, Axes} <: $AbsTyp{T, N, Axes}
             axes::Axes
             @inline $Typ{T,N,Axes}(sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
                 new{T,N,Axes}(sz)
@@ -312,38 +320,39 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         @inline $Typ(::Type{T}, m...) where T = $Typ{T}(m...)
 
         @inline axes(Z::$Typ) = Z.axes
-        @inline size(Z::$Typ) = length.(Z.axes)
-        @inline getindex_value(Z::$Typ{T}) where T = $func(T)
+        # TODO: Should these be generic to `AbstractZeros`/`AbstractOnes`?
+        @inline size(Z::$AbsTyp) = length.(axes(Z))
+        @inline getindex_value(Z::$AbsTyp{T}) where T = $func(T)
 
-        AbstractArray{T}(F::$Typ) where T = $Typ{T}(F.axes)
-        AbstractArray{T,N}(F::$Typ{V,N}) where {T,V,N} = $Typ{T}(F.axes)
+        AbstractArray{T}(F::$AbsTyp) where T = $Typ{T}(axes(F))
+        AbstractArray{T,N}(F::$AbsTyp{V,N}) where {T,V,N} = $Typ{T}(axes(F))
 
-        copy(F::$Typ) = F
+        copy(F::$AbsTyp) = F
 
-        getindex(F::$Typ{T,0}) where T = getindex_value(F)
+        getindex(F::$AbsTyp{T,0}) where T = getindex_value(F)
 
         promote_rule(::Type{$Typ{T, N, Axes}}, ::Type{$Typ{V, N, Axes}}) where {T,V,N,Axes} = $Typ{promote_type(T,V),N,Axes}
-        function convert(::Type{$Typ{T,N,Axes}}, A::$Typ{V,N,Axes}) where {T,V,N,Axes}
+        function convert(::Type{$AbsTyp{T,N,Axes}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes}
             convert(T, getindex_value(A)) # checks that the types are convertible
-            $Typ{T,N,Axes}(axes(A))
+            $AbsTyp{T,N,Axes}(axes(A))
         end
-        convert(::Type{$Typ{T,N}}, A::$Typ{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
-        convert(::Type{$Typ{T}}, A::$Typ{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
-        function convert(::Type{$Typ{T,N,Axes}}, A::AbstractFill{V,N}) where {T,V,N,Axes}
+        convert(::Type{$AbsTyp{T,N}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes} = convert($AbsTyp{T,N,Axes}, A)
+        convert(::Type{$AbsTyp{T}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes} = convert($AbsTyp{T,N,Axes}, A)
+        function convert(::Type{$AbsTyp{T,N,Axes}}, A::AbstractFill{V,N}) where {T,V,N,Axes}
             axes(A) isa Axes || throw(ArgumentError("cannot convert, as axes of array are not $Axes"))
             val = getindex_value(A)
             y = convert(T, val)
             y == $func(T) || throw(ArgumentError(string("cannot convert an array containinig $val to ", $Typ)))
             $Typ{T,N,Axes}(axes(A))
         end
-        function convert(::Type{$Typ{T,N}}, A::AbstractFill{<:Any,N}) where {T,N}
-            convert($Typ{T,N,typeof(axes(A))}, A)
+        function convert(::Type{$AbsTyp{T,N}}, A::AbstractFill{<:Any,N}) where {T,N}
+            convert($AbsTyp{T,N,typeof(axes(A))}, A)
         end
-        function convert(::Type{$Typ{T}}, A::AbstractFill{<:Any,N}) where {T,N}
-            convert($Typ{T,N}, A)
+        function convert(::Type{$AbsTyp{T}}, A::AbstractFill{<:Any,N}) where {T,N}
+            convert($AbsTyp{T,N}, A)
         end
-        function convert(::Type{$Typ}, A::AbstractFill{V,N}) where {V,N}
-            convert($Typ{V,N}, A)
+        function convert(::Type{$AbsTyp}, A::AbstractFill{V,N}) where {V,N}
+            convert($AbsTyp{V,N}, A)
         end
     end
 end
@@ -517,7 +526,7 @@ Base.Array{T,N}(F::AbstractFill{V,N}) where {T,V,N} =
     convert(Array{T,N}, fill(convert(T, getindex_value(F)), size(F)))
 
 # These are in case `zeros` or `ones` are ever faster than `fill`
-for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
+for (Typ, funcs, func) in ((:AbstractZeros, :zeros, :zero), (:AbstractOnes, :ones, :one))
     @eval begin
         Base.Array{T,N}(F::$Typ{V,N}) where {T,V,N} = $funcs(T,size(F))
     end
@@ -562,16 +571,16 @@ end
 # These methods are necessary to deal with infinite arrays
 sum(x::AbstractFill) = getindex_value(x)*length(x)
 sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
-sum(x::Zeros) = getindex_value(x)
+sum(x::AbstractZeros) = getindex_value(x)
 
 # needed to support infinite case
 steprangelen(st...) = StepRangeLen(st...)
 cumsum(x::AbstractFill{<:Any,1}) = steprangelen(getindex_value(x), getindex_value(x), length(x))
 
-cumsum(x::ZerosVector) = x
-cumsum(x::ZerosVector{Bool}) = x
-cumsum(x::OnesVector{II}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
-cumsum(x::OnesVector{Bool}) = oneto(length(x))
+cumsum(x::AbstractZerosVector) = x
+cumsum(x::AbstractZerosVector{Bool}) = x
+cumsum(x::AbstractOnesVector{II}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
+cumsum(x::AbstractOnesVector{Bool}) = oneto(length(x))
 
 
 #########
@@ -591,8 +600,9 @@ allunique(x::AbstractFill) = length(x) < 2
 # zero
 #########
 
-zero(r::Zeros{T,N}) where {T,N} = r
-zero(r::Ones{T,N}) where {T,N} = Zeros{T,N}(r.axes)
+zero(r::AbstractZeros{T,N}) where {T,N} = r
+# TODO: Make this required?
+zero(r::AbstractOnes{T,N}) where {T,N} = Zeros{T,N}(axes(r))
 zero(r::Fill{T,N}) where {T,N} = Zeros{T,N}(r.axes)
 
 #########
@@ -641,8 +651,8 @@ all(f::Function, x::AbstractFill) = isempty(x) || all(f(getindex_value(x)))
 any(x::AbstractFill) = any(identity, x)
 all(x::AbstractFill) = all(identity, x)
 
-count(x::Ones{Bool}) = length(x)
-count(x::Zeros{Bool}) = 0
+count(x::AbstractOnes{Bool}) = length(x)
+count(x::AbstractZeros{Bool}) = 0
 count(f, x::AbstractFill) = f(getindex_value(x)) ? length(x) : 0
 
 #########
@@ -671,7 +681,7 @@ end
 ##
 # print
 ##
-Base.replace_in_print_matrix(::Zeros, ::Integer, ::Integer, s::AbstractString) =
+Base.replace_in_print_matrix(::AbstractZeros, ::Integer, ::Integer, s::AbstractString) =
     Base.replace_with_centered_mark(s)
 
 # following support blocked fill array printing via
@@ -704,7 +714,7 @@ function Base.show(io::IO, ::MIME"text/plain", x::Union{Eye, AbstractFill})
         return show(io, x)
     end
     summary(io, x)
-    if x isa Union{Zeros, Ones, Eye}
+    if x isa Union{AbstractZeros, AbstractOnes, Eye}
         # then no need to print entries
     elseif length(x) > 1
         print(io, ", with entries equal to ", getindex_value(x))
@@ -716,7 +726,7 @@ end
 function Base.show(io::IO, x::AbstractFill)  # for example (Fill(π,3),)
     print(io, nameof(typeof(x)))
     sz = size(x)
-    args = if x isa Union{Zeros, Ones}
+    args = if x isa Union{AbstractZeros, AbstractOnes}
         T = eltype(x)
         if T != Float64
             print(io,"{", T, "}")
