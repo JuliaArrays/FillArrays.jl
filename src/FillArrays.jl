@@ -278,9 +278,6 @@ Base._reshape(parent::AbstractFill, dims::Tuple{Integer,Vararg{Integer}}) = fill
 # Resolves ambiguity error with `_reshape(v::AbstractArray{T, 1}, dims::Tuple{Int})`
 Base._reshape(parent::AbstractFill{T, 1, Axes}, dims::Tuple{Int}) where {T, Axes} = fill_reshape(parent, dims...)
 
-abstract type AbstractZeros{T, N, Axes} <: AbstractFill{T, N, Axes} end
-abstract type AbstractOnes{T, N, Axes} <: AbstractFill{T, N, Axes} end
-
 for (AbsTyp, Typ, funcs, func) in ((:AbstractZeros, :Zeros, :zeros, :zero), (:AbstractOnes, :Ones, :ones, :one))
     @eval begin
         abstract type $AbsTyp{T, N, Axes} <: AbstractFill{T, N, Axes} end
