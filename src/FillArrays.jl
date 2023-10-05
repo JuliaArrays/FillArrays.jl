@@ -329,27 +329,27 @@ for (AbsTyp, Typ, funcs, func) in ((:AbstractZeros, :Zeros, :zeros, :zero), (:Ab
         getindex(F::$AbsTyp{T,0}) where T = getindex_value(F)
 
         promote_rule(::Type{$Typ{T, N, Axes}}, ::Type{$Typ{V, N, Axes}}) where {T,V,N,Axes} = $Typ{promote_type(T,V),N,Axes}
-        function convert(::Type{$AbsTyp{T,N,Axes}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes}
+        function convert(::Type{Typ}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes,Typ<:$AbsTyp{T,N,Axes}}
             convert(T, getindex_value(A)) # checks that the types are convertible
-            $AbsTyp{T,N,Axes}(axes(A))
+            Typ(axes(A))
         end
-        convert(::Type{$AbsTyp{T,N}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes} = convert($AbsTyp{T,N,Axes}, A)
-        convert(::Type{$AbsTyp{T}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes} = convert($AbsTyp{T,N,Axes}, A)
-        function convert(::Type{$AbsTyp{T,N,Axes}}, A::AbstractFill{V,N}) where {T,V,N,Axes}
+        convert(::Type{$Typ{T,N}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
+        convert(::Type{$Typ{T}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
+        function convert(::Type{Typ}, A::AbstractFill{V,N}) where {T,V,N,Axes,Typ<:$AbsTyp{T,N,Axes}}
             axes(A) isa Axes || throw(ArgumentError("cannot convert, as axes of array are not $Axes"))
             val = getindex_value(A)
             y = convert(T, val)
             y == $func(T) || throw(ArgumentError(string("cannot convert an array containinig $val to ", $Typ)))
-            $Typ{T,N,Axes}(axes(A))
+            Typ(axes(A))
         end
-        function convert(::Type{$AbsTyp{T,N}}, A::AbstractFill{<:Any,N}) where {T,N}
-            convert($AbsTyp{T,N,typeof(axes(A))}, A)
+        function convert(::Type{$Typ{T,N}}, A::AbstractFill{<:Any,N}) where {T,N}
+            convert($Typ{T,N,typeof(axes(A))}, A)
         end
-        function convert(::Type{$AbsTyp{T}}, A::AbstractFill{<:Any,N}) where {T,N}
-            convert($AbsTyp{T,N}, A)
+        function convert(::Type{$Typ{T}}, A::AbstractFill{<:Any,N}) where {T,N}
+            convert($Typ{T,N}, A)
         end
-        function convert(::Type{$AbsTyp}, A::AbstractFill{V,N}) where {V,N}
-            convert($AbsTyp{V,N}, A)
+        function convert(::Type{$Typ}, A::AbstractFill{V,N}) where {V,N}
+            convert($Typ{V,N}, A)
         end
     end
 end

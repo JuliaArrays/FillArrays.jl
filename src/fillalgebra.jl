@@ -31,32 +31,45 @@ reverse(A::AbstractFill; dims=:) = A
 
 ## Algebraic identities
 
-function _mult_fill(a::AbstractFill, b::AbstractFill, ax, ::Type{Fill})
+# Default outputs, can overload to customize
+mult_fill(a, b, val, ax) = Fill(val, ax)
+mult_zeros(a, b, elt, ax) = Zeros{elt}(ax)
+mult_ones(a, b, elt, ax) = Ones{elt}(ax)
+
+function mult_fill(a::AbstractFill, b::AbstractFill, ax)
     val = getindex_value(a)*getindex_value(b)*size(a,2)
-    return Fill(val, ax)
+    return mult_fill(a, b, val, ax)
 end
 
-function _mult_fill(a, b, ax, ::Type{OnesZeros}) where {OnesZeros<:Union{AbstractOnes,AbstractZeros}}
+function mult_zeros(a, b, ax)
     # This is currently only used in contexts where zero is defined
     # might need a rethink
-    ElType = typeof(zero(eltype(a)) * zero(eltype(b)))
-    return OnesZeros{ElType}(ax)
+    elt = typeof(zero(eltype(a)) * zero(eltype(b)))
+    return mult_zeros(a, b, elt, ax)
 end
 
-function mult_fill(a, b, T::Type = Fill)
+function mult_ones(a, b, ax)
+    # This is currently only used in contexts where zero is defined
+    # might need a rethink
+    elt = typeof(zero(eltype(a)) * zero(eltype(b)))
+    return mult_ones(a, b, elt, ax)
+end
+
+function mult_axes(a, b)
     Base.require_one_based_indexing(a, b)
     size(a, 2) ≠ size(b, 1) &&
         throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
-    ax_result = (axes(a, 1), axes(b)[2:end]...)
-    _mult_fill(a, b, ax_result, T)
+    return (axes(a, 1), axes(b)[2:end]...)
 end
+
+mult_fill(a, b) = mult_fill(a, b, mult_axes(a, b))
 # for arrays of numbers, we assume that zero is defined for the result
 # in this case, we may express the result as a Zeros
-mult_zeros(a::AbstractArray{<:Number}, b::AbstractArray{<:Number}) = mult_fill(a, b, Zeros)
+mult_zeros(a::AbstractArray{<:Number}, b::AbstractArray{<:Number}) = mult_zeros(a, b, mult_axes(a, b))
 # In general, we create a Fill that doesn't assume anything about the
 # properties of the element type
-mult_zeros(a, b) = mult_fill(a, b, Fill)
-mult_ones(a, b) = mult_fill(a, b, Ones)
+mult_zeros(a, b) = mult_fill(a, b, mult_axes(a, b))
+mult_ones(a, b) = mult_ones(a, b, mult_axes(a, b))
 
 *(a::AbstractFillMatrix, b::AbstractFillMatrix) = mult_fill(a,b)
 *(a::AbstractFillMatrix, b::AbstractFillVector) = mult_fill(a,b)
@@ -380,7 +393,8 @@ end
 # so the implementation of `-(a::UniformScaling, b::AbstractFill{<:Any,2})` is sufficient
 -(a::UniformScaling, b::AbstractFill) = -b + a # @test I-Zeros(3,3) === Diagonal(Ones(3))
 
--(a::AbstractOnes, b::AbstractOnes) = Zeros(a) + Zeros(b)
+# TODO: How to do this conversion generically?
+-(a::AbstractOnes, b::AbstractOnes) = broadcasted_zeros(+, a, eltype(a), axes(a)) + broadcasted_zeros(-, b, eltype(a), axes(a))
 
 # no AbstractArray. Otherwise incompatible with StaticArrays.jl
 for TYPE in (:Array, :AbstractRange)
@@ -453,19 +467,26 @@ diagzero(D::Diagonal{F}, i, j) where F<:AbstractFill = fillzero(F, axes(D.diag[i
 
 # kron
 
+# Default outputs, can overload to customize
+kron_fill(a, b, val, ax) = Fill(val, ax)
+kron_zeros(a, b, elt, ax) = Zeros{elt}(ax)
+kron_ones(a, b, elt, ax) = Ones{elt}(ax)
+
 _kronsize(f::AbstractFillVector, g::AbstractFillVector) = (size(f,1)*size(g,1),)
 _kronsize(f::AbstractFillVecOrMat, g::AbstractFillVecOrMat) = (size(f,1)*size(g,1), size(f,2)*size(g,2))
 function _kron(f::AbstractFill, g::AbstractFill, sz)
     v = getindex_value(f)*getindex_value(g)
-    Fill(v, sz)
+    return kron_fill(f, g, v, sz)
 end
 function _kron(f::AbstractZeros, g::AbstractZeros, sz)
-    Zeros{promote_type(eltype(f), eltype(g))}(sz)
+    elt = promote_type(eltype(f), eltype(g))
+    return kron_zeros(f, g, elt, sz)
 end
 function _kron(f::AbstractOnes, g::AbstractOnes, sz)
-    Ones{promote_type(eltype(f), eltype(g))}(sz)
+    elt = promote_type(eltype(f), eltype(g))
+    return kron_ones(f, g, elt, sz)
 end
 function kron(f::AbstractFillVecOrMat, g::AbstractFillVecOrMat)
     sz = _kronsize(f, g)
-    _kron(f, g, sz)
+    return _kron(f, g, sz)
 end

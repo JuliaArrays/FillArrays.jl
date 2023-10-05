@@ -92,14 +92,35 @@ broadcasted(::DefaultArrayStyle{N}, ::typeof(imag), r::AbstractOnes{T,N}) where 
 
 ### Binary broadcasting
 
+# Default outputs, can overload to customize
+broadcasted_fill(f, a, val, ax) = Fill(val, ax)
+broadcasted_fill(f, a, b, val, ax) = Fill(val, ax)
+broadcasted_zeros(f, a, elt, ax) = Zeros{elt}(ax)
+broadcasted_zeros(f, a, b, elt, ax) = Zeros{elt}(ax)
+broadcasted_ones(f, a, elt, ax) = Ones{elt}(ax)
+broadcasted_ones(f, a, b, elt, ax) = Ones{elt}(ax)
+
 function broadcasted(::DefaultArrayStyle, op, a::AbstractFill, b::AbstractFill)
     val = op(getindex_value(a), getindex_value(b))
-    return Fill(val, broadcast_shape(axes(a), axes(b)))
+    ax = broadcast_shape(axes(a), axes(b))
+    return broadcasted_fill(op, a, b, val, ax)
 end
 
-_broadcasted_zeros(f, a, b) = Zeros{Base.Broadcast.combine_eltypes(f, (a, b))}(broadcast_shape(axes(a), axes(b)))
-_broadcasted_ones(f, a, b) = Ones{Base.Broadcast.combine_eltypes(f, (a, b))}(broadcast_shape(axes(a), axes(b)))
-_broadcasted_nan(f, a, b) = Fill(convert(Base.Broadcast.combine_eltypes(f, (a, b)), NaN), broadcast_shape(axes(a), axes(b)))
+function _broadcasted_zeros(f, a, b)
+  elt = Base.Broadcast.combine_eltypes(f, (a, b))
+  ax = broadcast_shape(axes(a), axes(b))
+  return broadcasted_zeros(f, a, b, elt, ax)
+end
+function _broadcasted_ones(f, a, b)
+  elt = Base.Broadcast.combine_eltypes(f, (a, b))
+  ax = broadcast_shape(axes(a), axes(b))
+  return broadcasted_ones(f, a, b, elt, ax)
+end
+function _broadcasted_nan(f, a, b)
+  val = convert(Base.Broadcast.combine_eltypes(f, (a, b)), NaN)
+  ax = broadcast_shape(axes(a), axes(b))
+  return broadcasted_fill(f, a, b, val, ax)
+end
 
 broadcasted(::DefaultArrayStyle, ::typeof(+), a::AbstractZeros, b::AbstractZeros) = _broadcasted_zeros(+, a, b)
 broadcasted(::DefaultArrayStyle, ::typeof(+), a::AbstractOnes, b::AbstractZeros) = _broadcasted_ones(+, a, b)
@@ -231,16 +252,16 @@ function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::A
     return broadcasted(*, a, _broadcast_getindex_value(b))
 end
 
-broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Number) where {T,N} = Fill(op(getindex_value(r),x), axes(r))
-broadcasted(::DefaultArrayStyle{N}, op, x::Number, r::AbstractFill{T,N}) where {T,N} = Fill(op(x, getindex_value(r)), axes(r))
-broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Ref) where {T,N} = Fill(op(getindex_value(r),x[]), axes(r))
-broadcasted(::DefaultArrayStyle{N}, op, x::Ref, r::AbstractFill{T,N}) where {T,N} = Fill(op(x[], getindex_value(r)), axes(r))
+broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Number) where {T,N} = broadcasted_fill(op, r, op(getindex_value(r),x), axes(r))
+broadcasted(::DefaultArrayStyle{N}, op, x::Number, r::AbstractFill{T,N}) where {T,N} = broadcasted_fill(op, r, op(x, getindex_value(r)), axes(r))
+broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Ref) where {T,N} = broadcasted_fill(op, r, op(getindex_value(r),x[]), axes(r))
+broadcasted(::DefaultArrayStyle{N}, op, x::Ref, r::AbstractFill{T,N}) where {T,N} = broadcasted_fill(op, r, op(x[], getindex_value(r)), axes(r))
 
 # support AbstractFill .^ k
-broadcasted(::DefaultArrayStyle{N}, ::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractFill{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = Fill(getindex_value(r)^k, axes(r))
-broadcasted(::DefaultArrayStyle{N}, ::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractOnes{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = Ones{T}(axes(r))
-broadcasted(::DefaultArrayStyle{N}, ::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractZeros{T,N}, ::Base.RefValue{Val{0}}) where {T,N} = Ones{T}(axes(r))
-broadcasted(::DefaultArrayStyle{N}, ::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractZeros{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = Zeros{T}(axes(r))
+broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractFill{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = broadcasted_fill(op, r, getindex_value(r)^k, axes(r))
+broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractOnes{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = broadcasted_ones(op, r, T, axes(r))
+broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractZeros{T,N}, ::Base.RefValue{Val{0}}) where {T,N} = broadcasted_ones(op, r, T, axes(r))
+broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractZeros{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = broadcasted_zeros(op, r, T, axes(r))
 
 # supports structured broadcast
 if isdefined(LinearAlgebra, :fzero)
