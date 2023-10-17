@@ -178,7 +178,7 @@ convert(::Type{AbstractFill{T}}, F::AbstractFill) where T = convert(AbstractArra
 convert(::Type{AbstractFill{T,N}}, F::AbstractFill) where {T,N} = convert(AbstractArray{T,N}, F)
 convert(::Type{AbstractFill{T,N,Ax}}, F::AbstractFill{<:Any,N,Ax}) where {T,N,Ax} = convert(AbstractArray{T,N}, F)
 
-copy(F::Fill) = Fill(F.value, F.axes)
+copy(F::AbstractFill) = F
 
 """
     unique_value(arr::AbstractArray)
@@ -317,8 +317,6 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
 
         AbstractArray{T}(F::$Typ) where T = $Typ{T}(F.axes)
         AbstractArray{T,N}(F::$Typ{V,N}) where {T,V,N} = $Typ{T}(F.axes)
-
-        copy(F::$Typ) = F
 
         getindex(F::$Typ{T,0}) where T = getindex_value(F)
 
