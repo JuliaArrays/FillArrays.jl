@@ -6,8 +6,8 @@ vec(a::AbstractFill) = fillsimilar(a, length(a))
 # cannot do this for vectors since that would destroy scalar dot product
 
 
-transpose(a::Union{OnesMatrix, ZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
-adjoint(a::Union{OnesMatrix, ZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
+transpose(a::Union{AbstractOnesMatrix, AbstractZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
+adjoint(a::Union{AbstractOnesMatrix, AbstractZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
 transpose(a::FillMatrix{T}) where T = Fill{T}(transpose(a.value), reverse(a.axes))
 adjoint(a::FillMatrix{T}) where T = Fill{T}(adjoint(a.value), reverse(a.axes))
 
@@ -31,52 +31,65 @@ reverse(A::AbstractFill; dims=:) = A
 
 ## Algebraic identities
 
-function _mult_fill(a::AbstractFill, b::AbstractFill, ax, ::Type{Fill})
+# Default outputs, can overload to customize
+mult_fill(a, b, val, ax) = Fill(val, ax)
+mult_zeros(a, b, elt, ax) = Zeros{elt}(ax)
+mult_ones(a, b, elt, ax) = Ones{elt}(ax)
+
+function mult_fill(a::AbstractFill, b::AbstractFill, ax)
     val = getindex_value(a)*getindex_value(b)*size(a,2)
-    return Fill(val, ax)
+    return mult_fill(a, b, val, ax)
 end
 
-function _mult_fill(a, b, ax, ::Type{OnesZeros}) where {OnesZeros<:Union{Ones,Zeros}}
+function mult_zeros(a, b, ax)
     # This is currently only used in contexts where zero is defined
     # might need a rethink
-    ElType = typeof(zero(eltype(a)) * zero(eltype(b)))
-    return OnesZeros{ElType}(ax)
+    elt = typeof(zero(eltype(a)) * zero(eltype(b)))
+    return mult_zeros(a, b, elt, ax)
 end
 
-function mult_fill(a, b, T::Type = Fill)
+function mult_ones(a, b, ax)
+    # This is currently only used in contexts where zero is defined
+    # might need a rethink
+    elt = typeof(zero(eltype(a)) * zero(eltype(b)))
+    return mult_ones(a, b, elt, ax)
+end
+
+function mult_axes(a, b)
     Base.require_one_based_indexing(a, b)
     size(a, 2) ≠ size(b, 1) &&
         throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
-    ax_result = (axes(a, 1), axes(b)[2:end]...)
-    _mult_fill(a, b, ax_result, T)
+    return (axes(a, 1), axes(b)[2:end]...)
 end
+
+mult_fill(a, b) = mult_fill(a, b, mult_axes(a, b))
 # for arrays of numbers, we assume that zero is defined for the result
 # in this case, we may express the result as a Zeros
-mult_zeros(a::AbstractArray{<:Number}, b::AbstractArray{<:Number}) = mult_fill(a, b, Zeros)
+mult_zeros(a::AbstractArray{<:Number}, b::AbstractArray{<:Number}) = mult_zeros(a, b, mult_axes(a, b))
 # In general, we create a Fill that doesn't assume anything about the
 # properties of the element type
-mult_zeros(a, b) = mult_fill(a, b, Fill)
-mult_ones(a, b) = mult_fill(a, b, Ones)
+mult_zeros(a, b) = mult_fill(a, b, mult_axes(a, b))
+mult_ones(a, b) = mult_ones(a, b, mult_axes(a, b))
 
 *(a::AbstractFillMatrix, b::AbstractFillMatrix) = mult_fill(a,b)
 *(a::AbstractFillMatrix, b::AbstractFillVector) = mult_fill(a,b)
 
 # this treats a size (n,) vector as a nx1 matrix, so b needs to have 1 row
 # special cased, as OnesMatrix * OnesMatrix isn't a Ones
-*(a::OnesVector, b::OnesMatrix) = mult_ones(a, b)
+*(a::AbstractOnesVector, b::AbstractOnesMatrix) = mult_ones(a, b)
 
-*(a::ZerosMatrix, b::ZerosMatrix) = mult_zeros(a, b)
-*(a::ZerosMatrix, b::ZerosVector) = mult_zeros(a, b)
+*(a::AbstractZerosMatrix, b::AbstractZerosMatrix) = mult_zeros(a, b)
+*(a::AbstractZerosMatrix, b::AbstractZerosVector) = mult_zeros(a, b)
 
-*(a::ZerosMatrix, b::AbstractFillMatrix) = mult_zeros(a, b)
-*(a::ZerosMatrix, b::AbstractFillVector) = mult_zeros(a, b)
-*(a::AbstractFillMatrix, b::ZerosMatrix) = mult_zeros(a, b)
-*(a::AbstractFillMatrix, b::ZerosVector) = mult_zeros(a, b)
+*(a::AbstractZerosMatrix, b::AbstractFillMatrix) = mult_zeros(a, b)
+*(a::AbstractZerosMatrix, b::AbstractFillVector) = mult_zeros(a, b)
+*(a::AbstractFillMatrix, b::AbstractZerosMatrix) = mult_zeros(a, b)
+*(a::AbstractFillMatrix, b::AbstractZerosVector) = mult_zeros(a, b)
 
-*(a::ZerosMatrix, b::AbstractMatrix) = mult_zeros(a, b)
-*(a::AbstractMatrix, b::ZerosVector) = mult_zeros(a, b)
-*(a::AbstractMatrix, b::ZerosMatrix) = mult_zeros(a, b)
-*(a::ZerosMatrix, b::AbstractVector) = mult_zeros(a, b)
+*(a::AbstractZerosMatrix, b::AbstractMatrix) = mult_zeros(a, b)
+*(a::AbstractMatrix, b::AbstractZerosVector) = mult_zeros(a, b)
+*(a::AbstractMatrix, b::AbstractZerosMatrix) = mult_zeros(a, b)
+*(a::AbstractZerosMatrix, b::AbstractVector) = mult_zeros(a, b)
 
 function lmul_diag(a::Diagonal, b)
     size(a,2) == size(b,1) || throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
@@ -87,9 +100,9 @@ function rmul_diag(a, b::Diagonal)
     a .* permutedims(parent(b)) # use special broadcast
 end
 
-*(a::ZerosMatrix, b::Diagonal) = rmul_diag(a, b)
-*(a::Diagonal, b::ZerosVector) = lmul_diag(a, b)
-*(a::Diagonal, b::ZerosMatrix) = lmul_diag(a, b)
+*(a::AbstractZerosMatrix, b::Diagonal) = rmul_diag(a, b)
+*(a::Diagonal, b::AbstractZerosVector) = lmul_diag(a, b)
+*(a::Diagonal, b::AbstractZerosMatrix) = lmul_diag(a, b)
 *(a::Diagonal, b::AbstractFillMatrix) = lmul_diag(a, b)
 *(a::AbstractFillMatrix, b::Diagonal) = rmul_diag(a, b)
 
@@ -270,25 +283,25 @@ function _adjvec_mul_zeros(a, b)
     return a1 * b[1]
 end
 
-*(a::AdjointAbsVec{<:Any,<:ZerosVector}, b::AbstractMatrix) = (b' * a')'
-*(a::AdjointAbsVec{<:Any,<:ZerosVector}, b::ZerosMatrix) = (b' * a')'
-*(a::TransposeAbsVec{<:Any,<:ZerosVector}, b::AbstractMatrix) = transpose(transpose(b) * transpose(a))
-*(a::TransposeAbsVec{<:Any,<:ZerosVector}, b::ZerosMatrix) = transpose(transpose(b) * transpose(a))
+*(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractMatrix) = (b' * a')'
+*(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractZerosMatrix) = (b' * a')'
+*(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractMatrix) = transpose(transpose(b) * transpose(a))
+*(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractZerosMatrix) = transpose(transpose(b) * transpose(a))
 
-*(a::AbstractVector, b::AdjOrTransAbsVec{<:Any,<:ZerosVector}) = a * permutedims(parent(b))
-*(a::AbstractMatrix, b::AdjOrTransAbsVec{<:Any,<:ZerosVector}) = a * permutedims(parent(b))
-*(a::ZerosVector, b::AdjOrTransAbsVec{<:Any,<:ZerosVector}) = a * permutedims(parent(b))
-*(a::ZerosMatrix, b::AdjOrTransAbsVec{<:Any,<:ZerosVector}) = a * permutedims(parent(b))
+*(a::AbstractVector, b::AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}) = a * permutedims(parent(b))
+*(a::AbstractMatrix, b::AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}) = a * permutedims(parent(b))
+*(a::AbstractZerosVector, b::AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}) = a * permutedims(parent(b))
+*(a::AbstractZerosMatrix, b::AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}) = a * permutedims(parent(b))
 
-*(a::AdjointAbsVec, b::ZerosVector) = _adjvec_mul_zeros(a, b)
-*(a::AdjointAbsVec{<:Number}, b::ZerosVector{<:Number}) = _adjvec_mul_zeros(a, b)
-*(a::TransposeAbsVec, b::ZerosVector) = _adjvec_mul_zeros(a, b)
-*(a::TransposeAbsVec{<:Number}, b::ZerosVector{<:Number}) = _adjvec_mul_zeros(a, b)
+*(a::AdjointAbsVec, b::AbstractZerosVector) = _adjvec_mul_zeros(a, b)
+*(a::AdjointAbsVec{<:Number}, b::AbstractZerosVector{<:Number}) = _adjvec_mul_zeros(a, b)
+*(a::TransposeAbsVec, b::AbstractZerosVector) = _adjvec_mul_zeros(a, b)
+*(a::TransposeAbsVec{<:Number}, b::AbstractZerosVector{<:Number}) = _adjvec_mul_zeros(a, b)
 
-*(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::Zeros{<:Any, 1}) = mult_zeros(a, b)
+*(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::AbstractZeros{<:Any, 1}) = mult_zeros(a, b)
 
-*(a::AdjointAbsVec{<:Any,<:ZerosVector}, D::Diagonal) = (D*a')'
-*(a::TransposeAbsVec{<:Any,<:ZerosVector}, D::Diagonal) = transpose(D*transpose(a))
+*(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, D::Diagonal) = (D*a')'
+*(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, D::Diagonal) = transpose(D*transpose(a))
 function _triple_zeromul(x, D::Diagonal, y)
     if !(length(x) == length(D.diag) == length(y))
         throw(DimensionMismatch("x has length $(length(x)), D has size $(size(D)), and y has $(length(y))"))
@@ -296,22 +309,22 @@ function _triple_zeromul(x, D::Diagonal, y)
     zero(promote_type(eltype(x), eltype(D), eltype(y)))
 end
 
-*(x::AdjointAbsVec{<:Any,<:ZerosVector}, D::Diagonal, y::AbstractVector) = _triple_zeromul(x, D, y)
-*(x::TransposeAbsVec{<:Any,<:ZerosVector}, D::Diagonal, y::AbstractVector) = _triple_zeromul(x, D, y)
-*(x::AdjointAbsVec, D::Diagonal, y::ZerosVector) = _triple_zeromul(x, D, y)
-*(x::TransposeAbsVec, D::Diagonal, y::ZerosVector) = _triple_zeromul(x, D, y)
-*(x::AdjointAbsVec{<:Any,<:ZerosVector}, D::Diagonal, y::ZerosVector) = _triple_zeromul(x, D, y)
-*(x::TransposeAbsVec{<:Any,<:ZerosVector}, D::Diagonal, y::ZerosVector) = _triple_zeromul(x, D, y)
+*(x::AdjointAbsVec{<:Any,<:AbstractZerosVector}, D::Diagonal, y::AbstractVector) = _triple_zeromul(x, D, y)
+*(x::TransposeAbsVec{<:Any,<:AbstractZerosVector}, D::Diagonal, y::AbstractVector) = _triple_zeromul(x, D, y)
+*(x::AdjointAbsVec, D::Diagonal, y::AbstractZerosVector) = _triple_zeromul(x, D, y)
+*(x::TransposeAbsVec, D::Diagonal, y::AbstractZerosVector) = _triple_zeromul(x, D, y)
+*(x::AdjointAbsVec{<:Any,<:AbstractZerosVector}, D::Diagonal, y::AbstractZerosVector) = _triple_zeromul(x, D, y)
+*(x::TransposeAbsVec{<:Any,<:AbstractZerosVector}, D::Diagonal, y::AbstractZerosVector) = _triple_zeromul(x, D, y)
 
 
-function *(a::Transpose{T, <:AbstractVector{T}}, b::ZerosVector{T}) where T<:Real
+function *(a::Transpose{T, <:AbstractVector{T}}, b::AbstractZerosVector{T}) where T<:Real
     la, lb = length(a), length(b)
     if la ≠ lb
         throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))
     end
     return zero(T)
 end
-*(a::Transpose{T, <:AbstractMatrix{T}}, b::ZerosVector{T}) where T<:Real = mult_zeros(a, b)
+*(a::Transpose{T, <:AbstractMatrix{T}}, b::AbstractZerosVector{T}) where T<:Real = mult_zeros(a, b)
 
 # support types with fast sum
 # infinite cases should be supported in InfiniteArrays.jl
@@ -350,24 +363,24 @@ end
 
 # Addition and Subtraction
 +(a::AbstractFill) = a
--(a::Zeros) = a
+-(a::AbstractZeros) = a
 -(a::AbstractFill) = Fill(-getindex_value(a), size(a))
 
 # special-cased for type-stability, as Ones + Ones is not a Ones
-Base.reduce_first(::typeof(+), x::Ones) = Fill(Base.reduce_first(+, getindex_value(x)), axes(x))
+Base.reduce_first(::typeof(+), x::AbstractOnes) = Fill(Base.reduce_first(+, getindex_value(x)), axes(x))
 
-function +(a::Zeros{T}, b::Zeros{V}) where {T, V} # for disambiguity
+function +(a::AbstractZeros{T}, b::AbstractZeros{V}) where {T, V} # for disambiguity
     promote_shape(a,b)
     return elconvert(promote_op(+,T,V),a)
 end
 # no AbstractArray. Otherwise incompatible with StaticArrays.jl
 # AbstractFill for disambiguity
 for TYPE in (:Array, :AbstractFill, :AbstractRange, :Diagonal)
-    @eval function +(a::$TYPE{T}, b::Zeros{V}) where {T, V}
+    @eval function +(a::$TYPE{T}, b::AbstractZeros{V}) where {T, V}
         promote_shape(a,b)
         return elconvert(promote_op(+,T,V),a)
     end
-    @eval +(a::Zeros, b::$TYPE) = b + a
+    @eval +(a::AbstractZeros, b::$TYPE) = b + a
 end
 
 # for VERSION other than 1.6, could use ZerosMatrix only
@@ -380,7 +393,8 @@ end
 # so the implementation of `-(a::UniformScaling, b::AbstractFill{<:Any,2})` is sufficient
 -(a::UniformScaling, b::AbstractFill) = -b + a # @test I-Zeros(3,3) === Diagonal(Ones(3))
 
--(a::Ones, b::Ones) = Zeros(a) + Zeros(b)
+# TODO: How to do this conversion generically?
+-(a::AbstractOnes, b::AbstractOnes) = broadcasted_zeros(+, a, eltype(a), axes(a)) + broadcasted_zeros(-, b, eltype(a), axes(a))
 
 # no AbstractArray. Otherwise incompatible with StaticArrays.jl
 for TYPE in (:Array, :AbstractRange)
@@ -413,10 +427,10 @@ end
 ####
 
 for op in (:norm1, :norm2, :normInf, :normMinusInf)
-    @eval $op(a::Zeros) = norm(getindex_value(a))
+    @eval $op(a::AbstractZeros) = norm(getindex_value(a))
 end
 
-normp(a::Zeros, p) = norm(getindex_value(a))
+normp(a::AbstractZeros, p) = norm(getindex_value(a))
 
 norm1(a::AbstractFill) = length(a)*norm(getindex_value(a))
 norm2(a::AbstractFill) = sqrt(length(a))*norm(getindex_value(a))
@@ -446,26 +460,33 @@ function rmul!(z::AbstractFill, x::Number)
 end
 
 fillzero(::Type{Fill{T,N,AXIS}}, n, m) where {T,N,AXIS} = Fill{T,N,AXIS}(zero(T), (n, m))
-fillzero(::Type{Zeros{T,N,AXIS}}, n, m) where {T,N,AXIS} = Zeros{T,N,AXIS}((n, m))
+fillzero(::Type{<:AbstractZeros{T,N,AXIS}}, n, m) where {T,N,AXIS} = Zeros{T,N,AXIS}((n, m))
 fillzero(::Type{F}, n, m) where F = throw(ArgumentError("Cannot create a zero array of type $F"))
 
 diagzero(D::Diagonal{F}, i, j) where F<:AbstractFill = fillzero(F, axes(D.diag[i], 1), axes(D.diag[j], 2))
 
 # kron
 
+# Default outputs, can overload to customize
+kron_fill(a, b, val, ax) = Fill(val, ax)
+kron_zeros(a, b, elt, ax) = Zeros{elt}(ax)
+kron_ones(a, b, elt, ax) = Ones{elt}(ax)
+
 _kronsize(f::AbstractFillVector, g::AbstractFillVector) = (size(f,1)*size(g,1),)
 _kronsize(f::AbstractFillVecOrMat, g::AbstractFillVecOrMat) = (size(f,1)*size(g,1), size(f,2)*size(g,2))
 function _kron(f::AbstractFill, g::AbstractFill, sz)
     v = getindex_value(f)*getindex_value(g)
-    Fill(v, sz)
+    return kron_fill(f, g, v, sz)
 end
-function _kron(f::Zeros, g::Zeros, sz)
-    Zeros{promote_type(eltype(f), eltype(g))}(sz)
+function _kron(f::AbstractZeros, g::AbstractZeros, sz)
+    elt = promote_type(eltype(f), eltype(g))
+    return kron_zeros(f, g, elt, sz)
 end
-function _kron(f::Ones, g::Ones, sz)
-    Ones{promote_type(eltype(f), eltype(g))}(sz)
+function _kron(f::AbstractOnes, g::AbstractOnes, sz)
+    elt = promote_type(eltype(f), eltype(g))
+    return kron_ones(f, g, elt, sz)
 end
 function kron(f::AbstractFillVecOrMat, g::AbstractFillVecOrMat)
     sz = _kronsize(f, g)
-    _kron(f, g, sz)
+    return _kron(f, g, sz)
 end
