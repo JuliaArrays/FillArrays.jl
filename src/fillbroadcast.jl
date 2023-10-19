@@ -37,8 +37,23 @@ function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, ::Col
         return Base.mapreduce_empty_iter(f, op, A, Base.HasEltype())
     end
     val = getindex_value(A)
-    fval = f(val)
     out = Base.mapreduce_first(f, op, val)
+    fval = f(val)
+    if op(out, fval) != out
+        for _ in 2:length(A)
+            out = op(out, fval)
+        end
+    end
+    out
+end
+
+function Base._mapreduce_dim(f, op, init, A::AbstractFill, ::Colon)
+    if length(A) == 0
+        return init
+    end
+    val = getindex_value(A)
+    fval = f(val)
+    out = op(init, fval)
     if op(out, fval) != out
         for _ in 2:length(A)
             out = op(out, fval)
@@ -57,6 +72,10 @@ function mapreducedim_empty(f, op, A)
     op(z, z)
 end
 
+function reduced_indices(A, dims)
+    ntuple(d -> d in dims ? axes(A,ndims(A)+1) : axes(A,d), ndims(A))
+end
+
 function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
     red = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
     if red == 0
@@ -71,7 +90,24 @@ function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
             end
         end
     end
-    Fill(out, ntuple(d -> d in dims ? axes(A,ndims(A)+1) : axes(A,d), ndims(A)))
+    Fill(out, reduced_indices(A, dims))
+end
+
+function Base._mapreduce_dim(f, op, init, A::AbstractFill, dims)
+    red = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
+    if red == 0
+        out = init
+    else
+        val = getindex_value(A)
+        fval = f(val)
+        out = op(init, fval)
+        if op(out, fval) != out
+            for _ in 2:red
+                out = op(out, fval)
+            end
+        end
+    end
+    Fill(out, reduced_indices(A, dims))
 end
 
 function mapreduce(f, op, A::AbstractFill, B::AbstractFill; kw...)
