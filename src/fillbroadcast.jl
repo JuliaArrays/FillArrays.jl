@@ -33,22 +33,45 @@ end
 ### mapreduce
 
 function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, ::Colon)
-    fval = f(getindex_value(A))
-    out = fval
-    for _ in 2:length(A)
-        out = op(out, fval)
+    if length(A) == 0
+        return Base.mapreduce_empty_iter(f, op, A, Base.HasEltype())
+    end
+    val = getindex_value(A)
+    fval = f(val)
+    out = Base.mapreduce_first(f, op, val)
+    if op(out, fval) != out
+        for _ in 2:length(A)
+            out = op(out, fval)
+        end
     end
     out
 end
 
+identityel(f, ::Union{typeof(+), typeof(Base.add_sum)}, A) = zero(f(zero(eltype(A))))
+identityel(f, ::Union{typeof(*), typeof(Base.mul_prod)}, A) = one(f(one(eltype(A))))
+identityel(f, ::typeof(&), A) = true
+identityel(f, ::typeof(|), A) = false
+identityel(f, ::Any, @nospecialize(A)) = throw(ArgumentError("reducing over an empty collection is not allowed"))
+function mapreducedim_empty(f, op, A)
+    z = identityel(f, op, A)
+    op(z, z)
+end
+
 function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
-    fval = f(getindex_value(A))
     red = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
-    out = fval
-    for _ in 2:red
-        out = op(out, fval)
+    if red == 0
+        out = mapreducedim_empty(f, op, A)
+    else
+        val = getindex_value(A)
+        out = Base.mapreduce_first(f, op, val)
+        fval = f(val)
+        if op(out, fval) != out
+            for _ in 2:red
+                out = op(out, fval)
+            end
+        end
     end
-    Fill(out, ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
+    Fill(out, ntuple(d -> d in dims ? axes(A,ndims(A)+1) : axes(A,d), ndims(A)))
 end
 
 function mapreduce(f, op, A::AbstractFill, B::AbstractFill; kw...)

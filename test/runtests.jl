@@ -1090,7 +1090,7 @@ end
                 @test Zeros(S, 10) .* (T(1):T(10)) ≡ Zeros(U, 10)
                 @test_throws DimensionMismatch Zeros(S, 10) .* (T(1):T(11))
             end
-        end        
+        end
     end
 end
 
@@ -1115,6 +1115,33 @@ end
 end
 
 @testset "mapreduce" begin
+    @testset "corner cases with small arrays" begin
+        @test_throws Exception mapreduce(identity, max, Fill(2,0))
+        @test_throws Exception mapreduce(identity, max, Fill(2,0), dims=1)
+        @testset for op in (+, *)
+            @test mapreduce(identity, op, Fill(2,0)) == mapreduce(identity, op, fill(2,0))
+            @test mapreduce(identity, op, Fill(2,0), dims=1) == mapreduce(identity, op, fill(2,0), dims=1)
+        end
+        @testset for op in (&, |)
+            @test mapreduce(identity, op, Fill(true,0)) == mapreduce(identity, op, fill(true,0))
+            @test mapreduce(identity, op, Fill(true,0), dims=1) == mapreduce(identity, op, fill(true,0), dims=1)
+        end
+        @testset for op in (max, +, *)
+            @test mapreduce(identity, op, Fill(2,0), dims=2) == mapreduce(identity, op, fill(2,0), dims=2)
+            @test mapreduce(identity, op, Fill(2,0,1), dims=2) == mapreduce(identity, op, fill(2,0,1), dims=2)
+            @test mapreduce(identity, op, Fill(2,1)) == mapreduce(identity, op, fill(2,1))
+            @test mapreduce(identity, op, Fill(2,1), dims=1) == mapreduce(identity, op, fill(2,1), dims=1)
+            @test mapreduce(identity, op, Fill(2,1), dims=2) == mapreduce(identity, op, fill(2,1), dims=2)
+            @test mapreduce(identity, op, Fill(2,1,1), dims=1) == mapreduce(identity, op, fill(2,1,1), dims=1)
+            @test mapreduce(identity, op, Fill(2,1,1), dims=2) == mapreduce(identity, op, fill(2,1,1), dims=2)
+            @test mapreduce(identity, op, Fill(2,2)) == mapreduce(identity, op, fill(2,2))
+            @test mapreduce(identity, op, Fill(2,2), dims=1) == mapreduce(identity, op, fill(2,2), dims=1)
+            @test mapreduce(identity, op, Fill(2,2), dims=2) == mapreduce(identity, op, fill(2,2), dims=2)
+            @test mapreduce(identity, op, Fill(2,2,2), dims=1) == mapreduce(identity, op, fill(2,2,2), dims=1)
+            @test mapreduce(identity, op, Fill(2,2,2), dims=2) == mapreduce(identity, op, fill(2,2,2), dims=2)
+        end
+    end
+
     x = rand(3, 4)
     y = fill(1.0, 3, 4)
     Y = Fill(1.0, 3, 4)
