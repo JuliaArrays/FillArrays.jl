@@ -1120,7 +1120,14 @@ end
         @test_throws Exception reduce(max, Fill(2,0), dims=1)
         function testreduce(op, A; kw...)
             B = Array(A)
-            @test reduce(op, A; kw...) == reduce(op, B; kw...)
+            F = reduce(op, A; kw...)
+            @test F == reduce(op, B; kw...)
+            if haskey(kw, :dims)
+                @test F isa Fill
+            end
+            if !isempty(A)
+                @test mapreduce(x->x^2, op, A; kw...) == mapreduce(x->x^2, op, B; kw...)
+            end
         end
         @testset for (op, init) in ((+, 0), (*, 1))
             testreduce(op, Fill(2,0))
