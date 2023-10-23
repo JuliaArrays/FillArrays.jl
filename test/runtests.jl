@@ -1,4 +1,4 @@
-using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics
+using FillArrays, LinearAlgebra, PDMats, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 using Aqua
@@ -7,6 +7,8 @@ using Aqua
         # only test formatting on VERSION >= v1.7
         # https://github.com/JuliaTesting/Aqua.jl/issues/105#issuecomment-1551405866
         project_toml_formatting = VERSION >= v"1.7",
+        # Requires is only loaded on Julia < 1.9
+        stale_deps = (ignore = VERSION < v"1.9-" ? Symbol[] : [:Requires],),
     )
 end
 
@@ -2194,3 +2196,13 @@ end
     @test ReverseDiff.gradient(x -> sum(abs2.((Zeros{eltype(x)}(5) .+ zeros(5)) ./ x)), rand(5)) == zeros(5)
     @test ReverseDiff.gradient(x -> sum(abs2.((zeros(5) .+ Zeros{eltype(x)}(5)) ./ x)), rand(5)) == zeros(5)
 end
+
+@testset "FillArraysPDMatsExt" begin
+    for diag in (Ones(5), Fill(4.1, 8))
+        a = @inferred(AbstractPDMat(Diagonal(diag)))
+        @test a isa ScalMat
+        @test a.dim == length(diag)
+        @test a.value == first(diag)
+    end
+end
+

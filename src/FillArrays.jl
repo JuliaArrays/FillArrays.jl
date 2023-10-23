@@ -669,9 +669,17 @@ include("fillalgebra.jl")
 include("fillbroadcast.jl")
 include("trues.jl")
 
-@static if !isdefined(Base, :get_extension)
+if !isdefined(Base, :get_extension)
+    import Requires
     include("../ext/FillArraysSparseArraysExt.jl")
     include("../ext/FillArraysStatisticsExt.jl")
+end
+@static if !isdefined(Base, :get_extension)
+    function __init__()
+        Requires.@requires PDMats = "90014a1f-27ba-587c-ab20-58faa44d9150" begin
+            include("../ext/FillArraysPDMatsExt.jl")
+        end
+    end
 end
 
 ##
