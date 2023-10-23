@@ -676,7 +676,7 @@ if !isdefined(Base, :get_extension)
 end
 @static if !isdefined(Base, :get_extension)
     function __init__()
-        Requires.@requires PDMats = "90014a1f-27ba-587c-ab20-58faa44d9150" begin
+        Requires.@require PDMats = "90014a1f-27ba-587c-ab20-58faa44d9150" begin
             include("../ext/FillArraysPDMatsExt.jl")
         end
     end
