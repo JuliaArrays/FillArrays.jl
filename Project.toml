@@ -18,6 +18,7 @@ FillArraysStatisticsExt = "Statistics"
 
 [compat]
 Aqua = "0.5, 0.6, 0.7"
+Statistics = "1"
 julia = "1.6"
 
 [extras]
