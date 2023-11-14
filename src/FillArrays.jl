@@ -629,13 +629,6 @@ function all(f::Function, IM::Eye{T}) where T
     return all(f(one(T)))
 end
 
-# In particular, these make iszero(Eye(n))  efficient.
-# use any/all on scalar to get Boolean error message
-any(f::Function, x::AbstractFill) = !isempty(x) && any(f(getindex_value(x)))
-all(f::Function, x::AbstractFill) = isempty(x) || all(f(getindex_value(x)))
-any(x::AbstractFill) = any(identity, x)
-all(x::AbstractFill) = all(identity, x)
-
 count(x::AbstractOnes{Bool}) = length(x)
 count(x::AbstractZeros{Bool}) = 0
 count(f, x::AbstractFill) = f(getindex_value(x)) ? length(x) : 0
