@@ -51,6 +51,21 @@ function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
     Fill(out, ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
 end
 
+firstval(a, b) = a
+for (op, iterop) in ((:+, :*), (:*, :^), (:add_sum, :mul_prod), (:max, :firstval), (:min, :firstval), (:|, :firstval), (:&, :firstval))
+    @eval function Base._mapreduce_dim(f, ::typeof($op), ::Base._InitialValue, A::AbstractFill, dims)
+        fval = f(getindex_value(A))
+        red = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
+        out = ($iterop)(fval, red)
+        Fill(out, ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
+    end
+    @eval function Base._mapreduce_dim(f, ::typeof($op), ::Base._InitialValue, A::AbstractFill, ::Colon)
+        fval = f(getindex_value(A))
+        ($iterop)(fval, length(A))
+    end
+end
+
+
 function mapreduce(f, op, A::AbstractFill, B::AbstractFill; kw...)
     val(_...) = f(getindex_value(A), getindex_value(B))
     reduce(op, map(val, A, B); kw...)
