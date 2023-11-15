@@ -32,20 +32,20 @@ end
 
 ### mapreduce
 
-function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, ::Colon)
+function Base._mapreduce_dim(f, op, nt, A::AbstractFill, ::Colon)
     fval = f(getindex_value(A))
-    out = fval
-    for _ in 2:length(A)
+    out = nt
+    for _ in 1:length(A)
         out = op(out, fval)
     end
     out
 end
 
-function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
+function Base._mapreduce_dim(f, op, nt, A::AbstractFill, dims)
     fval = f(getindex_value(A))
     red = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
-    out = fval
-    for _ in 2:red
+    out = nt
+    for _ in 1:red
         out = op(out, fval)
     end
     Fill(out, ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
