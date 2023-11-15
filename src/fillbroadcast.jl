@@ -65,7 +65,6 @@ for (op, iterop) in ((:+, :*), (:*, :^), (:add_sum, :mul_prod), (:mul_prod, :^),
     end
 end
 
-
 function mapreduce(f, op, A::AbstractFill, B::AbstractFill; kw...)
     val(_...) = f(getindex_value(A), getindex_value(B))
     reduce(op, map(val, A, B); kw...)
