@@ -1,22 +1,20 @@
 """ `FillArrays` module to lazily represent matrices with a single value """
 module FillArrays
 
-using LinearAlgebra, SparseArrays, Statistics
+using LinearAlgebra
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
-    copy, vec, setindex!, count, ==, reshape, _throw_dmrs, map, zero,
-    show, view, in, mapreduce, one, reverse, promote_op, promote_rule
+    copy, vec, setindex!, count, ==, reshape, map, zero,
+    show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
+    parent, similar, issorted
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
-    issymmetric, ishermitian, AdjOrTransAbsVec, checksquare
+    issymmetric, ishermitian, AdjOrTransAbsVec, checksquare, mul!, kron
 
 
-import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape
-
-import Statistics: mean, std, var, cov, cor
-
+import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape, BroadcastStyle, Broadcasted
 
 export Zeros, Ones, Fill, Eye, Trues, Falses, OneElement
 
@@ -171,7 +169,6 @@ getindex_value
 
 @inline getindex_value(F::Fill) = F.value
 
-AbstractArray{T}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 AbstractArray{T,N}(F::Fill{V,N}) where {T,V,N} = Fill{T}(convert(T, F.value)::T, F.axes)
 AbstractFill{T}(F::AbstractFill) where T = AbstractArray{T}(F)
 AbstractFill{T,N}(F::AbstractFill) where {T,N} = AbstractArray{T,N}(F)
@@ -223,8 +220,8 @@ Base.@propagate_inbounds @inline function _fill_getindex(A::AbstractFill, kr::Ab
    fillsimilar(A, count(kr))
 end
 
-Base.@propagate_inbounds @inline Base._unsafe_getindex(::IndexStyle, F::AbstractFill, I::Vararg{Union{Real, AbstractArray}, N}) where N =
-    @inbounds(return _fill_getindex(F, I...))
+Base.@propagate_inbounds @inline Base._unsafe_getindex(::IndexStyle, F::AbstractFill, I::Vararg{Union{Real, AbstractArray}}) =
+    _fill_getindex(F, I...)
 
 
 
@@ -237,10 +234,27 @@ Base.@propagate_inbounds getindex(A::AbstractFill, kr::AbstractArray{Bool}) = _f
     v, (v, n+1)
 end
 
-sort(a::AbstractFill; kwds...) = a
-sort!(a::AbstractFill; kwds...) = a
+#################
+# Sorting
+#################
+function issorted(f::AbstractFill; kw...)
+    v = getindex_value(f)
+    issorted((v, v); kw...)
+end
+function sort(a::AbstractFill; kwds...)
+    issorted(a; kwds...) # ensure that the values may be compared
+    return a
+end
+function sort!(a::AbstractFill; kwds...)
+    issorted(a; kwds...) # ensure that the values may be compared
+    return a
+end
+
 svdvals!(a::AbstractFillMatrix) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(min(size(a)...)-1)]
 
+@noinline function _throw_dmrs(n, str, dims)
+    throw(DimensionMismatch("parent has $n elements, which is incompatible with $str $dims"))
+end
 function fill_reshape(parent, dims::Integer...)
     n = length(parent)
     prod(dims) == n || _throw_dmrs(n, "size", dims)
@@ -264,10 +278,15 @@ Base._reshape(parent::AbstractFill, dims::Tuple{Integer,Vararg{Integer}}) = fill
 # Resolves ambiguity error with `_reshape(v::AbstractArray{T, 1}, dims::Tuple{Int})`
 Base._reshape(parent::AbstractFill{T, 1, Axes}, dims::Tuple{Int}) where {T, Axes} = fill_reshape(parent, dims...)
 
-for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
+for (AbsTyp, Typ, funcs, func) in ((:AbstractZeros, :Zeros, :zeros, :zero), (:AbstractOnes, :Ones, :ones, :one))
     @eval begin
+        abstract type $AbsTyp{T, N, Axes} <: AbstractFill{T, N, Axes} end
+        $(Symbol(AbsTyp,"Vector")){T} = $AbsTyp{T,1}
+        $(Symbol(AbsTyp,"Matrix")){T} = $AbsTyp{T,2}
+        $(Symbol(AbsTyp,"VecOrMat")){T} = Union{$(Symbol(AbsTyp,"Vector")){T},$(Symbol(AbsTyp,"Matrix"))}
+
         """ `$($Typ){T, N, Axes} <: AbstractFill{T, N, Axes}` (lazy `$($funcs)` with axes)"""
-        struct $Typ{T, N, Axes} <: AbstractFill{T, N, Axes}
+        struct $Typ{T, N, Axes} <: $AbsTyp{T, N, Axes}
             axes::Axes
             @inline $Typ{T,N,Axes}(sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
                 new{T,N,Axes}(sz)
@@ -298,23 +317,39 @@ for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
         @inline $Typ(::Type{T}, m...) where T = $Typ{T}(m...)
 
         @inline axes(Z::$Typ) = Z.axes
-        @inline size(Z::$Typ) = length.(Z.axes)
-        @inline getindex_value(Z::$Typ{T}) where T = $func(T)
+        @inline size(Z::$AbsTyp) = length.(axes(Z))
+        @inline getindex_value(Z::$AbsTyp{T}) where T = $func(T)
 
-        AbstractArray{T}(F::$Typ) where T = $Typ{T}(F.axes)
-        AbstractArray{T,N}(F::$Typ{V,N}) where {T,V,N} = $Typ{T}(F.axes)
+        AbstractArray{T}(F::$AbsTyp) where T = $Typ{T}(axes(F))
+        AbstractArray{T,N}(F::$AbsTyp{V,N}) where {T,V,N} = $Typ{T}(axes(F))
 
-        copy(F::$Typ) = F
+        copy(F::$AbsTyp) = F
 
-        getindex(F::$Typ{T,0}) where T = getindex_value(F)
+        getindex(F::$AbsTyp{T,0}) where T = getindex_value(F)
 
         promote_rule(::Type{$Typ{T, N, Axes}}, ::Type{$Typ{V, N, Axes}}) where {T,V,N,Axes} = $Typ{promote_type(T,V),N,Axes}
-        function convert(::Type{$Typ{T,N,Axes}}, A::$Typ{V,N,Axes}) where {T,V,N,Axes}
+        function convert(::Type{Typ}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes,Typ<:$AbsTyp{T,N,Axes}}
             convert(T, getindex_value(A)) # checks that the types are convertible
-            $Typ{T,N,Axes}(axes(A))
+            Typ(axes(A))
         end
-        convert(::Type{$Typ{T,N}}, A::$Typ{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
-        convert(::Type{$Typ{T}}, A::$Typ{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
+        convert(::Type{$Typ{T,N}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
+        convert(::Type{$Typ{T}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
+        function convert(::Type{Typ}, A::AbstractFill{V,N}) where {T,V,N,Axes,Typ<:$AbsTyp{T,N,Axes}}
+            axes(A) isa Axes || throw(ArgumentError("cannot convert, as axes of array are not $Axes"))
+            val = getindex_value(A)
+            y = convert(T, val)
+            y == $func(T) || throw(ArgumentError(string("cannot convert an array containinig $val to ", $Typ)))
+            Typ(axes(A))
+        end
+        function convert(::Type{$Typ{T,N}}, A::AbstractFill{<:Any,N}) where {T,N}
+            convert($Typ{T,N,typeof(axes(A))}, A)
+        end
+        function convert(::Type{$Typ{T}}, A::AbstractFill{<:Any,N}) where {T,N}
+            convert($Typ{T,N}, A)
+        end
+        function convert(::Type{$Typ}, A::AbstractFill{V,N}) where {V,N}
+            convert($Typ{V,N}, A)
+        end
     end
 end
 
@@ -329,7 +364,7 @@ end
 promote_rule(::Type{<:AbstractFill{T, N, Axes}}, ::Type{<:AbstractFill{V, N, Axes}}) where {T,V,N,Axes} = Fill{promote_type(T,V),N,Axes}
 
 """
-    fillsimilar(a::AbstractFill, axes)
+    fillsimilar(a::AbstractFill, axes...)
 
 creates a fill object that has the same fill value as `a` but
 with the specified axes.
@@ -339,20 +374,15 @@ fillsimilar(a::Ones{T}, axes...) where T = Ones{T}(axes...)
 fillsimilar(a::Zeros{T}, axes...) where T = Zeros{T}(axes...)
 fillsimilar(a::AbstractFill, axes...) = Fill(getindex_value(a), axes...)
 
-
-rank(F::Zeros) = 0
-rank(F::Ones) = 1
-
-
 struct RectDiagonal{T,V<:AbstractVector{T},Axes<:Tuple{Vararg{AbstractUnitRange,2}}} <: AbstractMatrix{T}
     diag::V
     axes::Axes
 
     @inline function RectDiagonal{T,V}(A::V, axes::Axes) where {T,V<:AbstractVector{T},Axes<:Tuple{Vararg{AbstractUnitRange,2}}}
-        @assert !Base.has_offset_axes(A)
+        Base.require_one_based_indexing(A)
         @assert any(length(ax) == length(A) for ax in axes)
         rd = new{T,V,Axes}(A, axes)
-        @assert !Base.has_offset_axes(rd)
+        Base.require_one_based_indexing(rd)
         return rd
     end
 end
@@ -374,6 +404,8 @@ axes(T::UpperOrLowerTriangular{<:Any,<:AbstractFill}) = axes(parent(T))
 
 axes(rd::RectDiagonal) = rd.axes
 size(rd::RectDiagonal) = map(length, rd.axes)
+
+parent(rd::RectDiagonal) = rd.diag
 
 @inline function getindex(rd::RectDiagonal{T}, i::Integer, j::Integer) where T
     @boundscheck checkbounds(rd, i, j)
@@ -417,6 +449,8 @@ Base.replace_in_print_matrix(A::RectDiagonal, i::Integer, j::Integer, s::Abstrac
 
 
 const RectOrDiagonal{T,V,Axes} = Union{RectDiagonal{T,V,Axes}, Diagonal{T,V}}
+const RectOrDiagonalFill{T,V<:AbstractFillVector{T},Axes} = RectOrDiagonal{T,V,Axes}
+const RectDiagonalFill{T,V<:AbstractFillVector{T}} = RectDiagonal{T,V}
 const SquareEye{T,Axes} = Diagonal{T,Ones{T,1,Tuple{Axes}}}
 const Eye{T,Axes} = RectOrDiagonal{T,Ones{T,1,Tuple{Axes}}}
 
@@ -440,6 +474,12 @@ const Eye{T,Axes} = RectOrDiagonal{T,Ones{T,1,Tuple{Axes}}}
 
 isone(::SquareEye) = true
 
+function diag(E::Eye, k::Integer=0)
+    v = k == 0 ? oneunit(eltype(E)) : zero(eltype(E))
+    len = length(diagind(E, k))
+    Fill(v, len)
+end
+
 # These should actually be in StdLib, LinearAlgebra.jl, for all Diagonal
 for f in (:permutedims, :triu, :triu!, :tril, :tril!, :copy)
     @eval ($f)(IM::Diagonal{<:Any,<:AbstractFill}) = IM
@@ -462,6 +502,14 @@ end
 @inline Eye{T}(A::AbstractMatrix) where T = Eye{T}(size(A)...)
 @inline Eye(A::AbstractMatrix) = Eye{eltype(A)}(size(A)...)
 
+# This may break, as it uses undocumented internals of LinearAlgebra
+# Ideally this should be copied over to this package
+# Also, maybe this should reuse the broadcasting behavior of the parent,
+# once AbstractFill types implement their own BroadcastStyle
+BroadcastStyle(::Type{<:RectDiagonal}) = LinearAlgebra.StructuredMatrixStyle{RectDiagonal}()
+LinearAlgebra.structured_broadcast_alloc(bc, ::Type{<:RectDiagonal}, ::Type{ElType}, n) where {ElType} =
+    RectDiagonal(Array{ElType}(undef, n), axes(bc))
+@inline LinearAlgebra.fzero(S::RectDiagonal{T}) where {T} = zero(T)
 
 #########
 #  Special matrix types
@@ -474,7 +522,7 @@ Base.Array{T,N}(F::AbstractFill{V,N}) where {T,V,N} =
     convert(Array{T,N}, fill(convert(T, getindex_value(F)), size(F)))
 
 # These are in case `zeros` or `ones` are ever faster than `fill`
-for (Typ, funcs, func) in ((:Zeros, :zeros, :zero), (:Ones, :ones, :one))
+for (Typ, funcs, func) in ((:AbstractZeros, :zeros, :zero), (:AbstractOnes, :ones, :one))
     @eval begin
         Base.Array{T,N}(F::$Typ{V,N}) where {T,V,N} = $funcs(T,size(F))
     end
@@ -487,40 +535,20 @@ function convert(::Type{T}, A::AbstractFillMatrix) where T<:Diagonal
     isdiag(A) ? T(A) : throw(InexactError(:convert, T, A))
 end
 
-## Sparse arrays
-SparseVector{T}(Z::ZerosVector) where T = spzeros(T, length(Z))
-SparseVector{Tv,Ti}(Z::ZerosVector) where {Tv,Ti} = spzeros(Tv, Ti, length(Z))
+Base.StepRangeLen(F::AbstractFillVector{T}) where T = StepRangeLen(getindex_value(F), zero(T), length(F))
+convert(::Type{SL}, F::AbstractFillVector) where SL<:AbstractRange = convert(SL, StepRangeLen(F))
 
-convert(::Type{AbstractSparseVector}, Z::ZerosVector{T}) where T = spzeros(T, length(Z))
-convert(::Type{AbstractSparseVector{T}}, Z::ZerosVector) where T= spzeros(T, length(Z))
+#################
+# Structured matrix types
+#################
 
-SparseMatrixCSC{T}(Z::ZerosMatrix) where T = spzeros(T, size(Z)...)
-SparseMatrixCSC{Tv,Ti}(Z::Zeros{T,2,Axes}) where {Tv,Ti<:Integer,T,Axes} = spzeros(Tv, Ti, size(Z)...)
-
-convert(::Type{AbstractSparseMatrix}, Z::ZerosMatrix{T}) where T = spzeros(T, size(Z)...)
-convert(::Type{AbstractSparseMatrix{T}}, Z::ZerosMatrix) where T = spzeros(T, size(Z)...)
-
-convert(::Type{AbstractSparseArray}, Z::Zeros{T}) where T = spzeros(T, size(Z)...)
-convert(::Type{AbstractSparseArray{Tv}}, Z::Zeros{T}) where {T,Tv} = spzeros(Tv, size(Z)...)
-convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Zeros{T}) where {T,Tv,Ti} = spzeros(Tv, Ti, size(Z)...)
-convert(::Type{AbstractSparseArray{Tv,Ti,N}}, Z::Zeros{T,N}) where {T,Tv,Ti,N} = spzeros(Tv, Ti, size(Z)...)
-
-SparseMatrixCSC{Tv}(Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
-# works around missing `speye`:
-SparseMatrixCSC{Tv,Ti}(Z::Eye{T}) where {T,Tv,Ti<:Integer} =
-    convert(SparseMatrixCSC{Tv,Ti}, SparseMatrixCSC{Tv}(I, size(Z)...))
-
-convert(::Type{AbstractSparseMatrix}, Z::Eye{T}) where {T} = SparseMatrixCSC{T}(I, size(Z)...)
-convert(::Type{AbstractSparseMatrix{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
-
-convert(::Type{AbstractSparseArray}, Z::Eye{T}) where T = SparseMatrixCSC{T}(I, size(Z)...)
-convert(::Type{AbstractSparseArray{Tv}}, Z::Eye{T}) where {T,Tv} = SparseMatrixCSC{Tv}(I, size(Z)...)
-
-
-convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
-    convert(SparseMatrixCSC{Tv,Ti}, Z)
-convert(::Type{AbstractSparseArray{Tv,Ti,2}}, Z::Eye{T}) where {T,Tv,Ti} =
-    convert(SparseMatrixCSC{Tv,Ti}, Z)
+for SMT in (:Diagonal, :Bidiagonal, :Tridiagonal, :SymTridiagonal)
+    @eval function diag(D::$SMT{T,<:AbstractFillVector{T}}, k::Integer=0) where {T<:Number}
+        inds = (1,1) .+ (k >= 0 ? (0,k) : (-k,0))
+        v = get(D, inds, zero(eltype(D)))
+        Fill(v, length(diagind(D, k)))
+    end
+end
 
 
 #########
@@ -539,16 +567,16 @@ end
 # These methods are necessary to deal with infinite arrays
 sum(x::AbstractFill) = getindex_value(x)*length(x)
 sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
-sum(x::Zeros) = getindex_value(x)
+sum(x::AbstractZeros) = getindex_value(x)
 
 # needed to support infinite case
 steprangelen(st...) = StepRangeLen(st...)
 cumsum(x::AbstractFill{<:Any,1}) = steprangelen(getindex_value(x), getindex_value(x), length(x))
 
-cumsum(x::ZerosVector) = x
-cumsum(x::ZerosVector{Bool}) = x
-cumsum(x::OnesVector{II}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
-cumsum(x::OnesVector{Bool}) = oneto(length(x))
+cumsum(x::AbstractZerosVector) = x
+cumsum(x::AbstractZerosVector{Bool}) = x
+cumsum(x::AbstractOnesVector{II}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
+cumsum(x::AbstractOnesVector{Bool}) = oneto(length(x))
 
 #########
 # Diff
@@ -567,8 +595,10 @@ allunique(x::AbstractFill) = length(x) < 2
 # zero
 #########
 
-zero(r::Zeros{T,N}) where {T,N} = r
-zero(r::AbstractFill{T,N}) where {T,N} = Zeros{T,N}(r)
+zero(r::AbstractZeros{T,N}) where {T,N} = r
+# TODO: Make this required?
+zero(r::AbstractOnes{T,N}) where {T,N} = Zeros{T,N}(axes(r))
+zero(r::Fill{T,N}) where {T,N} = Zeros{T,N}(r.axes)
 
 #########
 # oneunit
@@ -616,8 +646,8 @@ all(f::Function, x::AbstractFill) = isempty(x) || all(f(getindex_value(x)))
 any(x::AbstractFill) = any(identity, x)
 all(x::AbstractFill) = all(identity, x)
 
-count(x::Ones{Bool}) = length(x)
-count(x::Zeros{Bool}) = 0
+count(x::AbstractOnes{Bool}) = length(x)
+count(x::AbstractZeros{Bool}) = 0
 count(f, x::AbstractFill) = f(getindex_value(x)) ? length(x) : 0
 
 #########
@@ -631,35 +661,6 @@ function in(x, A::RectDiagonal{<:Number})
 end
 
 #########
-# mean, std
-#########
-
-mean(A::AbstractFill; dims=(:)) = mean(identity, A; dims=dims)
-function mean(f::Union{Function, Type}, A::AbstractFill; dims=(:))
-    val = float(f(getindex_value(A)))
-    dims isa Colon ? val :
-        Fill(val, ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
-end
-
-
-function var(A::AbstractFill{T}; corrected::Bool=true, mean=nothing, dims=(:)) where {T<:Number}
-    dims isa Colon ? zero(float(T)) :
-        Zeros{float(T)}(ntuple(d -> d in dims ? 1 : size(A,d), ndims(A))...)
-end
-
-cov(A::AbstractFillVector{T}; corrected::Bool=true) where {T<:Number} = zero(float(T))
-cov(A::AbstractFillMatrix{T}; corrected::Bool=true, dims::Integer=1) where {T<:Number} =
-    Zeros{float(T)}(size(A, 3-dims), size(A, 3-dims))
-
-cor(A::AbstractFillVector{T}) where {T<:Number} = one(float(T))
-function cor(A::AbstractFillMatrix{T}; dims::Integer=1) where {T<:Number}
-    out = fill(float(T)(NaN), size(A, 3-dims), size(A, 3-dims))
-    out[LinearAlgebra.diagind(out)] .= 1
-    out
-end
-
-
-#########
 # include
 #########
 
@@ -667,10 +668,15 @@ include("fillalgebra.jl")
 include("fillbroadcast.jl")
 include("trues.jl")
 
+@static if !isdefined(Base, :get_extension)
+    include("../ext/FillArraysSparseArraysExt.jl")
+    include("../ext/FillArraysStatisticsExt.jl")
+end
+
 ##
 # print
 ##
-Base.replace_in_print_matrix(::Zeros, ::Integer, ::Integer, s::AbstractString) =
+Base.replace_in_print_matrix(::AbstractZeros, ::Integer, ::Integer, s::AbstractString) =
     Base.replace_with_centered_mark(s)
 
 # following support blocked fill array printing via
@@ -703,7 +709,7 @@ function Base.show(io::IO, ::MIME"text/plain", x::Union{Eye, AbstractFill})
         return show(io, x)
     end
     summary(io, x)
-    if x isa Union{Zeros, Ones, Eye}
+    if x isa Union{AbstractZeros, AbstractOnes, Eye}
         # then no need to print entries
     elseif length(x) > 1
         print(io, ", with entries equal to ", getindex_value(x))
@@ -713,11 +719,19 @@ function Base.show(io::IO, ::MIME"text/plain", x::Union{Eye, AbstractFill})
 end
 
 function Base.show(io::IO, x::AbstractFill)  # for example (Fill(π,3),)
-    print(io, nameof(typeof(x)), "(")
-    if x isa Union{Zeros, Ones}
+    print(io, nameof(typeof(x)))
+    sz = size(x)
+    args = if x isa Union{AbstractZeros, AbstractOnes}
+        T = eltype(x)
+        if T != Float64
+            print(io,"{", T, "}")
+        end
+        print(io, "(")
     else
-        show(io, getindex_value(x))  # show not print to handle (Fill(1f0,2),)
-        ndims(x) > 0 && print(io, ", ")
+        # show, not print, to handle (Fill(1f0,2),)
+        print(io, "(")
+        show(io, getindex_value(x))
+        ndims(x) == 0 || print(io, ", ")
     end
     join(io, size(x), ", ")
     print(io, ")")
@@ -758,6 +772,43 @@ Base.@propagate_inbounds view(A::AbstractFill, I...) =
 Base.@propagate_inbounds function view(A::AbstractFill, I::Vararg{Real})
     @boundscheck checkbounds(A, I...)
     fillsimilar(A)
+end
+
+# repeat
+
+_first(t::Tuple) = t[1]
+_first(t::Tuple{}) = 1
+
+_maybetail(t::Tuple) = Base.tail(t)
+_maybetail(t::Tuple{}) = t
+
+_match_size(sz::Tuple{}, inner::Tuple{}, outer::Tuple{}) = ()
+function _match_size(sz::Tuple, inner::Tuple, outer::Tuple)
+    t1 = (_first(sz), _first(inner), _first(outer))
+    t2 = _match_size(_maybetail(sz), _maybetail(inner), _maybetail(outer))
+    (t1, t2...)
+end
+
+function _repeat_size(sz::Tuple, inner::Tuple, outer::Tuple)
+    t = _match_size(sz, inner, outer)
+    map(*, getindex.(t, 1), getindex.(t, 2), getindex.(t, 3))
+end
+
+function _repeat(A; inner=ntuple(x->1, ndims(A)), outer=ntuple(x->1, ndims(A)))
+    Base.require_one_based_indexing(A)
+    length(inner) >= ndims(A) ||
+        throw(ArgumentError("number of inner repetitions $(length(inner)) cannot be "*
+            "less than number of dimensions of input array $(ndims(A))"))
+    length(outer) >= ndims(A) ||
+        throw(ArgumentError("number of outer repetitions $(length(outer)) cannot be "*
+            "less than number of dimensions of input array $(ndims(A))"))
+    sz = _repeat_size(size(A), Tuple(inner), Tuple(outer))
+    fillsimilar(A, sz)
+end
+
+repeat(A::AbstractFill, count::Integer...) = _repeat(A, outer=count)
+function repeat(A::AbstractFill; inner=ntuple(x->1, ndims(A)), outer=ntuple(x->1, ndims(A)))
+    _repeat(A, inner=inner, outer=outer)
 end
 
 include("oneelement.jl")

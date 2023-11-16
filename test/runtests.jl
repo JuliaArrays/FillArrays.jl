@@ -1,72 +1,86 @@
-using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, Random, Base64, Test, Statistics
+using FillArrays, LinearAlgebra, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 using Aqua
 @testset "Project quality" begin
-    Aqua.test_all(FillArrays, ambiguities=false)
+    Aqua.test_all(FillArrays, ambiguities=false,
+        # only test formatting on VERSION >= v1.7
+        # https://github.com/JuliaTesting/Aqua.jl/issues/105#issuecomment-1551405866
+        project_toml_formatting = VERSION >= v"1.7",
+    )
 end
 
 include("infinitearrays.jl")
 
+# we may use this instead of rand(n) to generate deterministic arrays
+oneton(T::Type, sz...) = reshape(T.(1:prod(sz)), sz)
+oneton(sz...) = oneton(Float64, sz...)
+
 @testset "fill array constructors and convert" begin
-    for (Typ, funcs) in ((:Zeros, :zeros), (:Ones, :ones))
-        @eval begin
-            @test $Typ((-1,5)) == $Typ((0,5))
-            @test $Typ(5) isa AbstractVector{Float64}
-            @test $Typ(5,5) isa AbstractMatrix{Float64}
-            @test $Typ(5) == $Typ((5,))
-            @test $Typ(5,5) == $Typ((5,5))
-            @test eltype($Typ(5,5)) == Float64
+    for (Typ, funcs) in ((Zeros, zeros), (Ones, ones))
+        @test Typ((-1,5)) == Typ((0,5))
+        @test Typ(5) isa AbstractVector{Float64}
+        @test Typ(5,5) isa AbstractMatrix{Float64}
+        @test Typ(5) == Typ((5,))
+        @test Typ(5,5) == Typ((5,5))
+        @test eltype(Typ(5,5)) == Float64
 
-            for T in (Int, Float64)
-                Z = $Typ{T}(5)
-                @test $Typ(T, 5) ≡ Z
-                @test eltype(Z) == T
-                @test Array(Z) == $funcs(T,5)
-                @test Array{T}(Z) == $funcs(T,5)
-                @test Array{T,1}(Z) == $funcs(T,5)
+        for T in (Int, Float64)
+            Z = Typ{T}(5)
+            @test Typ(T, 5) ≡ Z
+            @test eltype(Z) == T
+            @test Array(Z) == funcs(T,5)
+            @test Array{T}(Z) == funcs(T,5)
+            @test Array{T,1}(Z) == funcs(T,5)
 
-                @test convert(AbstractArray,Z) ≡ Z
-                @test convert(AbstractArray{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
-                @test convert(AbstractVector{T},Z) ≡ AbstractVector{T}(Z) ≡ Z
-                @test convert(AbstractFill{T},Z) ≡ AbstractFill{T}(Z) ≡ Z
+            @test convert(AbstractArray,Z) ≡ Z
+            @test convert(AbstractArray{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
+            @test convert(AbstractVector{T},Z) ≡ AbstractVector{T}(Z) ≡ Z
+            @test convert(AbstractFill{T},Z) ≡ AbstractFill{T}(Z) ≡ Z
 
-                @test $Typ{T,1}(2ones(T,5)) == Z
-                @test $Typ{T}(2ones(T,5)) == Z
-                @test $Typ(2ones(T,5)) == Z
+            @test Typ{T,1}(2ones(T,5)) == Z
+            @test Typ{T}(2ones(T,5)) == Z
+            @test Typ(2ones(T,5)) == Z
 
-                Z = $Typ{T}(5, 5)
-                @test $Typ(T, 5, 5) ≡ Z
-                @test eltype(Z) == T
-                @test Array(Z) == $funcs(T,5,5)
-                @test Array{T}(Z) == $funcs(T,5,5)
-                @test Array{T,2}(Z) == $funcs(T,5,5)
+            Z = Typ{T}(5, 5)
+            @test Typ(T, 5, 5) ≡ Z
+            @test eltype(Z) == T
+            @test Array(Z) == funcs(T,5,5)
+            @test Array{T}(Z) == funcs(T,5,5)
+            @test Array{T,2}(Z) == funcs(T,5,5)
 
-                @test convert(AbstractArray,Z) ≡ convert(AbstractFill,Z) ≡ Z
-                @test convert(AbstractArray{T},Z) ≡ convert(AbstractFill{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
-                @test convert(AbstractMatrix{T},Z) ≡ convert(AbstractFill{T,2},Z) ≡ AbstractMatrix{T}(Z) ≡ Z
+            @test convert(AbstractArray,Z) ≡ convert(AbstractFill,Z) ≡ Z
+            @test convert(AbstractArray{T},Z) ≡ convert(AbstractFill{T},Z) ≡ AbstractArray{T}(Z) ≡ Z
+            @test convert(AbstractMatrix{T},Z) ≡ convert(AbstractFill{T,2},Z) ≡ AbstractMatrix{T}(Z) ≡ Z
 
-                @test_throws Exception convert(Fill{Float64}, [1,1,2])
-                @test_throws Exception convert(Fill, [])
-                @test convert(Fill{Float64}, [1,1,1]) ≡ Fill(1.0, 3)
-                @test convert(Fill, Float64[1,1,1]) ≡ Fill(1.0, 3)
-                @test convert(Fill{Float64}, Fill(1.0,2)) ≡ Fill(1.0, 2) # was ambiguous
-                @test convert(Fill{Int}, Ones(20)) ≡ Fill(1, 20)
-                @test convert(Fill{Int,1}, Ones(20)) ≡ Fill(1, 20)
-                @test convert(Fill{Int,1,Tuple{Base.OneTo{Int}}}, Ones(20)) ≡ Fill(1, 20)
-                @test convert(AbstractFill{Int}, Ones(20)) ≡ AbstractFill{Int}(Ones(20)) ≡ Ones{Int}(20)
-                @test convert(AbstractFill{Int,1}, Ones(20)) ≡ AbstractFill{Int,1}(Ones(20)) ≡ Ones{Int}(20)
-                @test convert(AbstractFill{Int,1,Tuple{Base.OneTo{Int}}}, Ones(20)) ≡ AbstractFill{Int,1,Tuple{Base.OneTo{Int}}}(Ones(20)) ≡ Ones{Int}(20)
+            @test_throws Exception convert(Fill{Float64}, [1,1,2])
+            @test_throws Exception convert(Fill, [])
+            @test convert(Fill{Float64}, [1,1,1]) ≡ Fill(1.0, 3)
+            @test convert(Fill, Float64[1,1,1]) ≡ Fill(1.0, 3)
+            @test convert(Fill{Float64}, Fill(1.0,2)) ≡ Fill(1.0, 2) # was ambiguous
+            @test convert(Fill{Int}, Ones(20)) ≡ Fill(1, 20)
+            @test convert(Fill{Int,1}, Ones(20)) ≡ Fill(1, 20)
+            @test convert(Fill{Int,1,Tuple{Base.OneTo{Int}}}, Ones(20)) ≡ Fill(1, 20)
+            @test convert(AbstractFill{Int}, Ones(20)) ≡ AbstractFill{Int}(Ones(20)) ≡ Ones{Int}(20)
+            @test convert(AbstractFill{Int,1}, Ones(20)) ≡ AbstractFill{Int,1}(Ones(20)) ≡ Ones{Int}(20)
+            @test convert(AbstractFill{Int,1,Tuple{Base.OneTo{Int}}}, Ones(20)) ≡ AbstractFill{Int,1,Tuple{Base.OneTo{Int}}}(Ones(20)) ≡ Ones{Int}(20)
 
-                @test $Typ{T,2}(2ones(T,5,5)) ≡ $Typ{T}(5,5)
-                @test $Typ{T}(2ones(T,5,5)) ≡ $Typ{T}(5,5)
-                @test $Typ(2ones(T,5,5)) ≡ $Typ{T}(5,5)
+            @test Typ{T,2}(2ones(T,5,5)) ≡ Typ{T}(5,5)
+            @test Typ{T}(2ones(T,5,5)) ≡ Typ{T}(5,5)
+            @test Typ(2ones(T,5,5)) ≡ Typ{T}(5,5)
 
-                @test $Typ(Z) ≡ $Typ{T}(Z) ≡ $Typ{T,2}(Z) ≡ typeof(Z)(Z) ≡ Z
+            z = Typ{T}()[]
+            @test convert(Typ, Fill(z,2)) === Typ{T}(2)
+            z = Typ{Int8}()[]
+            @test convert(Typ{T}, Fill(z,2)) === Typ{T}(2)
+            @test convert(Typ{T,1}, Fill(z,2)) === Typ{T}(2)
+            @test convert(Typ{T,1,Tuple{Base.OneTo{Int}}}, Fill(z,2)) === Typ{T}(2)
+            @test_throws ArgumentError convert(Typ, Fill(2,2))
 
-                @test AbstractArray{Float32}(Z) ≡ $Typ{Float32}(5,5)
-                @test AbstractArray{Float32,2}(Z) ≡ $Typ{Float32}(5,5)
-            end
+            @test Typ(Z) ≡ Typ{T}(Z) ≡ Typ{T,2}(Z) ≡ typeof(Z)(Z) ≡ Z
+
+            @test AbstractArray{Float32}(Z) ≡ Typ{Float32}(5,5)
+            @test AbstractArray{Float32,2}(Z) ≡ Typ{Float32}(5,5)
         end
     end
 
@@ -204,8 +218,10 @@ include("infinitearrays.jl")
     @testset "promotion" begin
         Z = Zeros{Int}(5)
         Zf = Zeros(5)
+        @test promote_type(typeof(Z), typeof(Zf)) == typeof(Zf)
         O = Ones{Int}(5)
         Of = Ones{Float64}(5)
+        @test promote_type(typeof(O), typeof(Of)) == typeof(Of)
         @test [Z,O] isa Vector{Fill{Int,1,Tuple{Base.OneTo{Int}}}}
         @test [Z,Of] isa Vector{Fill{Float64,1,Tuple{Base.OneTo{Int}}}}
         @test [O,O] isa Vector{Ones{Int,1,Tuple{Base.OneTo{Int}}}}
@@ -214,6 +230,10 @@ include("infinitearrays.jl")
 
         @test convert(Ones{Int}, Of) ≡ convert(Ones{Int,1}, Of) ≡ convert(typeof(O), Of) ≡ O
         @test convert(Zeros{Int}, Zf) ≡ convert(Zeros{Int,1}, Zf) ≡ convert(typeof(Z), Zf) ≡ Z
+
+        F = Fill(1, 2)
+        Ff = Fill(1.0, 2)
+        @test promote_type(typeof(F), typeof(Ff)) == typeof(Ff)
 
         @test_throws MethodError convert(Zeros{SVector{2,Int}}, Zf)
     end
@@ -281,6 +301,13 @@ end
         @test A[1,:,1] ≡ A[1,1:6,1] ≡ Fill(2.0,6)
         @test A[:,:,:] ≡ A[1:5,1:6,1:7] ≡ A[1:5,:,1:7] ≡ A[:,1:6,1:7] ≡ A
     end
+
+    @testset "StepRangeLen convert" begin
+        for (z,s) in  ((Zeros{Int}(5), StepRangeLen(0, 0, 5)), (Ones{Int}(5), StepRangeLen(1, 0, 5)), (Fill(2,5), StepRangeLen(2, 0, 5)))
+            @test s == z
+            @test StepRangeLen(z) ≡ convert(StepRangeLen, z) ≡ convert(StepRangeLen{Int}, z) ≡ convert(typeof(s), z) ≡ convert(AbstractRange, z) ≡ s
+        end
+    end
 end
 
 @testset "RectDiagonal" begin
@@ -334,18 +361,18 @@ equal_or_undef(a, b) = all(equal_or_undef.(a, b))
 function test_addition_subtraction_dot(As, Bs, Tout::Type)
     for A in As, B in Bs
         @testset "$(typeof(A)) and $(typeof(B))" begin
-            @test A + B isa Tout{promote_type(eltype(A), eltype(B))}
+            @test @inferred(A + B) isa Tout{promote_type(eltype(A), eltype(B))}
             @test equal_or_undef(as_array(A + B), as_array(A) + as_array(B))
 
-            @test A - B isa Tout{promote_type(eltype(A), eltype(B))}
+            @test @inferred(A - B) isa Tout{promote_type(eltype(A), eltype(B))}
             @test equal_or_undef(as_array(A - B), as_array(A) - as_array(B))
 
-            @test B + A isa Tout{promote_type(eltype(B), eltype(A))}
+            @test @inferred(B + A) isa Tout{promote_type(eltype(B), eltype(A))}
             @test equal_or_undef(as_array(B + A), as_array(B) + as_array(A))
 
-            @test B - A isa Tout{promote_type(eltype(B), eltype(A))}
+            @test @inferred(B - A) isa Tout{promote_type(eltype(B), eltype(A))}
             @test equal_or_undef(as_array(B - A), as_array(B) - as_array(A))
-            
+
             # Julia 1.6 doesn't support dot(UniformScaling)
             if VERSION < v"1.6.0" || VERSION >= v"1.8.0"
                 d1 = dot(A, B)
@@ -433,6 +460,21 @@ end
     for A in As_special_nonsquare, B in Bs_us
         test_addition_and_subtraction_dim_mismatch(A, B)
     end
+
+    @testset "Zeros" begin
+        As = ([1,2], Float64[1,2], Int8[1,2], ComplexF16[2,4])
+        Zs = (TZ -> Zeros{TZ}(2)).((Int, Float64, Int8, ComplexF64))
+        test_addition_subtraction_dot(As, Zs, Vector)
+        for A in As, Z in (TZ -> Zeros{TZ}(3)).((Int, Float64, Int8, ComplexF64))
+            test_addition_and_subtraction_dim_mismatch(A, Z)
+        end
+
+        As = (@SArray([1,2]), @SArray(Float64[1,2]), @SArray(Int8[1,2]), @SArray(ComplexF16[2,4]))
+        test_addition_subtraction_dot(As, Zs, SVector{2})
+        for A in As, Z in (TZ -> Zeros{TZ}(3)).((Int, Float64, Int8, ComplexF64))
+            test_addition_and_subtraction_dim_mismatch(A, Z)
+        end
+    end
 end
 
 @testset "Other matrix types" begin
@@ -449,6 +491,13 @@ end
     @test Diagonal(Eye(8,5)) == Diagonal(ones(5))
     @test convert(Diagonal, Eye(5)) == Diagonal(ones(5))
     @test convert(Diagonal{Int}, Eye(5)) == Diagonal(ones(Int,5))
+
+    for E in (Eye(2,4), Eye(3))
+        M = collect(E)
+        for i in -5:5
+            @test diag(E, i) == diag(M, i)
+        end
+    end
 end
 
 @testset "one" begin
@@ -485,6 +534,28 @@ end
                 convert(AbstractSparseMatrix{Float64},Mat) ==
                 convert(AbstractSparseMatrix{Float64,Int},Mat) ==
                 SMat
+    end
+
+    function testsparsediag(E)
+        S = @inferred SparseMatrixCSC(E)
+        @test S == E
+        S = @inferred SparseMatrixCSC{Float64}(E)
+        @test S == E
+        @test S isa SparseMatrixCSC{Float64}
+        @test convert(SparseMatrixCSC{Float64}, E) == S
+        S = @inferred SparseMatrixCSC{Float64,Int32}(E)
+        @test S == E
+        @test S isa SparseMatrixCSC{Float64,Int32}
+        @test convert(SparseMatrixCSC{Float64,Int32}, E) == S
+    end
+
+    for f in (Fill(Int8(4),3), Ones{Int8}(3), Zeros{Int8}(3))
+        E = Diagonal(f)
+        testsparsediag(E)
+        for sz in ((3,6), (6,3), (3,3))
+            E = RectDiagonal(f, sz)
+            testsparsediag(E)
+        end
     end
 end
 
@@ -542,36 +613,89 @@ end
     @test [1,2,3]*Zeros(1,3) ≡ Zeros(3,3)
     @test_throws MethodError [1,2,3]*Zeros(3) # Not defined for [1,2,3]*[0,0,0] either
 
+    @testset "Matrix multiplication with array elements" begin
+        x = [1 2; 3 4]
+        z = zero(SVector{2,Int})
+        ZV = Zeros{typeof(z)}(2)
+        A = Fill(x, 3, 2) * ZV
+        @test A isa Fill
+        @test size(A) == (3,)
+        @test A[1] == x * z
+        @test_throws DimensionMismatch Fill(x, 1, 1) * ZV
+        @test_throws DimensionMismatch Fill(oneton(1,1), 1, length(ZV)) * ZV
+
+        @test_throws DimensionMismatch Ones(SMatrix{3,3,Int,9},2) * Ones(SMatrix{2,2,Int,4},1,2)
+    end
+
     @testset "Check multiplication by Adjoint vectors works as expected." begin
-        @test randn(4, 3)' * Zeros(4) ≡ Zeros(3)
-        @test randn(4)' * Zeros(4) ≡ transpose(randn(4)) * Zeros(4) ≡ zero(Float64)
+        @test @inferred(oneton(4, 3)' * Zeros(4)) ≡ Zeros(3)
+        @test @inferred(oneton(4)' * Zeros(4)) ≡ @inferred(transpose(oneton(4)) * Zeros(4)) == 0.0
         @test [1, 2, 3]' * Zeros{Int}(3) ≡ zero(Int)
         @test [SVector(1,2)', SVector(2,3)', SVector(3,4)']' * Zeros{Int}(3) === SVector(0,0)
-        @test_throws DimensionMismatch randn(4)' * Zeros(3)
-        @test Zeros(5)' * randn(5,3) ≡ Zeros(5)'*Zeros(5,3) ≡ Zeros(5)'*Ones(5,3) ≡ Zeros(3)'
-        @test abs(Zeros(5)' * randn(5)) ≡ abs(Zeros(5)' * Zeros(5)) ≡ abs(Zeros(5)' * Ones(5)) ≡ 0.0
+        @test_throws DimensionMismatch oneton(4)' * Zeros(3)
+        @test Zeros(5)' * oneton(5,3) ≡ Zeros(5)'*Zeros(5,3) ≡ Zeros(5)'*Ones(5,3) ≡ Zeros(3)'
+        @test abs(Zeros(5)' * oneton(5)) == abs(Zeros(5)' * Zeros(5)) ≡ abs(Zeros(5)' * Ones(5)) == 0.0
         @test Zeros(5) * Zeros(6)' ≡ Zeros(5,1) * Zeros(6)' ≡ Zeros(5,6)
-        @test randn(5) * Zeros(6)' ≡ randn(5,1) * Zeros(6)' ≡ Zeros(5,6)
-        @test Zeros(5) * randn(6)' ≡ Zeros(5,6)
+        @test oneton(5) * Zeros(6)' ≡ oneton(5,1) * Zeros(6)' ≡ Zeros(5,6)
+        @test Zeros(5) * oneton(6)' ≡ Zeros(5,6)
 
-        @test ([[1,2]])' * Zeros{SVector{2,Int}}(1) ≡ 0
-        @test_broken ([[1,2,3]])' * Zeros{SVector{2,Int}}(1)
+        @test @inferred(Zeros{Int}(0)' * Zeros{Int}(0)) === zero(Int)
+
+        @test Any[1,2.0]' * Zeros{Int}(2) == 0
+        @test Real[1,2.0]' * Zeros{Int}(2) == 0
+
+        @test @inferred(([[1,2]])' * Zeros{SVector{2,Int}}(1)) ≡ 0
+        @test ([[1,2], [1,2]])' * Zeros{SVector{2,Int}}(2) ≡ 0
+        @test_throws DimensionMismatch ([[1,2,3]])' * Zeros{SVector{2,Int}}(1)
+        @test_throws DimensionMismatch ([[1,2,3], [1,2]])' * Zeros{SVector{2,Int}}(2)
+
+        A = SMatrix{2,1,Int,2}[]'
+        B = Zeros(SVector{2,Int},0)
+        C = collect(B)
+        @test @inferred(A * B) == @inferred(A * C)
     end
 
     @testset "Check multiplication by Transpose-d vectors works as expected." begin
-        @test transpose(randn(4, 3)) * Zeros(4) === Zeros(3)
-        @test transpose(randn(4)) * Zeros(4) === zero(Float64)
+        @test transpose(oneton(4, 3)) * Zeros(4) === Zeros(3)
+        @test transpose(oneton(4)) * Zeros(4) == 0.0
         @test transpose([1, 2, 3]) * Zeros{Int}(3) === zero(Int)
-        @test_throws DimensionMismatch transpose(randn(4)) * Zeros(3)
-        @test transpose(Zeros(5)) * randn(5,3) ≡ transpose(Zeros(5))*Zeros(5,3) ≡ transpose(Zeros(5))*Ones(5,3) ≡ transpose(Zeros(3))
-        @test abs(transpose(Zeros(5)) * randn(5)) ≡ abs(transpose(Zeros(5)) * Zeros(5)) ≡ abs(transpose(Zeros(5)) * Ones(5)) ≡ 0.0
-        @test randn(5) * transpose(Zeros(6)) ≡ randn(5,1) * transpose(Zeros(6)) ≡ Zeros(5,6)
-        @test Zeros(5) * transpose(randn(6)) ≡ Zeros(5,6)
-        @test transpose(randn(5)) * Zeros(5) ≡ 0.0
-        @test transpose(randn(5) .+ im) * Zeros(5) ≡ 0.0 + 0im
+        @test_throws DimensionMismatch transpose(oneton(4)) * Zeros(3)
+        @test transpose(Zeros(5)) * oneton(5,3) ≡ transpose(Zeros(5))*Zeros(5,3) ≡ transpose(Zeros(5))*Ones(5,3) ≡ transpose(Zeros(3))
+        @test abs(transpose(Zeros(5)) * oneton(5)) ≡ abs(transpose(Zeros(5)) * Zeros(5)) ≡ abs(transpose(Zeros(5)) * Ones(5)) ≡ 0.0
+        @test oneton(5) * transpose(Zeros(6)) ≡ oneton(5,1) * transpose(Zeros(6)) ≡ Zeros(5,6)
+        @test Zeros(5) * transpose(oneton(6)) ≡ Zeros(5,6)
+        @test transpose(oneton(5)) * Zeros(5) == 0.0
+        @test transpose(oneton(5) .+ im) * Zeros(5) == 0.0 + 0im
 
-        @test transpose([[1,2]]) * Zeros{SVector{2,Int}}(1) ≡ 0
-        @test_broken transpose([[1,2,3]]) * Zeros{SVector{2,Int}}(1)
+        @test @inferred(transpose(Zeros{Int}(0)) * Zeros{Int}(0)) === zero(Int)
+
+        @test transpose(Any[1,2.0]) * Zeros{Int}(2) == 0
+        @test transpose(Real[1,2.0]) * Zeros{Int}(2) == 0
+
+        @test @inferred(transpose([[1,2]]) * Zeros{SVector{2,Int}}(1)) ≡ 0
+        @test transpose([[1,2], [1,2]]) * Zeros{SVector{2,Int}}(2) ≡ 0
+        @test_throws DimensionMismatch transpose([[1,2,3]]) * Zeros{SVector{2,Int}}(1)
+        @test_throws DimensionMismatch transpose([[1,2,3], [1,2]]) * Zeros{SVector{2,Int}}(2)
+
+        A = transpose(SMatrix{2,1,Int,2}[])
+        B = Zeros(SVector{2,Int},0)
+        C = collect(B)
+        @test @inferred(A * B) == @inferred(A * C)
+
+        @testset "Diagonal mul introduced in v1.9" begin
+            @test Zeros(5)'*Diagonal(1:5) ≡ Zeros(5)'
+            @test transpose(Zeros(5))*Diagonal(1:5) ≡ transpose(Zeros(5))
+            @test Zeros(5)'*Diagonal(1:5)*(1:5) ==
+                (1:5)'*Diagonal(1:5)*Zeros(5) ==
+                transpose(1:5)*Diagonal(1:5)*Zeros(5) ==
+                Zeros(5)'*Diagonal(1:5)*Zeros(5) ==
+                transpose(Zeros(5))*Diagonal(1:5)*Zeros(5) ==
+                transpose(Zeros(5))*Diagonal(1:5)*(1:5)
+
+            @test_throws DimensionMismatch Zeros(6)'*Diagonal(1:5)*Zeros(5)
+            @test_throws DimensionMismatch Zeros(5)'*Diagonal(1:6)*Zeros(5)
+            @test_throws DimensionMismatch Zeros(5)'*Diagonal(1:5)*Zeros(6)
+        end
     end
 
     z1, z2 = Zeros{Float64}(4), Zeros{Int}(4)
@@ -665,6 +789,10 @@ end
     @test svdvals(fill(2,5,6)) ≈ svdvals(Fill(2,5,6))
     @test svdvals(Eye(5)) === Fill(1.0,5)
     @test sort(Ones(5)) == sort!(Ones(5))
+
+    @test_throws MethodError issorted(Fill(im, 2))
+    @test_throws MethodError sort(Fill(im, 2))
+    @test_throws MethodError sort!(Fill(im, 2))
 end
 
 @testset "Cumsum and diff" begin
@@ -697,6 +825,9 @@ end
     @test diff(Ones{Float64}(10)) ≡ Zeros{Float64}(9)
     @test_throws UndefKeywordError cumsum(Fill(1,1,5))
 
+    @test @inferred(sum([Ones(4)])) ≡ Fill(1.0, 4)
+    @test @inferred(sum([Trues(4)])) ≡ Fill(1, 4)
+
     @testset "infinite arrays" begin
         r = InfiniteArrays.OneToInf()
         A = Ones{Int}((r,))
@@ -712,6 +843,8 @@ end
             @test (@inferred Base.IteratorSize(Fill(2, (r, 1:2)))) == Base.IsInfinite()
             @test (@inferred Base.IteratorSize(Fill(2, (r, r)))) == Base.IsInfinite()
         end
+
+        @test issorted(Fill(2, (InfiniteArrays.OneToInf(),)))
     end
 end
 
@@ -865,13 +998,26 @@ end
             @test Zeros{Int}(5,6) ./ Zeros{Int}(5) ≡ Zeros{Int}(5) .\ Zeros{Int}(5,6) ≡ Fill(NaN,5,6)
         end
 
-        @testset "Addition" begin
+        @testset "Addition/Subtraction" begin
             @test Zeros{Int}(5) .+ (1:5) ≡ (1:5) .+ Zeros{Int}(5) ≡ (1:5) .- Zeros{Int}(5) ≡ 1:5
             @test Zeros{Int}(1) .+ (1:5) ≡ (1:5) .+ Zeros{Int}(1) ≡ (1:5) .- Zeros{Int}(1) ≡ 1:5
             @test Zeros(5) .+ (1:5) == (1:5) .+ Zeros(5) == (1:5) .- Zeros(5) == 1:5
             @test Zeros{Int}(5) .+ Fill(1,5) ≡ Fill(1,5) .+ Zeros{Int}(5) ≡ Fill(1,5) .- Zeros{Int}(5) ≡ Fill(1,5)
             @test_throws DimensionMismatch Zeros{Int}(2) .+ (1:5)
             @test_throws DimensionMismatch (1:5) .+ Zeros{Int}(2)
+
+            for v in (rand(Bool, 5), [1:5;], SVector{5}(1:5), SVector{5,ComplexF16}(1:5)), T in (Bool, Int, Float64)
+                TT = eltype(v + zeros(T, 5))
+                S = v isa SVector ? SVector{5,TT} : Vector{TT}
+
+                a = @inferred(Zeros{T}(5) .+ v)
+                b = @inferred(v .+ Zeros{T}(5))
+                c = @inferred(v .- Zeros{T}(5))
+                @test a == b == c == v
+                d = @inferred(Zeros{T}(5) .- v)
+                @test d == -v
+                @test all(Base.Fix2(isa, S), (a,b,c,d))
+            end
         end
     end
 
@@ -908,15 +1054,43 @@ end
         @test Zeros(10) .- Zeros(1,9) ≡ Zeros(10,9)
         @test Ones(10) .- Zeros(1,9) ≡ Ones(10,9)
         @test Ones(10) .- Ones(1,9) ≡ Zeros(10,9)
+
+    end
+
+    @testset "issue #208" begin
+        TS = (Bool, Int, Float32, Float64)
+        for S in TS, T in TS
+            u = rand(S, 2)
+            v = Zeros(T, 2)
+            if zero(S) + zero(T) isa S
+                @test @inferred(Broadcast.broadcasted(-, u, v)) === u
+                @test @inferred(Broadcast.broadcasted(+, u, v)) === u
+                @test @inferred(Broadcast.broadcasted(+, v, u)) === u
+            else
+                @test @inferred(Broadcast.broadcasted(-, u, v)) isa Broadcast.Broadcasted
+                @test @inferred(Broadcast.broadcasted(+, u, v)) isa Broadcast. Broadcasted
+                @test @inferred(Broadcast.broadcasted(+, v, u)) isa Broadcast.Broadcasted
+            end
+            @test @inferred(Broadcast.broadcasted(-, v, u)) isa Broadcast.Broadcasted
+        end
     end
 
     @testset "Zero .*" begin
-        @test Zeros{Int}(10) .* Zeros{Int}(10) ≡ Zeros{Int}(10)
-        @test randn(10) .* Zeros(10) ≡ Zeros(10)
-        @test Zeros(10) .* randn(10) ≡ Zeros(10)
-        @test (1:10) .* Zeros(10) ≡ Zeros(10)
-        @test Zeros(10) .* (1:10) ≡ Zeros(10)
-        @test_throws DimensionMismatch (1:11) .* Zeros(10)
+        TS = (Bool, Int, Float32, Float64)
+        for S in TS, T in TS
+            U = typeof(zero(S) * zero(T))
+            @test Zeros{S}(10) .* Zeros{T}(10) ≡ Zeros{U}(10)
+            @test rand(S, 10) .* Zeros(T, 10) ≡ Zeros(U, 10)
+            @test Zeros(S, 10) .* rand(T, 10) ≡ Zeros(U, 10)
+            if S !== Bool
+                @test (S(1):S(10)) .* Zeros(T, 10) ≡ Zeros(U, 10)
+                @test_throws DimensionMismatch (S(1):S(11)) .* Zeros(T, 10)
+            end
+            if T !== Bool
+                @test Zeros(S, 10) .* (T(1):T(10)) ≡ Zeros(U, 10)
+                @test_throws DimensionMismatch Zeros(S, 10) .* (T(1):T(11))
+            end
+        end        
     end
 end
 
@@ -1153,8 +1327,20 @@ end
 
     @test copy(m) ≡ m
     @test copy(D) ≡ D
-    @test FillArrays._copy_oftype(m, Int) ≡ Eye{Int}(10)
-    @test FillArrays._copy_oftype(D, Float64) ≡ Diagonal(Fill(2.0,10))
+end
+
+@testset "Eye broadcast" begin
+    E = Eye(2,3)
+    M = Matrix(E)
+    F = E .+ E
+    @test F isa FillArrays.RectDiagonal
+    @test F == M + M
+
+    F = E .+ 1
+    @test F == M .+ 1
+
+    E = Eye((SOneTo(2), SOneTo(2)))
+    @test axes(E .+ E) === axes(E)
 end
 
 @testset "Issue #31" begin
@@ -1226,6 +1412,12 @@ end
     @test_throws DimensionMismatch Fill(2,10)*Fill(3,2,12)
     @test_throws DimensionMismatch Fill(2,3,10)*Fill(3,2,12)
 
+    f = Fill(1, (Base.IdentityUnitRange(1:3), Base.IdentityUnitRange(1:3)))
+    @test f * f === Fill(size(f,2), axes(f))
+
+    f = Fill(2, (Base.IdentityUnitRange(2:3), Base.IdentityUnitRange(2:3)))
+    @test_throws ArgumentError f * f
+
     @test Ones(10)*Fill(3,1,12) ≡ Fill(3.0,10,12)
     @test Ones(10,3)*Fill(3,3,12) ≡ Fill(9.0,10,12)
     @test Ones(10,3)*Fill(3,3) ≡ Fill(9.0,10)
@@ -1250,28 +1442,139 @@ end
     @test Zeros(3,10)*Zeros(10,12) ≡ Zeros(3,12)
     @test Zeros(3,10)*Zeros(10) ≡ Zeros(3)
 
-    a = randn(3)
-    A = randn(1,4)
+    f = Zeros((Base.IdentityUnitRange(1:4), Base.IdentityUnitRange(1:4)))
+    @test f * f === f
 
-    @test Fill(2,3)*A ≈ Vector(Fill(2,3))*A
-    @test Fill(2,3,1)*A ≈ Matrix(Fill(2,3,1))*A
-    @test Fill(2,3,3)*a ≈ Matrix(Fill(2,3,3))*a
-    @test Ones(3)*A ≈ Vector(Ones(3))*A
-    @test Ones(3,1)*A ≈ Matrix(Ones(3,1))*A
-    @test Ones(3,3)*a ≈ Matrix(Ones(3,3))*a
-    @test Zeros(3)*A  ≡ Zeros(3,4)
-    @test Zeros(3,1)*A == Zeros(3,4)
-    @test Zeros(3,3)*a == Zeros(3)
+    f = Zeros((Base.IdentityUnitRange(3:4), Base.IdentityUnitRange(3:4)))
+    @test_throws ArgumentError f * f
 
-    @test A*Fill(2,4) ≈ A*Vector(Fill(2,4))
-    @test A*Fill(2,4,1) ≈ A*Matrix(Fill(2,4,1))
-    @test a*Fill(2,1,3) ≈ a*Matrix(Fill(2,1,3))
-    @test A*Ones(4) ≈ A*Vector(Ones(4))
-    @test A*Ones(4,1) ≈ A*Matrix(Ones(4,1))
-    @test a*Ones(1,3) ≈ a*Matrix(Ones(1,3))
-    @test A*Zeros(4)  ≡ Zeros(1)
-    @test A*Zeros(4,1) ≡ Zeros(1,1)
-    @test a*Zeros(1,3) ≡ Zeros(3,3)
+    @testset "Arrays as elements" begin
+        SMT = SMatrix{2,2,Int,4}
+        SVT = SVector{2,Int}
+        @test @inferred(Zeros{SMT}(0,0) * Fill([1 2; 3 4], 0, 0)) == Zeros{SMT}(0,0)
+        @test @inferred(Zeros{SMT}(4,2) * Fill([1 2; 3 4], 2, 3)) == Zeros{SMT}(4,3)
+        @test @inferred(Fill([1 2; 3 4], 2, 3) * Zeros{SMT}(3, 4)) == Zeros{SMT}(2,4)
+        @test @inferred(Zeros{SMT}(4,2) * Fill([1, 2], 2, 3)) == Zeros{SVT}(4,3)
+        @test @inferred(Fill([1 2], 2, 3) * Zeros{SMT}(3,4)) == Zeros{SMatrix{1,2,Int,2}}(2,4)
+
+        TSM = SMatrix{2,2,Int,4}
+        s = TSM(1:4)
+        for n in 0:3
+            v = fill(s, 1)
+            z = zeros(TSM, n)
+            A = @inferred Zeros{TSM}(n) * Diagonal(v)
+            B = z * Diagonal(v)
+            @test A == B
+
+            w = fill(s, n)
+            A = @inferred Diagonal(w) * Zeros{TSM}(n)
+            B = Diagonal(w) * z
+            @test A == B
+
+            A = @inferred Zeros{TSM}(2n, n) * Diagonal(w)
+            B = zeros(TSM, 2n, n) * Diagonal(w)
+            @test A == B
+
+            A = @inferred Diagonal(w) * Zeros{TSM}(n, 2n)
+            B = Diagonal(w) * zeros(TSM, n, 2n)
+            @test A == B
+        end
+
+        D = Diagonal([[1 2; 3 4], [1 2 3; 4 5 6]])
+        @test @inferred(Zeros(TSM, 2,2) * D) == zeros(TSM, 2,2) * D
+
+        # doubly nested
+        A = [[[1,2]]]'
+        Z = Zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)
+        Z2 = zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)
+        @test A * Z == A * Z2
+    end
+
+    for W in (zeros(3,4), @MMatrix zeros(3,4))
+        mW, nW = size(W)
+        @test mul!(W, Fill(2,mW,5), Fill(3,5,nW)) ≈ Fill(30,mW,nW) ≈ fill(2,mW,5) * fill(3,5,nW)
+        W .= 2
+        @test mul!(W, Fill(2,mW,5), Fill(3,5,nW), 1.0, 2.0) ≈ Fill(30,mW,nW) .+ 4 ≈ fill(2,mW,5) * fill(3,5,nW) .+ 4
+    end
+
+    for w in (zeros(5), @MVector zeros(5))
+        mw = size(w,1)
+        @test mul!(w, Fill(2,mw,5), Fill(3,5)) ≈ Fill(30,mw) ≈ fill(2,mw,5) * fill(3,5)
+        w .= 2
+        @test mul!(w, Fill(2,mw,5), Fill(3,5), 1.0, 2.0) ≈ Fill(30,mw) .+ 4 ≈ fill(2,mw,5) * fill(3,5) .+ 4
+    end
+
+    @testset "strided" begin
+        @testset for (la, (mA, nA)) in [(3, (1,4)), (0, (1,4)), (3, (1, 0))]
+
+            a = randn(la)
+            na = 1
+            A = randn(mA,nA)
+
+            @test Fill(2,3)*A ≈ Vector(Fill(2,3))*A
+            @test Fill(2,0)*A ≈ Vector(Fill(2,0))*A
+            @test Fill(2,3,mA)*A ≈ Matrix(Fill(2,3,mA))*A
+            @test Fill(2,3,la)*a ≈ Matrix(Fill(2,3,la))*a
+            @test Ones(3)*A ≈ Vector(Ones(3))*A
+            @test Ones(3,mA)*A ≈ Matrix(Ones(3,mA))*A
+            @test Ones(3,la)*a ≈ Matrix(Ones(3,la))*a
+            @test Zeros(3)*A  ≡ Zeros(3,nA)
+            @test Zeros(3,mA)*A == Zeros(3,nA)
+            @test Zeros(3,la)*a == Zeros(3)
+
+            @test A*Fill(2,nA) ≈ A*Vector(Fill(2,nA))
+            @test A*Fill(2,nA,1) ≈ A*Matrix(Fill(2,nA,1))
+            @test a*Fill(2,na,3) ≈ a*Matrix(Fill(2,na,3))
+            @test A*Fill(2,nA,0) ≈ A*Matrix(Fill(2,nA,0))
+            @test a*Fill(2,na,0) ≈ a*Matrix(Fill(2,na,0))
+            @test A*Ones(nA) ≈ A*Vector(Ones(nA))
+            @test A*Ones(nA,1) ≈ A*Matrix(Ones(nA,1))
+            @test a*Ones(na,3) ≈ a*Matrix(Ones(na,3))
+            @test A*Zeros(nA)  ≡ Zeros(mA)
+            @test A*Zeros(nA,1) ≡ Zeros(mA,1)
+            @test a*Zeros(na,3) ≡ Zeros(la,3)
+
+            w = zeros(mA)
+            @test mul!(w, A, Fill(2,nA), true, false) ≈ A * fill(2,nA)
+            w .= 2
+            @test mul!(w, A, Fill(2,nA), 1.0, 1.0) ≈ A * fill(2,nA) .+ 2
+
+            nW = 3
+            W = zeros(mA, nW)
+            @test mul!(W, A, Fill(2,nA,nW), true, false) ≈ A * fill(2,nA,nW)
+            W .= 2
+            @test mul!(W, A, Fill(2,nA,nW), 1.0, 1.0) ≈ A * fill(2,nA,nW) .+ 2
+
+            mW = 5
+            W = zeros(mW, nA)
+            @test mul!(W, Fill(2,mW,mA), A, true, false) ≈ fill(2,mW,mA) * A
+            W .= 2
+            @test mul!(W, Fill(2,mW,mA), A, 1.0, 1.0) ≈ fill(2,mW,mA) * A .+ 2
+
+            mw = 5
+            w = zeros(mw)
+            @test mul!(w, Fill(2,mw,la), a, true, false) ≈ fill(2,mw,la) * a
+            w .= 2
+            @test mul!(w, Fill(2,mw,la), a, 1.0, 1.0) ≈ fill(2,mw,la) * a .+ 2
+
+            @testset for f in [adjoint, transpose]
+                w = zeros(nA)
+                @test mul!(w, f(A), Fill(2,mA), true, false) ≈ f(A) * fill(2,mA)
+                w .= 2
+                @test mul!(w, f(A), Fill(2,mA), 1.0, 1.0) ≈ f(A) * fill(2,mA) .+ 2
+
+                W = zeros(nA, nW)
+                @test mul!(W, f(A), Fill(2,mA,nW), true, false) ≈ f(A) * fill(2,mA,nW)
+                W .= 2
+                @test mul!(W, f(A), Fill(2,mA,nW), 1.0, 1.0) ≈ f(A) * fill(2,mA,nW) .+ 2
+
+                W = zeros(mW, mA)
+                @test mul!(W, Fill(2,mW,nA), f(A), true, false) ≈ fill(2,mW,nA) * f(A)
+                W .= 2
+                @test mul!(W, Fill(2,mW,nA), f(A), 1.0, 1.0) ≈ fill(2,mW,nA) * f(A) .+ 2
+            end
+        end
+    end
 
     D = Diagonal(randn(1))
     @test Zeros(1,1)*D ≡ Zeros(1,1)
@@ -1285,7 +1588,7 @@ end
     @test Ones(5,10) * D ≡ Fill(2.0,5,10)
 
     # following test is broken in Base as of Julia v1.5
-    @test_skip @test_throws DimensionMismatch Diagonal(Fill(1,1)) * Ones(10)
+    @test_throws DimensionMismatch Diagonal(Fill(1,1)) * Ones(10)
     @test_throws DimensionMismatch Diagonal(Fill(1,1)) * Ones(10,5)
     @test_throws DimensionMismatch Ones(5,10) * Diagonal(Fill(1,1))
 
@@ -1326,6 +1629,59 @@ end
         p in (-Inf, 0, 0.1, 1, 2, 3, Inf)
         @test norm(a,p) ≈ norm(Array(a),p)
     end
+end
+
+@testset "kron" begin
+    for T in (Fill, Zeros, Ones), sz in ((2,), (2,2))
+        f = T{Int}((T == Fill ? (3,sz...) : sz)...)
+        g = Ones{Int}(2)
+        z = Zeros{Int}(2)
+        fc = collect(f)
+        gc = collect(g)
+        zc = collect(z)
+        @test kron(f, f) == kron(fc, fc)
+        @test kron(f, f) isa T{Int,length(sz)}
+        @test kron(f, g) == kron(fc, gc)
+        @test kron(f, g) isa AbstractFill{Int,length(sz)}
+        @test kron(g, f) == kron(gc, fc)
+        @test kron(g, f) isa AbstractFill{Int,length(sz)}
+        @test kron(f, z) == kron(fc, zc)
+        @test kron(f, z) isa AbstractFill{Int,length(sz)}
+        @test kron(z, f) == kron(zc, fc)
+        @test kron(z, f) isa AbstractFill{Int,length(sz)}
+        @test kron(f, f .+ 0.5) == kron(fc, fc .+ 0.5)
+        @test kron(f, f .+ 0.5) isa AbstractFill{Float64,length(sz)}
+        @test kron(f, g .+ 0.5) isa AbstractFill{Float64,length(sz)}
+    end
+
+    for m in (Fill(2,2,2), "a"), sz in ((2,2), (2,))
+        f = Fill(m, sz)
+        g = fill(m, sz)
+        @test kron(f, f) == kron(g, g)
+    end
+
+    @test_throws MethodError kron(Fill("a",2), Zeros(1)) # can't multiply String and Float64
+
+    E = Eye(2)
+    K = kron(E, E)
+    @test K isa Diagonal
+    if VERSION >= v"1.9"
+        @test K isa typeof(E)
+    end
+    C = collect(E)
+    @test K == kron(C, C)
+
+    E = Eye(2,3)
+    K = kron(E, E)
+    C = collect(E)
+    @test K == kron(C, C)
+    @test issparse(kron(E,E))
+
+    E = RectDiagonal(Fill(4,3), (6,3))
+    C = collect(E)
+    K = kron(E, E)
+    @test K == kron(C, C)
+    @test issparse(K)
 end
 
 @testset "dot products" begin
@@ -1383,7 +1739,11 @@ end
     @test Base.replace_in_print_matrix(Zeros(5,3), 1, 2, "0.0") == " ⋅ "
 
     # 2-arg show, compact printing
+    @test repr(Zeros{Int}()) == "Zeros{$Int}()"
+    @test repr(Zeros{Int}(3)) == "Zeros{$Int}(3)"
     @test repr(Zeros(3)) == "Zeros(3)"
+    @test repr(Ones{Int}(3)) == "Ones{$Int}(3)"
+    @test repr(Ones{Int}(3,2)) == "Ones{$Int}(3, 2)"
     @test repr(Ones(3,2)) == "Ones(3, 2)"
     @test repr(Fill(7,3,2)) == "Fill(7, 3, 2)"
     @test repr(Fill(1f0,10)) == "Fill(1.0f0, 10)"  # Float32!
@@ -1543,6 +1903,15 @@ end
     @test e₁ == [0,1,0,0,0]
     @test_throws BoundsError e₁[6]
 
+    f₁ = AbstractArray{Float64}(e₁)
+    @test f₁ isa OneElement{Float64,1}
+    @test f₁ == e₁
+    fv₁ = AbstractVector{Float64}(e₁)
+    @test fv₁ isa OneElement{Float64,1}
+    @test fv₁ == e₁
+
+    @test stringmime("text/plain", e₁) == "5-element OneElement{$Int, 1, Tuple{$Int}, Tuple{Base.OneTo{$Int}}}:\n ⋅\n 1\n ⋅\n ⋅\n ⋅"
+
     e₁ = OneElement{Float64}(2, 5)
     @test e₁ == [0,1,0,0,0]
 
@@ -1552,9 +1921,276 @@ end
     V = OneElement(2, (2,3), (3,4))
     @test V == [0 0 0 0; 0 0 2 0; 0 0 0 0]
 
+    Vf = AbstractArray{Float64}(V)
+    @test Vf isa OneElement{Float64,2}
+    @test Vf == V
+    VMf = AbstractMatrix{Float64}(V)
+    @test VMf isa OneElement{Float64,2}
+    @test VMf == V
+
     @test stringmime("text/plain", V) == "3×4 OneElement{$Int, 2, Tuple{$Int, $Int}, Tuple{Base.OneTo{$Int}, Base.OneTo{$Int}}}:\n ⋅  ⋅  ⋅  ⋅\n ⋅  ⋅  2  ⋅\n ⋅  ⋅  ⋅  ⋅"
 
     @test Base.setindex(Zeros(5), 2, 2) ≡ OneElement(2.0, 2, 5)
     @test Base.setindex(Zeros(5,3), 2, 2, 3) ≡ OneElement(2.0, (2,3), (5,3))
     @test_throws BoundsError Base.setindex(Zeros(5), 2, 6)
+
+    @testset "adjoint/transpose" begin
+        A = OneElement(3im, (2,4), (4,6))
+        @test A' === OneElement(-3im, (4,2), (6,4))
+        @test transpose(A) === OneElement(3im, (4,2), (6,4))
+
+        A = OneElement(3im, 2, 3)
+        @test A' isa Adjoint
+        @test transpose(A) isa Transpose
+        @test A' == OneElement(-3im, (1,2), (1,3))
+        @test transpose(A) == OneElement(3im, (1,2), (1,3))
+
+        A = OneElement(3, (2,2), (4,4))
+        @test adjoint(A) === A
+        @test transpose(A) === A
+
+        A = OneElement(3, 2, 4)
+        @test transpose(A) isa Transpose
+        @test adjoint(A) isa Adjoint
+        @test transpose(A) == OneElement(3, (1,2), (1,4))
+        @test adjoint(A) == OneElement(3, (1,2), (1,4))
+    end
+
+    @testset "matmul" begin
+        A = reshape(Float64[1:9;], 3, 3)
+        testinds(w::AbstractArray) = testinds(size(w))
+        testinds(szw::Tuple{Int}) = (szw .- 1, szw .+ 1)
+        function testinds(szA::Tuple{Int,Int})
+            (szA .- 1, szA .+ (-1,0), szA .+ (0,-1), szA .+ 1, szA .+ (1,-1), szA .+ (-1,1))
+        end
+        function test_A_mul_OneElement(A, (w, w2))
+            @testset for ind in testinds(w)
+                x = OneElement(3, ind, size(w))
+                xarr = Array(x)
+                Axarr = A * xarr
+                Aadjxarr = A' * xarr
+
+                @test A * x ≈ Axarr
+                @test A' * x ≈ Aadjxarr
+                @test transpose(A) * x ≈ transpose(A) * xarr
+
+                @test mul!(w, A, x) ≈ Axarr
+                # check columnwise to ensure zero columns
+                @test all(((c1, c2),) -> c1 ≈ c2, zip(eachcol(w), eachcol(Axarr)))
+                @test mul!(w, A', x) ≈ Aadjxarr
+                w .= 1
+                @test mul!(w, A, x, 1.0, 2.0) ≈ Axarr .+ 2
+                w .= 1
+                @test mul!(w, A', x, 1.0, 2.0) ≈ Aadjxarr .+ 2
+
+                F = Fill(3, size(A))
+                w2 .= 1
+                @test mul!(w2, F, x, 1.0, 1.0) ≈ Array(F) * xarr .+ 1
+            end
+        end
+        @testset "Matrix * OneElementVector" begin
+            w = zeros(size(A,1))
+            w2 = MVector{length(w)}(w)
+            test_A_mul_OneElement(A, (w, w2))
+        end
+        @testset "Matrix * OneElementMatrix" begin
+            C = zeros(size(A))
+            C2 = MMatrix{size(C)...}(C)
+            test_A_mul_OneElement(A, (C, C2))
+        end
+        @testset "OneElementMatrix * OneElement" begin
+            @testset for ind in testinds(A)
+                O = OneElement(3, ind, size(A))
+                v = OneElement(4, ind[2], size(A,1))
+                @test O * v isa OneElement
+                @test O * v == Array(O) * Array(v)
+
+                B = OneElement(4, ind, size(A))
+                @test O * B isa OneElement
+                @test O * B == Array(O) * Array(B)
+            end
+
+            @test OneElement(3, (2,3), (5,4)) * OneElement(2, 2, 4) == Zeros(5)
+            @test OneElement(3, (2,3), (5,4)) * OneElement(2, (2,1), (4,2)) == Zeros(5,2)
+        end
+        @testset "AbstractFillMatrix * OneElementVector" begin
+            F = Fill(3, size(A))
+            sw = (size(A,1),)
+            @testset for ind in testinds(sw)
+                x = OneElement(3, ind, sw)
+                @test F * x isa Fill
+                @test F * x == Array(F) * Array(x)
+            end
+        end
+        @testset "OneElementMatrix * AbstractFillVector" begin
+            @testset for ind in testinds(A)
+                O = OneElement(3, ind, size(A))
+                v = Fill(2, size(O,1))
+                @test O * v isa OneElement
+                @test O * v == Array(O) * Array(v)
+            end
+        end
+    end
+
+    @testset "multiplication/division by a number" begin
+        val = 2
+        x = OneElement(val,1,5)
+        y = sparse(x)
+        @test 3x === OneElement(3val,1,5) == 3y
+        @test 3.0 * x === OneElement(3.0*val,1,5) == 3.0 * y
+        @test 3.0 \ x === OneElement(3.0 \ val,1,5) == 3.0 \ y
+        @test x * 3.0 === OneElement(val * 3.0,1,5) == y * 3.0
+        @test x / 3.0 === OneElement(val / 3.0,1,5) == y / 3.0
+
+        val = 3im
+        A = OneElement(val, (2,2), (3,4))
+        B = sparse(A)
+        @test 3A === OneElement(3val, (2,2), (3,4)) == 3B
+        @test 3.0im * A === OneElement(3.0im * val, (2,2), (3,4)) == 3.0im * B
+        @test 3.0im \ A === OneElement(3.0im \ val, (2,2), (3,4)) == 3.0im \ B
+        @test A * (2 + 3.0im) === OneElement(val * (2 + 3.0im), (2,2), (3,4)) == B * (2 + 3.0im)
+        @test A / (2 + 3.0im) === OneElement(val / (2 + 3.0im), (2,2), (3,4)) == B / (2 + 3.0im)
+    end
+end
+
+@testset "repeat" begin
+    @testset "0D" begin
+        @test repeat(Zeros()) isa Zeros
+        @test repeat(Zeros()) == repeat(zeros())
+        @test repeat(Ones()) isa Ones
+        @test repeat(Ones()) == repeat(ones())
+        @test repeat(Fill(3)) isa Fill
+        @test repeat(Fill(3)) == repeat(fill(3))
+
+        @test repeat(Zeros(), inner=(), outer=()) isa Zeros
+        @test repeat(Zeros(), inner=(), outer=()) == repeat(zeros(), inner=(), outer=())
+        @test repeat(Ones(), inner=(), outer=()) isa Ones
+        @test repeat(Ones(), inner=(), outer=()) == repeat(ones(), inner=(), outer=())
+        @test repeat(Fill(4), inner=(), outer=()) isa Fill
+        @test repeat(Fill(4), inner=(), outer=()) == repeat(fill(4), inner=(), outer=())
+
+        @test repeat(Zeros{Bool}(), 2, 3) isa Zeros{Bool}
+        @test repeat(Zeros{Bool}(), 2, 3) == repeat(zeros(Bool), 2, 3)
+        @test repeat(Ones{Bool}(), 2, 3) isa Ones{Bool}
+        @test repeat(Ones{Bool}(), 2, 3) == repeat(ones(Bool), 2, 3)
+        @test repeat(Fill(false), 2, 3) isa Fill
+        @test repeat(Fill(false), 2, 3) == repeat(fill(false), 2, 3)
+
+        @test repeat(Zeros(), inner=(2,2), outer=5) isa Zeros
+        @test repeat(Zeros(), inner=(2,2), outer=5) == repeat(zeros(), inner=(2,2), outer=5)
+        @test repeat(Ones(), inner=(2,2), outer=5) isa Ones
+        @test repeat(Ones(), inner=(2,2), outer=5) == repeat(ones(), inner=(2,2), outer=5)
+        @test repeat(Fill(2), inner=(2,2), outer=5) isa Fill
+        @test repeat(Fill(2), inner=(2,2), outer=5) == repeat(fill(2), inner=(2,2), outer=5)
+
+        @test repeat(Zeros(), inner=(2,2), outer=(2,3)) isa Zeros
+        @test repeat(Zeros(), inner=(2,2), outer=(2,3)) == repeat(zeros(), inner=(2,2), outer=(2,3))
+        @test repeat(Ones(), inner=(2,2), outer=(2,3)) isa Ones
+        @test repeat(Ones(), inner=(2,2), outer=(2,3)) == repeat(ones(), inner=(2,2), outer=(2,3))
+        @test repeat(Fill("a"), inner=(2,2), outer=(2,3)) isa Fill
+        @test repeat(Fill("a"), inner=(2,2), outer=(2,3)) == repeat(fill("a"), inner=(2,2), outer=(2,3))
+    end
+    @testset "1D" begin
+        @test repeat(Zeros(2), 2, 3) isa Zeros
+        @test repeat(Zeros(2), 2, 3) == repeat(zeros(2), 2, 3)
+        @test repeat(Ones(2), 2, 3) isa Ones
+        @test repeat(Ones(2), 2, 3) == repeat(ones(2), 2, 3)
+        @test repeat(Fill(2,3), 2, 3) isa Fill
+        @test repeat(Fill(2,3), 2, 3) == repeat(fill(2,3), 2, 3)
+
+        @test repeat(Zeros(2), inner=2, outer=4) isa Zeros
+        @test repeat(Zeros(2), inner=2, outer=4) == repeat(zeros(2), inner=2, outer=4)
+        @test repeat(Ones(2), inner=2, outer=4) isa Ones
+        @test repeat(Ones(2), inner=2, outer=4) == repeat(ones(2), inner=2, outer=4)
+        @test repeat(Fill(2,3), inner=2, outer=4) isa Fill
+        @test repeat(Fill(2,3), inner=2, outer=4) == repeat(fill(2,3), inner=2, outer=4)
+
+        @test repeat(Zeros(2), inner=2, outer=(2,3)) isa Zeros
+        @test repeat(Zeros(2), inner=2, outer=(2,3)) == repeat(zeros(2), inner=2, outer=(2,3))
+        @test repeat(Ones(2), inner=2, outer=(2,3)) isa Ones
+        @test repeat(Ones(2), inner=2, outer=(2,3)) == repeat(ones(2), inner=2, outer=(2,3))
+        @test repeat(Fill("b",3), inner=2, outer=(2,3)) isa Fill
+        @test repeat(Fill("b",3), inner=2, outer=(2,3)) == repeat(fill("b",3), inner=2, outer=(2,3))
+
+        @test repeat(Zeros(Int, 2), inner=(2,), outer=(2,3)) isa Zeros
+        @test repeat(Zeros(Int, 2), inner=(2,), outer=(2,3)) == repeat(zeros(Int, 2), inner=(2,), outer=(2,3))
+        @test repeat(Ones(Int, 2), inner=(2,), outer=(2,3)) isa Ones
+        @test repeat(Ones(Int, 2), inner=(2,), outer=(2,3)) == repeat(ones(Int, 2), inner=(2,), outer=(2,3))
+        @test repeat(Fill(2,3), inner=(2,), outer=(2,3)) isa Fill
+        @test repeat(Fill(2,3), inner=(2,), outer=(2,3)) == repeat(fill(2,3), inner=(2,), outer=(2,3))
+
+        @test repeat(Zeros(2), inner=(2,2,1,4), outer=(2,3)) isa Zeros
+        @test repeat(Zeros(2), inner=(2,2,1,4), outer=(2,3)) == repeat(zeros(2), inner=(2,2,1,4), outer=(2,3))
+        @test repeat(Ones(2), inner=(2,2,1,4), outer=(2,3)) isa Ones
+        @test repeat(Ones(2), inner=(2,2,1,4), outer=(2,3)) == repeat(ones(2), inner=(2,2,1,4), outer=(2,3))
+        @test repeat(Fill(2,3), inner=(2,2,1,4), outer=(2,3)) isa Fill
+        @test repeat(Fill(2,3), inner=(2,2,1,4), outer=(2,3)) == repeat(fill(2,3), inner=(2,2,1,4), outer=(2,3))
+
+        @test_throws ArgumentError repeat(Fill(2,3), inner=())
+        @test_throws ArgumentError repeat(Fill(2,3), outer=())
+    end
+
+    @testset "2D" begin
+        @test repeat(Zeros(2,3), 2, 3) isa Zeros
+        @test repeat(Zeros(2,3), 2, 3) == repeat(zeros(2,3), 2, 3)
+        @test repeat(Ones(2,3), 2, 3) isa Ones
+        @test repeat(Ones(2,3), 2, 3) == repeat(ones(2,3), 2, 3)
+        @test repeat(Fill(2,3,4), 2, 3) isa Fill
+        @test repeat(Fill(2,3,4), 2, 3) == repeat(fill(2,3,4), 2, 3)
+
+        @test repeat(Zeros(2,3), inner=(1,2), outer=(4,2)) isa Zeros
+        @test repeat(Zeros(2,3), inner=(1,2), outer=(4,2)) == repeat(zeros(2,3), inner=(1,2), outer=(4,2))
+        @test repeat(Ones(2,3), inner=(1,2), outer=(4,2)) isa Ones
+        @test repeat(Ones(2,3), inner=(1,2), outer=(4,2)) == repeat(ones(2,3), inner=(1,2), outer=(4,2))
+        @test repeat(Fill(2,3,4), inner=(1,2), outer=(4,2)) isa Fill
+        @test repeat(Fill(2,3,4), inner=(1,2), outer=(4,2)) == repeat(fill(2,3,4), inner=(1,2), outer=(4,2))
+
+        @test repeat(Zeros(2,3), inner=(2,2,1,4), outer=(2,1,3)) isa Zeros
+        @test repeat(Zeros(2,3), inner=(2,2,1,4), outer=(2,1,3)) == repeat(zeros(2,3), inner=(2,2,1,4), outer=(2,1,3))
+        @test repeat(Ones(2,3), inner=(2,2,1,4), outer=(2,1,3)) isa Ones
+        @test repeat(Ones(2,3), inner=(2,2,1,4), outer=(2,1,3)) == repeat(ones(2,3), inner=(2,2,1,4), outer=(2,1,3))
+        @test repeat(Fill(2,3,4), inner=(2,2,1,4), outer=(2,1,3)) isa Fill
+        @test repeat(Fill(2,3,4), inner=(2,2,1,4), outer=(2,1,3)) == repeat(fill(2,3,4), inner=(2,2,1,4), outer=(2,1,3))
+
+        @test_throws ArgumentError repeat(Fill(2,3,4), inner=())
+        @test_throws ArgumentError repeat(Fill(2,3,4), outer=())
+        @test_throws ArgumentError repeat(Fill(2,3,4), inner=(1,))
+        @test_throws ArgumentError repeat(Fill(2,3,4), outer=(1,))
+    end
+end
+
+@testset "structured matrix" begin
+    # strange bug on Julia v1.6, see
+    # https://discourse.julialang.org/t/strange-seemingly-out-of-bounds-access-bug-in-julia-v1-6/101041
+    bands = if VERSION >= v"1.9"
+        ((Fill(2,3), Fill(6,2)), (Zeros(3), Zeros(2)))
+    else
+        ((Fill(2,3), Fill(6,2)),)
+    end
+    @testset for (dv, ev) in bands
+        for D in (Diagonal(dv), Bidiagonal(dv, ev, :U),
+                    Tridiagonal(ev, dv, ev), SymTridiagonal(dv, ev))
+
+            M = Matrix(D)
+            for k in -5:5
+                @test diag(D, k) isa FillArrays.AbstractFill{eltype(D),1}
+                @test diag(D, k) == diag(M, k)
+            end
+        end
+    end
+end
+
+@testset "ReverseDiff with Zeros" begin
+    # MWE in https://github.com/JuliaArrays/FillArrays.jl/issues/252
+    @test ReverseDiff.gradient(x -> sum(abs2.((Zeros(5) .- zeros(5)) ./ x)), rand(5)) == zeros(5)
+    @test ReverseDiff.gradient(x -> sum(abs2.((zeros(5) .- Zeros(5)) ./ x)), rand(5)) == zeros(5)
+    # MWE in https://github.com/JuliaArrays/FillArrays.jl/pull/278
+    @test ReverseDiff.gradient(x -> sum(abs2.((Zeros{eltype(x)}(5) .- zeros(5)) ./ x)), rand(5)) == zeros(5)
+    @test ReverseDiff.gradient(x -> sum(abs2.((zeros(5) .- Zeros{eltype(x)}(5)) ./ x)), rand(5)) == zeros(5)
+
+    # Corresponding tests with +
+    @test ReverseDiff.gradient(x -> sum(abs2.((Zeros(5) .+ zeros(5)) ./ x)), rand(5)) == zeros(5)
+    @test ReverseDiff.gradient(x -> sum(abs2.((zeros(5) .+ Zeros(5)) ./ x)), rand(5)) == zeros(5)
+    @test ReverseDiff.gradient(x -> sum(abs2.((Zeros{eltype(x)}(5) .+ zeros(5)) ./ x)), rand(5)) == zeros(5)
+    @test ReverseDiff.gradient(x -> sum(abs2.((zeros(5) .+ Zeros{eltype(x)}(5)) ./ x)), rand(5)) == zeros(5)
 end
