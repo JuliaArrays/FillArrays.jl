@@ -33,44 +33,26 @@ end
 ### mapreduce
 @inline red(A, dims) = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
 @inline outdim(A, dims) = ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A))
-function Base._mapreduce_dim(f, op, nt, A::AbstractFill, ::Colon)
-    fval = f(getindex_value(A))
+@inline function iterfun(f, n, val, nt=val)
     out = nt
-    for _ in 1:length(A)
-        out = op(out, fval)
+    for _ in 1:n
+        out = f(out, val)
     end
     out
 end
-function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, ::Colon)
-    fval = f(getindex_value(A))
-    out = fval
-    for _ in 2:length(A)
-        out = op(out, fval)
-    end
-    out
-end
-
-function Base._mapreduce_dim(f, op, nt, A::AbstractFill, dims)
-    fval = f(getindex_value(A))
-    out = nt
-    for _ in 1:red(A, dims)
-        out = op(out, fval)
-    end
-    Fill(out, outdim(A, dims))
-end
-function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
-    fval = f(getindex_value(A))
-    out = fval
-    for _ in 2:red(A, dims)
-        out = op(out, fval)
-    end
-    Fill(out, outdim(A, dims))
-end
+Base._mapreduce_dim(f, op, nt, A::AbstractFill, ::Colon) = iterfun(op, length(A), f(getindex_value(A)), nt)
+Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, ::Colon) = iterfun(op, length(A)-1, f(getindex_value(A)))
+Base._mapreduce_dim(f, op, nt, A::AbstractFill, dims) = Fill(iterfun(op, red(A, dims), f(getindex_value(A)), nt), outdim(A, dims))
+Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims) = Fill(iterfun(op, red(A, dims)-1, f(getindex_value(A))), outdim(A, dims))
 
 firstval(a, b) = a
 for (op, iterop) in ((:+, :*), (:*, :^), (:add_sum, :mul_prod), (:mul_prod, :^), (:max, :firstval), (:min, :firstval), (:|, :firstval), (:&, :firstval))
-    @eval Base._mapreduce_dim(f, ::typeof($op), ::Base._InitialValue, A::AbstractFill, dims) = Fill(($iterop)(f(getindex_value(A)), red(A, dims)), outdim(A, dims))
-    @eval Base._mapreduce_dim(f, ::typeof($op), ::Base._InitialValue, A::AbstractFill, ::Colon) = ($iterop)(f(getindex_value(A)), length(A))
+    @eval begin
+        Base._mapreduce_dim(f, ::typeof($op), nt, A::AbstractFill, dims) = Fill($op(nt, $iterop(f(getindex_value(A)), red(A, dims))), outdim(A, dims))
+        Base._mapreduce_dim(f, ::typeof($op), ::Base._InitialValue, A::AbstractFill, dims) = Fill(($iterop)(f(getindex_value(A)), red(A, dims)), outdim(A, dims))
+        Base._mapreduce_dim(f, ::typeof($op), nt, A::AbstractFill, ::Colon) = $op(nt, ($iterop)(f(getindex_value(A)), length(A)))
+        Base._mapreduce_dim(f, ::typeof($op), ::Base._InitialValue, A::AbstractFill, ::Colon) = ($iterop)(f(getindex_value(A)), length(A))
+    end
 end
 
 function mapreduce(f, op, A::AbstractFill, B::AbstractFill; kw...)

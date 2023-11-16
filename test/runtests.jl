@@ -1125,7 +1125,7 @@ end
     @test mapreduce(identity, +, Y) == sum(y) == sum(Y)
     @test mapreduce(identity, +, Y, dims=1) == sum(y, dims=1) == sum(Y, dims=1)
 
-    @test mapreduce(exp, +, Y; dims=(1,), init=5.0) == mapreduce(exp, +, y; dims=(1,), init=5.0)
+    @test isapprox(mapreduce(exp, +, Y; dims=(1,), init=5.0), mapreduce(exp, +, y; dims=(1,), init=5.0), rtol=eps())
 
     # Two arrays
     @test mapreduce(*, +, x, Y) == mapreduce(*, +, x, y)
