@@ -1120,12 +1120,17 @@ end
     Y = Fill(1.0, 3, 4)
     O = Ones(3, 4)
 
+    op2(x,y) = x^2 + 3y
+
     @test mapreduce(exp, +, Y) == mapreduce(exp, +, y)
+    @test mapreduce(exp, op2, Y) == mapreduce(exp, op2, y)
     @test mapreduce(exp, +, Y; dims=2) == mapreduce(exp, +, y; dims=2)
     @test mapreduce(identity, +, Y) == sum(y) == sum(Y)
     @test mapreduce(identity, +, Y, dims=1) == sum(y, dims=1) == sum(Y, dims=1)
 
     @test isapprox(mapreduce(exp, +, Y; dims=(1,), init=5.0), mapreduce(exp, +, y; dims=(1,), init=5.0), rtol=eps())
+    @test isapprox(mapreduce(exp, op2, Y; dims=(1,), init=5.0), mapreduce(exp, op2, y; dims=(1,), init=5.0), rtol=eps())
+    @test isapprox(mapreduce(exp, op2, Y; init=5.0), mapreduce(exp, op2, y; init=5.0), rtol=eps())
 
     # Two arrays
     @test mapreduce(*, +, x, Y) == mapreduce(*, +, x, y)
@@ -1134,7 +1139,6 @@ end
     @test mapreduce(*, +, Y, O) == mapreduce(*, +, y, y)
 
     f2(x,y) = 1 + x/y
-    op2(x,y) = x^2 + 3y
     @test mapreduce(f2, op2, x, Y) == mapreduce(f2, op2, x, y)
 
     @test mapreduce(f2, op2, x, Y, dims=1, init=5.0) == mapreduce(f2, op2, x, y, dims=1, init=5.0)
