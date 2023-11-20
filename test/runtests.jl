@@ -6,9 +6,6 @@ using Aqua
     Aqua.test_all(FillArrays;
         # https://github.com/JuliaArrays/FillArrays.jl/issues/105#issuecomment-1582516319
         ambiguities=(; broken=true),
-        # only test formatting on VERSION >= v1.7
-        # https://github.com/JuliaTesting/Aqua.jl/issues/208
-        project_toml_formatting=VERSION >= v"1.7"
     )
 end
 
