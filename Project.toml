@@ -17,11 +17,14 @@ FillArraysSparseArraysExt = "SparseArrays"
 FillArraysStatisticsExt = "Statistics"
 
 [compat]
-Aqua = "0.5, 0.6, 0.7"
+Aqua = "0.7"
+Base64 = "1.6"
 LinearAlgebra = "1.6"
 Random = "1.6"
+ReverseDiff = "1"
 SparseArrays = "1.6"
 Statistics = "1.6"
+Test = "1.6"
 julia = "1.6"
 
 [extras]
