@@ -1,14 +1,8 @@
 module FillArraysPDMatsExt
 
-if isdefined(Base, :get_extension)
-    import FillArrays
-    import FillArrays.LinearAlgebra
-    import PDMats
-else
-    import ..FillArrays
-    import ..FillArrays.LinearAlgebra
-    import ..PDMats
-end
+import FillArrays
+import FillArrays.LinearAlgebra
+import PDMats
 
 function PDMats.AbstractPDMat(a::LinearAlgebra.Diagonal{T,<:FillArrays.AbstractFill{T,1}}) where {T<:Real}
     dim = size(a, 1)
