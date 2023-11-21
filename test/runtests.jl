@@ -6,8 +6,6 @@ using Aqua
     Aqua.test_all(FillArrays;
         # https://github.com/JuliaArrays/FillArrays.jl/issues/105#issuecomment-1582516319
         ambiguities=(; broken=true),
-        # Requires is only loaded on Julia < 1.9
-        stale_deps = (ignore = VERSION < v"1.9-" ? Symbol[] : [:Requires],),
     )
 end
 
