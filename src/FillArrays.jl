@@ -550,16 +550,6 @@ for SMT in (:Diagonal, :Bidiagonal, :Tridiagonal, :SymTridiagonal)
     end
 end
 
-
-#########
-# maximum/minimum
-#########
-
-for op in (:maximum, :minimum)
-    @eval $op(x::AbstractFill) = getindex_value(x)
-end
-
-
 #########
 # Cumsum
 #########

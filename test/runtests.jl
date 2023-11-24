@@ -1089,7 +1089,7 @@ end
                 @test Zeros(S, 10) .* (T(1):T(10)) ≡ Zeros(U, 10)
                 @test_throws DimensionMismatch Zeros(S, 10) .* (T(1):T(11))
             end
-        end        
+        end
     end
 end
 
@@ -1114,6 +1114,62 @@ end
 end
 
 @testset "mapreduce" begin
+    @testset "corner cases with small arrays" begin
+        @test_throws Exception reduce(max, Fill(2,0))
+        @test_throws Exception reduce(max, Fill(2,0), dims=1)
+        function testreduce(op, A; kw...)
+            B = Array(A)
+            F = reduce(op, A; kw...)
+            @test F == reduce(op, B; kw...)
+            if haskey(kw, :dims)
+                @test F isa Fill
+            end
+            if !isempty(A)
+                @test mapreduce(x->x^2, op, A; kw...) == mapreduce(x->x^2, op, B; kw...)
+            end
+        end
+        @testset for (op, init) in ((+, 0), (*, 1))
+            testreduce(op, Fill(2,0))
+            testreduce(op, Fill(2,0); init)
+            testreduce(op, Fill(2,0), dims=1)
+            testreduce(op, Fill(2,0); init, dims=1)
+        end
+        @testset for (op, init) in ((&, true), (|, false))
+            testreduce(op, Fill(true,0))
+            testreduce(op, Fill(true,0); init)
+            testreduce(op, Fill(true,0), dims=1)
+            testreduce(op, Fill(true,0); init, dims=1)
+        end
+        testreduce(vcat, Fill(2,0), init=Int[])
+        testreduce(vcat, Fill(2,1), init=Int[])
+        @testset for (op, init) in ((max, 0), (+, 0), (*, 1))
+            testreduce(op, Fill(2,0), dims=2)
+            testreduce(op, Fill(2,0,1), dims=2)
+            testreduce(op, Fill(2,0); init, dims=2)
+            testreduce(op, Fill(2,0,1); init, dims=2)
+
+            testreduce(op, Fill(2,1))
+            testreduce(op, Fill(2,1), dims=1)
+            testreduce(op, Fill(2,1), dims=2)
+            testreduce(op, Fill(2,1,1), dims=1)
+            testreduce(op, Fill(2,1,1), dims=2)
+            testreduce(op, Fill(2,1); init, dims=1)
+            testreduce(op, Fill(2,1); init, dims=2)
+            testreduce(op, Fill(2,1,1); init, dims=1)
+            testreduce(op, Fill(2,1,1); init, dims=2)
+
+            testreduce(op, Fill(2,2))
+            testreduce(op, Fill(2,2), dims=1)
+            testreduce(op, Fill(2,2), dims=2)
+            testreduce(op, Fill(2,2,2), dims=1)
+            testreduce(op, Fill(2,2,2), dims=2)
+            testreduce(op, Fill(2,2); init, dims=1)
+            testreduce(op, Fill(2,2); init, dims=2)
+            testreduce(op, Fill(2,2,2); init, dims=1)
+            testreduce(op, Fill(2,2,2); init, dims=2)
+        end
+    end
+
     x = rand(3, 4)
     y = fill(1.0, 3, 4)
     Y = Fill(1.0, 3, 4)
