@@ -669,7 +669,8 @@ include("fillalgebra.jl")
 include("fillbroadcast.jl")
 include("trues.jl")
 
-@static if !isdefined(Base, :get_extension)
+if !isdefined(Base, :get_extension)
+    include("../ext/FillArraysPDMatsExt.jl")
     include("../ext/FillArraysSparseArraysExt.jl")
     include("../ext/FillArraysStatisticsExt.jl")
 end
