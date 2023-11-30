@@ -10,6 +10,7 @@ using Aqua
 end
 
 include("infinitearrays.jl")
+import .InfiniteArrays
 
 # we may use this instead of rand(n) to generate deterministic arrays
 oneton(T::Type, sz...) = reshape(T.(1:prod(sz)), sz)
