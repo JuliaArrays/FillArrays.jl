@@ -1761,6 +1761,8 @@ end
     @test reshape(Zeros(6),big(2),3) == Zeros(big(2),3)
     @test reshape(Fill(2,2,3),Val(1)) ≡ Fill(2,6)
     @test reshape(Fill(2, 2), (2, )) ≡ Fill(2, 2)
+
+    @test reshape(Fill(2,3), :) === reshape(Fill(2,3), (:,)) === Fill(2,3)
 end
 
 @testset "lmul!/rmul!" begin
