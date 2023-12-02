@@ -2023,6 +2023,8 @@ end
                 @test F * x isa Fill
                 @test F * x == Array(F) * Array(x)
             end
+
+            @test Zeros{Int8}(2,2) * OneElement{Int16}(2,2) === Zeros{Int16}(2)
         end
         @testset "OneElementMatrix * AbstractFillVector" begin
             @testset for ind in testinds(A)
