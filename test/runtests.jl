@@ -97,14 +97,18 @@ oneton(sz...) = oneton(Float64, sz...)
 
 
     for T in (Int, Float64)
-        F = Fill{T}(one(T), 5)
+        F = Fill{T, 0}(2)
+        @test size(F) == ()
+        @test F[] === T(2)
+
+        F = Fill{T}(1, 5)
 
         @test eltype(F) == T
         @test Array(F) == fill(one(T),5)
         @test Array{T}(F) == fill(one(T),5)
         @test Array{T,1}(F) == fill(one(T),5)
 
-        F = Fill{T}(one(T), 5, 5)
+        F = Fill{T}(1, 5, 5)
         @test eltype(F) == T
         @test Array(F) == fill(one(T),5,5)
         @test Array{T}(F) == fill(one(T),5,5)
@@ -1901,6 +1905,10 @@ end
 end
 
 @testset "OneElement" begin
+    A = OneElement(2, (), ())
+    @test A == Fill(2, ())
+    @test A[] === 2
+
     e₁ = OneElement(2, 5)
     @test e₁ == [0,1,0,0,0]
     @test_throws BoundsError e₁[6]
@@ -1935,6 +1943,13 @@ end
     @test Base.setindex(Zeros(5), 2, 2) ≡ OneElement(2.0, 2, 5)
     @test Base.setindex(Zeros(5,3), 2, 2, 3) ≡ OneElement(2.0, (2,3), (5,3))
     @test_throws BoundsError Base.setindex(Zeros(5), 2, 6)
+
+    @testset "non-numeric" begin
+        S = SMatrix{2,2}(1:4)
+        A = OneElement(S, (2,2), (2,2))
+        @test A[2,2] === S
+        @test A[1,1] === A[1,2] === A[2,1] === zero(S)
+    end
 
     @testset "adjoint/transpose" begin
         A = OneElement(3im, (2,4), (4,6))

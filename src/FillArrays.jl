@@ -119,12 +119,10 @@ const FillVecOrMat{T} = Union{FillVector{T},FillMatrix{T}}
 Fill{T,N,Axes}(x, sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
     Fill{T,N,Axes}(convert(T, x)::T, sz)
 
-Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
+Fill{T,0}(x, ::Tuple{}) where T = Fill{T,0,Tuple{}}(convert(T, x)::T, ()) # ambiguity fix
 
-@inline Fill{T, N}(x::T, sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
-    Fill{T,N,Axes}(x, sz)
 @inline Fill{T, N}(x, sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
-    Fill{T,N}(convert(T, x)::T, sz)
+    Fill{T,N,Axes}(convert(T, x)::T, sz)
 
 @inline Fill{T, N}(x, sz::SZ) where SZ<:Tuple{Vararg{Integer,N}} where {T, N} =
     Fill{T,N}(x, oneto.(sz))

@@ -9,7 +9,8 @@ struct OneElement{T,N,I,A} <: AbstractArray{T,N}
   val::T
   ind::I
   axes::A
-  OneElement(val::T, ind::I, axes::A) where {T<:Number, I<:NTuple{N,Int}, A<:NTuple{N,AbstractUnitRange}} where {N} = new{T,N,I,A}(val, ind, axes)
+  OneElement(val::T, ind::I, axes::A) where {T, I<:NTuple{N,Int}, A<:NTuple{N,AbstractUnitRange}} where {N} = new{T,N,I,A}(val, ind, axes)
+  OneElement(val::T, ind::Tuple{}, axes::Tuple{}) where {T} = new{T,0,Tuple{},Tuple{}}(val, ind, axes)
 end
 
 const OneElementVector{T,I,A} = OneElement{T,1,I,A}
