@@ -84,6 +84,8 @@ function *(A::AbstractFillMatrix, x::OneElementVector)
 end
 *(A::AbstractZerosMatrix, x::OneElementVector) = mult_zeros(A, x)
 
+*(A::OneElementMatrix, x::AbstractZerosVector) = mult_zeros(A, x)
+
 function *(A::OneElementMatrix, B::AbstractFillVector)
     check_matmul_sizes(A, B)
     val = getindex_value(A) * getindex_value(B)

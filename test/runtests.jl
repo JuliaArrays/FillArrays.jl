@@ -2033,6 +2033,10 @@ end
                 @test O * v isa OneElement
                 @test O * v == Array(O) * Array(v)
             end
+
+            A = OneElement(2,(2,2),(5,4))
+            B = Zeros(4)
+            @test A * B === Zeros(5)
         end
     end
 
