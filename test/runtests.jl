@@ -1579,6 +1579,9 @@ end
             @test A*Zeros(nA,1) ≡ Zeros(mA,1)
             @test a*Zeros(na,3) ≡ Zeros(la,3)
 
+            @test transpose(A) * Zeros(mA) ≡ Zeros(nA)
+            @test A' * Zeros(mA) ≡ Zeros(nA)
+
             w = zeros(mA)
             @test mul!(w, A, Fill(2,nA), true, false) ≈ A * fill(2,nA)
             w .= 2

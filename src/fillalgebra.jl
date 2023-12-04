@@ -94,7 +94,10 @@ mult_ones(a, b) = mult_ones(a, b, mult_axes(a, b))
 *(a::AbstractFillMatrix, b::AbstractZerosVector) = mult_zeros(a, b)
 
 *(a::AbstractZerosMatrix, b::AbstractMatrix) = mult_zeros(a, b)
-*(a::AbstractMatrix, b::AbstractZerosVector) = mult_zeros(a, b)
+# Odd way to deal with the type-parameters to avoid ambiguities
+for MT in (:(AbstractMatrix{T}), :(Transpose{<:Any, <:AbstractMatrix{T}}), :(Adjoint{<:Any, <:AbstractMatrix{T}}))
+    @eval *(a::$MT, b::AbstractZerosVector) where {T} = mult_zeros(a, b)
+end
 *(a::AbstractMatrix, b::AbstractZerosMatrix) = mult_zeros(a, b)
 *(a::AbstractZerosMatrix, b::AbstractVector) = mult_zeros(a, b)
 
