@@ -243,6 +243,26 @@ oneton(sz...) = oneton(Float64, sz...)
     end
 end
 
+@testset "interface" begin
+    struct Twos{T,N} <: FillArrays.AbstractFill{T,N,NTuple{N,Base.OneTo{Int}}}
+        sz :: NTuple{N,Int}
+    end
+    Twos{T}(sz::NTuple{N,Int}) where {T,N} = Twos{T,N}(sz)
+    Twos{T}(sz::Vararg{Int,N}) where {T,N} = Twos{T,N}(sz)
+    Base.size(A::Twos) = A.sz
+    FillArrays.getindex_value(A::Twos{T}) where {T} = oneunit(T) + oneunit(T)
+
+    @testset "broadcasting ambiguities" begin
+        A = Twos{Int}(3)
+        B = Zeros{Int}(size(A))
+        @test A .* B === B
+        @test B .* A === B
+        @test B ./ A === Zeros{Float64}(size(A))
+        @test A .\ B === Zeros{Float64}(size(A))
+        @test A ./ B === Fill(Inf, size(A))
+    end
+end
+
 @testset "indexing" begin
     A = Fill(3.0,5)
     @test A[1:3] ≡ Fill(3.0,3)
