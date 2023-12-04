@@ -1489,7 +1489,11 @@ end
 
         D = Diagonal(fill(SMatrix{2,2}(im,0,0,2im),1))
         Z = Zeros(SMatrix{2,2,ComplexF64,4},1)
-        @test D * Z' == D * zeros(SMatrix{2,2,ComplexF64,4},1)
+        @test D * Z' == D * Array(Z)
+
+        D = Diagonal(fill(zeros(2,3), 2))
+        Z = Zeros(SMatrix{2,3,Float64,6}, 2)
+        @test Z' * D == Array(Z)' * D
 
         # doubly nested
         A = [[[1,2]]]'
