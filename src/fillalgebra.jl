@@ -300,6 +300,7 @@ end
 
 *(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::AbstractZeros{<:Any, 1}) = mult_zeros(a, b)
 
+*(D::Diagonal, a::AdjointAbsVec{<:Any,<:AbstractZerosVector}) = (a * D')'
 *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, D::Diagonal) = (D*a')'
 *(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, D::Diagonal) = transpose(D*transpose(a))
 function _triple_zeromul(x, D::Diagonal, y)

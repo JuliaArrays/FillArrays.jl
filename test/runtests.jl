@@ -1487,6 +1487,10 @@ end
         D = Diagonal([[1 2; 3 4], [1 2 3; 4 5 6]])
         @test @inferred(Zeros(TSM, 2,2) * D) == zeros(TSM, 2,2) * D
 
+        D = Diagonal(fill(SMatrix{2,2}(im,0,0,2im),1))
+        Z = Zeros(SMatrix{2,2,ComplexF64,4},1)
+        @test D * Z' == D * zeros(SMatrix{2,2,ComplexF64,4},1)
+
         # doubly nested
         A = [[[1,2]]]'
         Z = Zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)
