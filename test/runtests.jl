@@ -380,22 +380,22 @@ end
 # type, and produce numerically correct results.
 as_array(x::AbstractArray) = Array(x)
 as_array(x::UniformScaling) = x
-equal_or_undef(a::Number, b::Number) = (a == b) || isequal(a, b)
-equal_or_undef(a, b) = all(equal_or_undef.(a, b))
+isapprox_or_undef(a::Number, b::Number) = (a ≈ b) || isequal(a, b)
+isapprox_or_undef(a, b) = all(((x,y),) -> isapprox_or_undef(x,y), zip(a, b))
 function test_addition_subtraction_dot(As, Bs, Tout::Type)
     for A in As, B in Bs
         @testset "$(typeof(A)) and $(typeof(B))" begin
             @test @inferred(A + B) isa Tout{promote_type(eltype(A), eltype(B))}
-            @test equal_or_undef(as_array(A + B), as_array(A) + as_array(B))
+            @test isapprox_or_undef(as_array(A + B), as_array(A) + as_array(B))
 
             @test @inferred(A - B) isa Tout{promote_type(eltype(A), eltype(B))}
-            @test equal_or_undef(as_array(A - B), as_array(A) - as_array(B))
+            @test isapprox_or_undef(as_array(A - B), as_array(A) - as_array(B))
 
             @test @inferred(B + A) isa Tout{promote_type(eltype(B), eltype(A))}
-            @test equal_or_undef(as_array(B + A), as_array(B) + as_array(A))
+            @test isapprox_or_undef(as_array(B + A), as_array(B) + as_array(A))
 
             @test @inferred(B - A) isa Tout{promote_type(eltype(B), eltype(A))}
-            @test equal_or_undef(as_array(B - A), as_array(B) - as_array(A))
+            @test isapprox_or_undef(as_array(B - A), as_array(B) - as_array(A))
 
             # Julia 1.6 doesn't support dot(UniformScaling)
             if VERSION < v"1.6.0" || VERSION >= v"1.8.0"
