@@ -154,17 +154,17 @@ end
 function mul!(y::StridedVector, A::StridedMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, b)
 
-    αb = alpha * getindex_value(b)
+    αb = Ref(alpha * getindex_value(b))
 
     if iszero(beta)
         y .= Ref(zero(eltype(y)))
         for col in eachcol(A)
-            y .+= col .* Ref(αb)
+            y .+= col .* αb
         end
     else
         lmul!(beta, y)
         for col in eachcol(A)
-            y .+= col .* Ref(αb)
+            y .+= col .* αb
         end
     end
     y
@@ -173,18 +173,18 @@ end
 function mul!(y::StridedVector, A::AbstractFillMatrix, b::StridedVector, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, b)
 
-    αA = alpha * getindex_value(A)
+    αA = Ref(alpha * getindex_value(A))
 
     if iszero(beta)
-        y .= αA .* sum(b)
+        y .= αA .* Ref(sum(b))
     else
-        y .= αA .* sum(b) .+ beta .* y
+        y .= αA .* Ref(sum(b)) .+ beta .* y
     end
     y
 end
 
 function _mul_adjtrans!(y::AbstractVector, A::AbstractMatrix, b::AbstractVector, alpha, beta, f)
-    α = alpha * getindex_value(b)
+    α = Ref(alpha * getindex_value(b))
 
     At = f(A)
 

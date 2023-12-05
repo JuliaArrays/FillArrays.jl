@@ -1530,8 +1530,9 @@ end
 
         S = SMatrix{2,3}(1:6)
         A = reshape([S,2S,3S,4S],2,2)
-        F = Fill(S',2,3)
+        F = Fill(S',2,2)
         @test A * F == A * fill(S',size(F))
+        @test F * A == fill(S',size(F)) * A
 
         # doubly nested
         A = [[[1,2]]]'
