@@ -3,7 +3,7 @@ import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 using Documenter
 DocMeta.setdocmeta!(FillArrays, :DocTestSetup, :(using FillArrays))
-doctest(FillArrays)
+doctest(FillArrays; manual = false)
 
 using Aqua
 @testset "Project quality" begin
