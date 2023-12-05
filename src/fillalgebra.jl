@@ -297,6 +297,12 @@ function _adjvec_mul_zeros(a, b)
 end
 
 *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractMatrix) = (b' * a')'
+# ambiguity
+function *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::TransposeAbsVec{<:Any,<:AdjointAbsVec})
+    # change from Transpose ∘ Adjoint to Adjoint ∘ Transpose
+    b2 = adjoint(transpose(adjoint(transpose(b))))
+    a * b2
+end
 *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractZerosMatrix) = (b' * a')'
 *(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractMatrix) = transpose(transpose(b) * transpose(a))
 *(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractZerosMatrix) = transpose(transpose(b) * transpose(a))
