@@ -8,11 +8,11 @@ vec(a::AbstractFill) = fillsimilar(a, length(a))
 
 transpose(a::Union{AbstractOnesMatrix, AbstractZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
 adjoint(a::Union{AbstractOnesMatrix, AbstractZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
-transpose(a::FillMatrix{T}) where T = Fill{T}(transpose(a.value), reverse(a.axes))
-adjoint(a::FillMatrix{T}) where T = Fill{T}(adjoint(a.value), reverse(a.axes))
+transpose(a::FillMatrix{T}) where T = Fill{T}(transpose(a.value), reverse(axes(a)))
+adjoint(a::FillMatrix{T}) where T = Fill{T}(adjoint(a.value), reverse(axes(a)))
 
 permutedims(a::AbstractFillVector) = fillsimilar(a, (1, length(a)))
-permutedims(a::AbstractFillMatrix) = fillsimilar(a, reverse(a.axes))
+permutedims(a::AbstractFillMatrix) = fillsimilar(a, reverse(axes(a)))
 
 function permutedims(B::AbstractFill, perm)
     dimsB = size(B)
