@@ -18,7 +18,6 @@ for OP in (:transpose, :adjoint)
     end
 end
 
-permutedims(a::AbstractFillVector) = fillsimilar(a, (1, length(a)))
 permutedims(a::AbstractFillMatrix) = fillsimilar(a, reverse(axes(a)))
 
 function permutedims(B::AbstractFill, perm)
