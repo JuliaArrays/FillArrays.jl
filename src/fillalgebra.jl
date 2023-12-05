@@ -141,12 +141,12 @@ end
 function mul!(y::AbstractVector, A::AbstractFillMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, b)
 
-    αAb = alpha * getindex_value(A) * getindex_value(b) * length(b)
+    αAb = Ref(alpha * getindex_value(A) * getindex_value(b) * length(b))
 
     if iszero(beta)
-        y .= Ref(αAb)
+        y .= αAb
     else
-        y .= Ref(αAb) .+ beta .* y
+        y .= αAb .+ beta .* y
     end
     y
 end
@@ -173,28 +173,29 @@ end
 function mul!(y::StridedVector, A::AbstractFillMatrix, b::StridedVector, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, b)
 
-    αA = Ref(alpha * getindex_value(A))
+    αA = alpha * getindex_value(A)
+    αAb = Ref(αA * sum(b))
 
     if iszero(beta)
-        y .= αA .* Ref(sum(b))
+        y .= αAb
     else
-        y .= αA .* Ref(sum(b)) .+ beta .* y
+        y .= αAb .+ beta .* y
     end
     y
 end
 
-function _mul_adjtrans!(y::AbstractVector, A::AbstractMatrix, b::AbstractVector, alpha, beta, f)
-    α = Ref(alpha * getindex_value(b))
+function _mul_adjtrans!(y::AbstractVector, A::AbstractMatrix, b::AbstractFillVector, alpha, beta, f)
+    α = alpha * getindex_value(b)
 
     At = f(A)
 
     if iszero(beta)
         for (ind, col) in zip(eachindex(y), eachcol(At))
-            y[ind] = α .* f(sum(col))
+            y[ind] = f(sum(col)) * α
         end
     else
         for (ind, col) in zip(eachindex(y), eachcol(At))
-            y[ind] = α .* f(sum(col)) .+ beta .* y[ind]
+            y[ind] = f(sum(col)) * α .+ beta .* y[ind]
         end
     end
     y

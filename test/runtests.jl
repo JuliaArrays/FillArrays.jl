@@ -1539,6 +1539,11 @@ end
         Z = Zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)
         Z2 = zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)
         @test A * Z == A * Z2
+
+        x = [1 2 3; 4 5 6]
+        A = reshape([x,2x,3x,4x],2,2)
+        F = Fill(x,2,2)
+        @test A' * F == A' * fill(x,size(F))
     end
 
     for W in (zeros(3,4), @MMatrix zeros(3,4))
