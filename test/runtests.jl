@@ -1532,7 +1532,9 @@ end
         A = reshape([S,2S,3S,4S],2,2)
         F = Fill(S',2,2)
         @test A * F == A * fill(S',size(F))
+        @test mul!(A * F, A, F, 2, 1) == 3 * A * fill(S',size(F))
         @test F * A == fill(S',size(F)) * A
+        @test mul!(F * A, F, A, 2, 1) == 3 * fill(S',size(F)) * A
 
         # doubly nested
         A = [[[1,2]]]'
@@ -1544,6 +1546,7 @@ end
         A = reshape([x,2x,3x,4x],2,2)
         F = Fill(x,2,2)
         @test A' * F == A' * fill(x,size(F))
+        @test mul!(A' * F, A', F, 2, 1) == 3 * A' * fill(x,size(F))
     end
 
     for W in (zeros(3,4), @MMatrix zeros(3,4))
