@@ -20,7 +20,13 @@ end
 
 permutedims(a::AbstractFillMatrix) = fillsimilar(a, reverse(axes(a)))
 
-Base.@constprop :aggressive function permutedims(B::AbstractFill, perm)
+@static if VERSION >= v"1.9"
+    Base.@constprop :aggressive permutedims(B::AbstractFill, perm) = _permutedims(B, perm)
+else
+    permutedims(B::AbstractFill, perm) = _permutedims(B, perm)
+end
+
+@inline function _permutedims(B::AbstractFill, perm)
     dimsB = axes(B)
     ndimsB = ndims(B)
     (ndimsB == length(perm) && isperm(perm)) || throw(ArgumentError("no valid permutation of dimensions"))
