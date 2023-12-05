@@ -23,8 +23,8 @@ import Base: oneto
 """
     AbstractFill{T, N, Axes} <: AbstractArray{T, N}
 
-Supertype for lazy array types whose entries are all equal to constant.
-Subtypes of `AbstractFill` should implement [`FillArrays.getindex_value`](@ref) for themselves.
+Supertype for lazy array types whose entries are all equal.
+Subtypes of `AbstractFill` should implement [`FillArrays.getindex_value`](@ref) to return the value of the entries.
 """
 abstract type AbstractFill{T, N, Axes} <: AbstractArray{T, N} end
 const AbstractFillVector{T} = AbstractFill{T,1}
