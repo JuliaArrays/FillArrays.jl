@@ -1894,6 +1894,33 @@ end
         @test FillArrays.getindex_value(transpose(a)) == FillArrays.unique_value(transpose(a)) == 2.0 + im
         @test convert(Fill, transpose(a)) ≡ Fill(2.0+im,1,5)
     end
+
+    @testst "custom AbstractFill types" begin
+        # implicit axes
+        struct StaticZerosVec{L,T} <: FillArrays.AbstractZeros{T,1,Tuple{SOneTo{L}}} end
+        Base.size(::StaticZerosVec{L}) where {L} = (L,)
+        Base.axes(::StaticZerosVec{L}) where {L} = (SOneTo(L),)
+        S = StaticZerosVec{3,Int}()
+        @test real.(S) == S
+        @test imag.(S) == S
+
+        struct StaticOnesVec{L,T} <: FillArrays.AbstractOnes{T,1,Tuple{SOneTo{L}}} end
+        Base.size(::StaticOnesVec{L}) where {L} = (L,)
+        Base.axes(::StaticOnesVec{L}) where {L} = (SOneTo(L),)
+        S = StaticOnesVec{3,Int}()
+        @test real.(S) == S
+        @test imag.(S) == zero(S)
+
+        struct StaticFill{S1,S2,T} <: FillArrays.AbstractFill{T,2,Tuple{SOneTo{S1},SOneTo{S2}}}
+            x :: T
+        end
+        StaticFill{S1,S2}(x::T) where {S1,S2,T} = StaticFill{S1,S2,T}(x)
+        Base.size(::StaticFill{S1,S2}) where {S1,S2} = (S1,S2)
+        Base.axes(::StaticFill{S1,S2}) where {S1,S2} = (SOneTo(S1), SOneTo(S2))
+        FillArrays.getindex_value(S::StaticFill) = S.x
+        S = StaticFill{2,3}(2)
+        @test permutedims(S) == Fill(2, reverse(size(S)))
+    end
 end
 
 @testset "Statistics" begin
