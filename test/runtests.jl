@@ -1,6 +1,10 @@
 using FillArrays, LinearAlgebra, PDMats, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
+using Documenter
+DocMeta.setdocmeta!(FillArrays, :DocTestSetup, :(using FillArrays))
+doctest(FillArrays)
+
 using Aqua
 @testset "Project quality" begin
     Aqua.test_all(FillArrays;

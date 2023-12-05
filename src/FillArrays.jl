@@ -94,14 +94,10 @@ Typically created by `Fill` or `Zeros` or `Ones`
 
 ```jldoctest
 julia> Fill(7, (2,3))
-2×3 Fill{Int64,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}:
- 7  7  7
- 7  7  7
+2×3 Fill{Int64}, with entries equal to 7
 
 julia> Fill{Float64, 1, Tuple{UnitRange{Int64}}}(7., (1:2,))
-2-element Fill{Float64,1,Tuple{UnitRange{Int64}}} with indices 1:2:
- 7.0
- 7.0
+2-element Fill{Float64, 1, Tuple{UnitRange{Int64}}} with indices 1:2, with entries equal to 7.0
 ```
 """
 struct Fill{T, N, Axes} <: AbstractFill{T, N, Axes}
@@ -715,12 +711,9 @@ function Base.show(io::IO, ::MIME"text/plain", x::Union{Eye, AbstractFill})
         return show(io, x)
     end
     summary(io, x)
-    if x isa Union{AbstractZeros, AbstractOnes, Eye}
-        # then no need to print entries
-    elseif length(x) > 1
-        print(io, ", with entries equal to ", getindex_value(x))
-    else
-        print(io, ", with entry equal to ", getindex_value(x))
+    if !(x isa Union{AbstractZeros, AbstractOnes, Eye})
+        print(io, ", with ", length(x) > 1 ? "entries" : "entry", " equal to ")
+        show(io, getindex_value(x))
     end
 end
 
