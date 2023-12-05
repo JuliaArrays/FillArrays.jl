@@ -11,7 +11,6 @@ adjoint(a::Union{AbstractOnesMatrix, AbstractZerosMatrix}) = fillsimilar(a, reve
 transpose(a::FillMatrix{T}) where T = Fill{T}(transpose(a.value), reverse(a.axes))
 adjoint(a::FillMatrix{T}) where T = Fill{T}(adjoint(a.value), reverse(a.axes))
 
-permutedims(a::AbstractFillVector) = fillsimilar(a, (1, length(a)))
 permutedims(a::AbstractFillMatrix) = fillsimilar(a, reverse(a.axes))
 
 function permutedims(B::AbstractFill, perm)
