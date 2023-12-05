@@ -20,11 +20,11 @@ end
 
 permutedims(a::AbstractFillMatrix) = fillsimilar(a, reverse(axes(a)))
 
-function permutedims(B::AbstractFill, perm)
-    dimsB = size(B)
-    ndimsB = length(dimsB)
+Base.@constprop :aggressive function permutedims(B::AbstractFill, perm)
+    dimsB = axes(B)
+    ndimsB = ndims(B)
     (ndimsB == length(perm) && isperm(perm)) || throw(ArgumentError("no valid permutation of dimensions"))
-    dimsP = ntuple(i->dimsB[perm[i]], ndimsB)::typeof(dimsB)
+    dimsP = ntuple(i->dimsB[perm[i]], ndimsB)
     fillsimilar(B, dimsP)
 end
 
