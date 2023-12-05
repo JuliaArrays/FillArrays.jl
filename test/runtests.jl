@@ -1394,6 +1394,19 @@ end
     @test permutedims(Ones(2,4,5), [3,2,1]) ≡ Ones(5,4,2)
     @test permutedims(Zeros(2,4,5), [3,2,1]) ≡ Zeros(5,4,2)
     @test permutedims(Fill(2.0,2,4,5), [3,2,1]) ≡ Fill(2.0,5,4,2)
+
+    @testset "recursive" begin
+        S = SMatrix{2,3}(1:6)
+        Z = Zeros(typeof(S), 2, 3)
+        Y = zeros(typeof(S), 2, 3)
+        @test Z' == Y'
+        @test transpose(Z) == transpose(Y)
+
+        F = Fill(S, 2, 3)
+        G = fill(S, 2, 3)
+        @test F' == G'
+        @test transpose(F) == transpose(G)
+    end
 end
 
 @testset "reverse" begin
