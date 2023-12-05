@@ -1394,6 +1394,21 @@ end
     @test permutedims(Ones(2,4,5), [3,2,1]) ≡ Ones(5,4,2)
     @test permutedims(Zeros(2,4,5), [3,2,1]) ≡ Zeros(5,4,2)
     @test permutedims(Fill(2.0,2,4,5), [3,2,1]) ≡ Fill(2.0,5,4,2)
+
+    # test for inference only if aggressive constant propagation is available
+    H = if VERSION >= v"1.8"
+        @inferred(permutedims(Fill(2, (SOneTo(2), SOneTo(3)))))
+    else
+        permutedims(Fill(2, (SOneTo(2), SOneTo(3))))
+    end
+    @test H === Fill(2, (SOneTo(3), SOneTo(2)))
+    F = Fill(2, (SOneTo(2), SOneTo(3), SOneTo(1)))
+    H = if VERSION >= v"1.8"
+        @inferred((F -> permutedims(F, (3,1,2)))(F))
+    else
+        (F -> permutedims(F, (3,1,2)))(F)
+    end
+    @test H  === Fill(2, (SOneTo(1), SOneTo(2), SOneTo(3)))
 end
 
 @testset "reverse" begin
