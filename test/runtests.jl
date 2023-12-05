@@ -1528,6 +1528,11 @@ end
         Z = Zeros(SMatrix{2,3,Float64,6}, 2)
         @test Z' * D == Array(Z)' * D
 
+        S = SMatrix{2,3}(1:6)
+        A = reshape([S,2S,3S,4S],2,2)
+        F = Fill(S',2,3)
+        @test A * F == A * fill(S',size(F))
+
         # doubly nested
         A = [[[1,2]]]'
         Z = Zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)

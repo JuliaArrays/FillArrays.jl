@@ -144,9 +144,9 @@ function mul!(y::AbstractVector, A::AbstractFillMatrix, b::AbstractFillVector, a
     αAb = alpha * getindex_value(A) * getindex_value(b) * length(b)
 
     if iszero(beta)
-        y .= αAb
+        y .= Ref(αAb)
     else
-        y .= αAb .+ beta .* y
+        y .= Ref(αAb) .+ beta .* y
     end
     y
 end
@@ -157,14 +157,14 @@ function mul!(y::StridedVector, A::StridedMatrix, b::AbstractFillVector, alpha::
     αb = alpha * getindex_value(b)
 
     if iszero(beta)
-        y .= zero(eltype(y))
+        y .= Ref(zero(eltype(y)))
         for col in eachcol(A)
-            y .+= αb .* col
+            y .+= col .* Ref(αb)
         end
     else
         lmul!(beta, y)
         for col in eachcol(A)
-            y .+= αb .* col
+            y .+= col .* Ref(αb)
         end
     end
     y
