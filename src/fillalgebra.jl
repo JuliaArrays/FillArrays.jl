@@ -6,10 +6,17 @@ vec(a::AbstractFill) = fillsimilar(a, length(a))
 # cannot do this for vectors since that would destroy scalar dot product
 
 
-transpose(a::Union{AbstractOnesMatrix, AbstractZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
-adjoint(a::Union{AbstractOnesMatrix, AbstractZerosMatrix}) = fillsimilar(a, reverse(axes(a)))
-transpose(a::FillMatrix{T}) where T = Fill{T}(transpose(a.value), reverse(a.axes))
-adjoint(a::FillMatrix{T}) where T = Fill{T}(adjoint(a.value), reverse(a.axes))
+for OP in (:transpose, :adjoint)
+    @eval begin
+        function $OP(a::AbstractZerosMatrix)
+            v = getindex_value(a)
+            T = typeof($OP(v))
+            Zeros{T}(reverse(axes(a)))
+        end
+        $OP(a::AbstractOnesMatrix) = fillsimilar(a, reverse(axes(a)))
+        $OP(a::FillMatrix) = Fill($OP(a.value), reverse(a.axes))
+    end
+end
 
 permutedims(a::AbstractFillVector) = fillsimilar(a, (1, length(a)))
 permutedims(a::AbstractFillMatrix) = fillsimilar(a, reverse(a.axes))
