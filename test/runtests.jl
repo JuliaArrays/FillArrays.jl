@@ -1895,7 +1895,7 @@ end
         @test convert(Fill, transpose(a)) ≡ Fill(2.0+im,1,5)
     end
 
-    @testst "custom AbstractFill types" begin
+    @testset "custom AbstractFill types" begin
         # implicit axes
         struct StaticZerosVec{L,T} <: FillArrays.AbstractZeros{T,1,Tuple{SOneTo{L}}} end
         Base.size(::StaticZerosVec{L}) where {L} = (L,)
