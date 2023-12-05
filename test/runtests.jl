@@ -1513,13 +1513,14 @@ end
         @test transpose(F) == transpose(G)
     end
 
-    # test for inference only if aggressive constant propagation is available
     H = if VERSION >= v"1.8"
         @inferred(permutedims(Fill(2, (SOneTo(2), SOneTo(3)))))
     else
         permutedims(Fill(2, (SOneTo(2), SOneTo(3))))
     end
     @test H === Fill(2, (SOneTo(3), SOneTo(2)))
+
+    # test for inference only if aggressive constant propagation is available
     F = Fill(2, (SOneTo(2), SOneTo(3), SOneTo(1)))
     H = if VERSION >= v"1.8"
         @inferred((F -> permutedims(F, (3,1,2)))(F))
