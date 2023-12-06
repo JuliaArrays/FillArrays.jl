@@ -93,15 +93,18 @@ mult_ones(a, b) = mult_ones(a, b, mult_axes(a, b))
 *(a::AbstractFillMatrix, b::AbstractZerosMatrix) = mult_zeros(a, b)
 *(a::AbstractFillMatrix, b::AbstractZerosVector) = mult_zeros(a, b)
 
-*(a::AbstractZerosMatrix, b::AbstractMatrix) = mult_zeros(a, b)
+for MT in (:AbstractMatrix, :AbstractTriangular)
+    @eval *(a::AbstractZerosMatrix, b::$MT) = mult_zeros(a, b)
+    @eval *(a::$MT, b::AbstractZerosMatrix) = mult_zeros(a, b)
+end
 # Odd way to deal with the type-parameters to avoid ambiguities
-for MT in (:(AbstractMatrix{T}), :(Transpose{<:Any, <:AbstractMatrix{T}}), :(Adjoint{<:Any, <:AbstractMatrix{T}}))
+for MT in (:(AbstractMatrix{T}), :(Transpose{<:Any, <:AbstractMatrix{T}}), :(Adjoint{<:Any, <:AbstractMatrix{T}}),
+            :(AbstractTriangular{T}))
     @eval *(a::$MT, b::AbstractZerosVector) where {T} = mult_zeros(a, b)
 end
 for MT in (:(Transpose{<:Any, <:AbstractVector}), :(Adjoint{<:Any, <:AbstractVector}))
     @eval *(a::$MT, b::AbstractZerosMatrix) = mult_zeros(a, b)
 end
-*(a::AbstractMatrix, b::AbstractZerosMatrix) = mult_zeros(a, b)
 *(a::AbstractZerosMatrix, b::AbstractVector) = mult_zeros(a, b)
 
 function lmul_diag(a::Diagonal, b)
@@ -296,7 +299,9 @@ function _adjvec_mul_zeros(a, b)
     return a1 * b[1]
 end
 
-*(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractMatrix) = (b' * a')'
+for MT in (:AbstractMatrix, :AbstractTriangular, :(Adjoint{<:Any,<:TransposeAbsVec}))
+    @eval *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::$MT) = (b' * a')'
+end
 # ambiguity
 function *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::TransposeAbsVec{<:Any,<:AdjointAbsVec})
     # change from Transpose ∘ Adjoint to Adjoint ∘ Transpose
@@ -304,11 +309,15 @@ function *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::TransposeAbsVec{<:A
     a * b2
 end
 *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractZerosMatrix) = (b' * a')'
-*(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractMatrix) = transpose(transpose(b) * transpose(a))
+for MT in (:AbstractMatrix, :AbstractTriangular, :(Transpose{<:Any,<:AdjointAbsVec}))
+    @eval *(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, b::$MT) = transpose(transpose(b) * transpose(a))
+end
 *(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractZerosMatrix) = transpose(transpose(b) * transpose(a))
 
 *(a::AbstractVector, b::AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}) = a * permutedims(parent(b))
-*(a::AbstractMatrix, b::AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}) = a * permutedims(parent(b))
+for MT in (:AbstractMatrix, :AbstractTriangular)
+    @eval *(a::$MT, b::AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}) = a * permutedims(parent(b))
+end
 *(a::AbstractZerosVector, b::AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}) = a * permutedims(parent(b))
 *(a::AbstractZerosMatrix, b::AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}) = a * permutedims(parent(b))
 
@@ -319,7 +328,8 @@ end
 
 *(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::AbstractZeros{<:Any, 1}) = mult_zeros(a, b)
 
-*(D::Diagonal, a::AdjointAbsVec{<:Any,<:AbstractZerosVector}) = (a' * D')'
+*(D::Diagonal, a::Adjoint{<:Any,<:AbstractZerosVector}) = (a' * D')'
+*(D::Diagonal, a::Transpose{<:Any,<:AbstractZerosVector}) = transpose(transpose(a) * transpose(D))
 *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, D::Diagonal) = (D' * a')'
 *(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, D::Diagonal) = transpose(D*transpose(a))
 function _triple_zeromul(x, D::Diagonal, y)
@@ -337,7 +347,7 @@ end
 *(x::TransposeAbsVec{<:Any,<:AbstractZerosVector}, D::Diagonal, y::AbstractZerosVector) = _triple_zeromul(x, D, y)
 
 
-function *(a::Transpose{T, <:AbstractVector{T}}, b::AbstractZerosVector{T}) where T<:Real
+function *(a::Transpose{T, <:AbstractVector}, b::AbstractZerosVector{T}) where T<:Real
     la, lb = length(a), length(b)
     if la ≠ lb
         throw(DimensionMismatch("dot product arguments have lengths $la and $lb"))

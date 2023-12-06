@@ -1666,6 +1666,22 @@ end
         @test adjoint(A)*fillvec ≈ adjoint(A)*Array(fillvec)
         @test adjoint(A)*fillmat ≈ adjoint(A)*Array(fillmat)
     end
+
+    @testset "ambiguities" begin
+        UT33 = UpperTriangular(ones(3,3))
+        UT11 = UpperTriangular(ones(1,1))
+        @test transpose(Zeros(3)) * Transpose(Adjoint([1,2,3])) == 0
+        @test Zeros(3)' * Adjoint(Transpose([1,2,3])) == 0
+        @test Zeros(3)' * UT33 == Zeros(3)'
+        @test transpose(Zeros(3)) * UT33 == transpose(Zeros(3))
+        @test UT11 * Zeros(3)' == Zeros(1,3)
+        @test UT11 * transpose(Zeros(3)) == Zeros(1,3)
+        @test Zeros(2,3) * UT33 == Zeros(2,3)
+        @test UT33 * Zeros(3,2) == Zeros(3,2)
+        @test UT33 * Zeros(3) == Zeros(3)
+        @test Diagonal([1]) * transpose(Zeros(3)) == Zeros(1,3)
+        @test Diagonal([1]) * Zeros(3)' == Zeros(1,3)
+    end
 end
 
 @testset "count" begin
