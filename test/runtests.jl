@@ -1604,6 +1604,14 @@ end
             @test A*Zeros(nA,1) ≡ Zeros(mA,1)
             @test a*Zeros(na,3) ≡ Zeros(la,3)
 
+            @test transpose(A) * Zeros(mA) ≡ Zeros(nA)
+            @test A' * Zeros(mA) ≡ Zeros(nA)
+
+            @test transpose(a) * Zeros(la, 3) ≡ Zeros(1,3)
+            @test a' * Zeros(la,3) ≡ Zeros(1,3)
+
+            @test Zeros(la)' * Transpose(Adjoint(a)) == 0.0
+
             w = zeros(mA)
             @test mul!(w, A, Fill(2,nA), true, false) ≈ A * fill(2,nA)
             w .= 2
@@ -1716,6 +1724,22 @@ end
             @test mul!(copy(D), A, N', α, β) ≈ mul!(copy(D), M, N', α, β) ≈ M * N' * α + D * β
             @test mul!(copy(D), A, transpose(N), α, β) ≈ mul!(copy(D), M, transpose(N), α, β) ≈ M * transpose(N) * α + D * β
         end
+    end
+
+    @testset "ambiguities" begin
+        UT33 = UpperTriangular(ones(3,3))
+        UT11 = UpperTriangular(ones(1,1))
+        @test transpose(Zeros(3)) * Transpose(Adjoint([1,2,3])) == 0
+        @test Zeros(3)' * Adjoint(Transpose([1,2,3])) == 0
+        @test Zeros(3)' * UT33 == Zeros(3)'
+        @test transpose(Zeros(3)) * UT33 == transpose(Zeros(3))
+        @test UT11 * Zeros(3)' == Zeros(1,3)
+        @test UT11 * transpose(Zeros(3)) == Zeros(1,3)
+        @test Zeros(2,3) * UT33 == Zeros(2,3)
+        @test UT33 * Zeros(3,2) == Zeros(3,2)
+        @test UT33 * Zeros(3) == Zeros(3)
+        @test Diagonal([1]) * transpose(Zeros(3)) == Zeros(1,3)
+        @test Diagonal([1]) * Zeros(3)' == Zeros(1,3)
     end
 end
 
