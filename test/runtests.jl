@@ -1,4 +1,15 @@
-using FillArrays, LinearAlgebra, PDMats, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics
+using Base64
+using FillArrays
+using LinearAlgebra
+using PDMats
+using Quaternions
+using Random
+using ReverseDiff
+using SparseArrays
+using StaticArrays
+using Statistics
+using Test
+
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 using Aqua
@@ -1671,6 +1682,40 @@ end
         @test transpose(A)*fillmat ≈ transpose(A)*Array(fillmat)
         @test adjoint(A)*fillvec ≈ adjoint(A)*Array(fillvec)
         @test adjoint(A)*fillmat ≈ adjoint(A)*Array(fillmat)
+    end
+
+    @testset "non-commutative" begin
+        A = Fill(quat(rand(4)...), 2, 2)
+        M = Array(A)
+        α, β = quat(0,1,1,0), quat(1,0,0,1)
+        @testset "matvec" begin
+            f = Fill(quat(rand(4)...), size(A,2))
+            v = Array(f)
+            D = copy(v)
+            exp_res = M * v * α + D * β
+            @test mul!(copy(D), A, f, α, β) ≈ mul!(copy(D), M, v, α, β) ≈ exp_res
+            @test mul!(copy(D), M, f, α, β) ≈ mul!(copy(D), M, v, α, β) ≈ exp_res
+            @test mul!(copy(D), A, v, α, β) ≈ mul!(copy(D), M, v, α, β) ≈ exp_res
+
+            @test mul!(copy(D), M', f, α, β) ≈ mul!(copy(D), M', v, α, β) ≈ M' * v * α + D * β
+            @test mul!(copy(D), transpose(M), f, α, β) ≈ mul!(copy(D), transpose(M), v, α, β) ≈ transpose(M) * v * α + D * β
+        end
+
+        @testset "matmat" begin
+            B = Fill(quat(rand(4)...), 2, 2)
+            N = Array(B)
+            D = copy(N)
+            exp_res = M * N * α + D * β
+            @test mul!(copy(D), A, B, α, β) ≈ mul!(copy(D), M, N, α, β) ≈ exp_res
+            @test mul!(copy(D), M, B, α, β) ≈ mul!(copy(D), M, N, α, β) ≈ exp_res
+            @test mul!(copy(D), A, N, α, β) ≈ mul!(copy(D), M, N, α, β) ≈ exp_res
+
+            @test mul!(copy(D), M', B, α, β) ≈ mul!(copy(D), M', N, α, β) ≈ M' * N * α + D * β
+            @test mul!(copy(D), transpose(M), B, α, β) ≈ mul!(copy(D), transpose(M), N, α, β) ≈ transpose(M) * N * α + D * β
+
+            @test mul!(copy(D), A, N', α, β) ≈ mul!(copy(D), M, N', α, β) ≈ M * N' * α + D * β
+            @test mul!(copy(D), A, transpose(N), α, β) ≈ mul!(copy(D), M, transpose(N), α, β) ≈ M * transpose(N) * α + D * β
+        end
     end
 end
 
