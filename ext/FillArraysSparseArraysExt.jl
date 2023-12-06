@@ -5,7 +5,7 @@ using FillArrays
 using FillArrays: RectDiagonalFill, RectOrDiagonalFill, ZerosVector, ZerosMatrix, getindex_value
 # Specifying the full namespace is necessary because of https://github.com/JuliaLang/julia/issues/48533
 # See https://github.com/JuliaStats/LogExpFunctions.jl/pull/63
-import SparseArrays.Base: convert, kron
+import Base: convert, kron
 using FillArrays.LinearAlgebra
 
 ##################
