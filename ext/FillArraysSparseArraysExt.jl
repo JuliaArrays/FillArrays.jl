@@ -3,9 +3,9 @@ module FillArraysSparseArraysExt
 using SparseArrays
 using FillArrays
 using FillArrays: RectDiagonalFill, RectOrDiagonalFill, ZerosVector, ZerosMatrix, getindex_value
+import Base: convert, kron
 # Specifying the full namespace is necessary because of https://github.com/JuliaLang/julia/issues/48533
 # See https://github.com/JuliaStats/LogExpFunctions.jl/pull/63
-import Base: convert, kron
 using FillArrays.LinearAlgebra
 
 ##################
