@@ -1,15 +1,4 @@
-using Base64
-using FillArrays
-using LinearAlgebra
-using PDMats
-using Quaternions
-using Random
-using ReverseDiff
-using SparseArrays
-using StaticArrays
-using Statistics
-using Test
-
+using FillArrays, LinearAlgebra, PDMats, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics, Quaternions
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 using Aqua
