@@ -1114,7 +1114,7 @@ end
                 @test Zeros(S, 10) .* (T(1):T(10)) ≡ Zeros(U, 10)
                 @test_throws DimensionMismatch Zeros(S, 10) .* (T(1):T(11))
             end
-        end        
+        end
     end
 end
 
@@ -1818,6 +1818,7 @@ end
     @test repr(Fill(1f0,10)) == "Fill(1.0f0, 10)"  # Float32!
     @test repr(Fill(0)) == "Fill(0)"
     @test repr(Eye(9)) == "Eye(9)"
+    @test repr(Eye(9,4)) == "Eye(9,4)"
     # also used for arrays of arrays:
     @test occursin("Eye(2) ", stringmime("text/plain", [Eye(2) for i in 1:2, j in 1:2]))
 end
@@ -2291,4 +2292,3 @@ end
         @test a.value == first(diag)
     end
 end
-
