@@ -4,7 +4,7 @@ module FillArrays
 using LinearAlgebra
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
-    any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
+    any, all, axes, isone, iszero, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, map, zero,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
     parent, similar, issorted
@@ -621,9 +621,10 @@ end
 #########
 
 function isone(AF::AbstractFillMatrix)
-    isone(getindex_value(AF)) || return false
     (n,m) = size(AF)
     n != m && return false
+    (n == 0 || m == 0) && return true
+    isone(getindex_value(AF)) || return false
     n == 1 && return true
     return false
 end
