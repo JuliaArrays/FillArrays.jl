@@ -1271,9 +1271,17 @@ end
             @test isone(onem) == isone(Array(onem))
             @test iszero(onem) == isempty(onem) == iszero(Array(onem))
 
+            if d > 0
+                @test !isone(Ones{T}(d, 2d))
+            end
+
             zerom = Zeros{T}(d, d)
             @test  isone(zerom) == isempty(zerom) == isone(Array(zerom))
             @test  iszero(zerom) == iszero(Array(zerom))
+
+            if d > 0
+                @test iszero(Zeros{T}(d, 2d))
+            end
 
             fillm0 = Fill(T(0), d, d)
             @test   isone(fillm0) == isempty(fillm0) == isone(Array(fillm0))
@@ -1319,6 +1327,10 @@ end
             @test ! iszero(m4)
         end
     end
+
+    @test iszero(Zeros{SMatrix{2,2,Int,4}}(2))
+    @test iszero(Fill(SMatrix{2,2}(0,0,0,0), 2))
+    @test iszero(Fill(SMatrix{2,2}(0,0,0,1), 0))
 
     @testset "all/any" begin
         @test any(Ones{Bool}(10)) === all(Ones{Bool}(10)) === any(Fill(true,10)) === all(Fill(true,10)) === true
