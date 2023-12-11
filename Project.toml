@@ -22,6 +22,7 @@ FillArraysStatisticsExt = "Statistics"
 [compat]
 Aqua = "0.8"
 Base64 = "1.6"
+Documenter = "1"
 Infinities = "0.1"
 LinearAlgebra = "1.6"
 PDMats = "0.11.17"
@@ -37,6 +38,7 @@ julia = "1.6"
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Infinities = "e1ba4f0e-776d-440f-acd9-e1d2e9742647"
 PDMats = "90014a1f-27ba-587c-ab20-58faa44d9150"
 Quaternions = "94ee1d12-ae83-5a48-8b1c-48b8ff168ae0"
@@ -47,4 +49,4 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "Test", "Base64", "Infinities", "PDMats", "ReverseDiff", "SparseArrays", "StaticArrays", "Statistics", "Quaternions"]
+test = ["Aqua", "Test", "Base64", "Infinities", "PDMats", "ReverseDiff", "SparseArrays", "StaticArrays", "Statistics", "Quaternions", "Documenter"]
