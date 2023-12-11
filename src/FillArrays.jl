@@ -742,7 +742,13 @@ function Base.show(io::IO, x::AbstractFill)  # for example (Fill(π,3),)
     join(io, size(x), ", ")
     print(io, ")")
 end
-Base.show(io::IO, x::Eye) = print(io, "Eye(", size(x,1), ")")
+function Base.show(io::IO, x::Eye)
+    print(io, "Eye(", size(x,1))
+    if size(x,1) != size(x,2)
+        print(io, ",", size(x,2))
+    end
+    print(io, ")")
+end
 
 Base.array_summary(io::IO, ::Zeros{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
     print(io, Base.dims2string(length.(inds)), " Zeros{$T}")
