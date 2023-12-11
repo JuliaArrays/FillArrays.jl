@@ -1114,7 +1114,7 @@ end
                 @test Zeros(S, 10) .* (T(1):T(10)) ≡ Zeros(U, 10)
                 @test_throws DimensionMismatch Zeros(S, 10) .* (T(1):T(11))
             end
-        end        
+        end
     end
 end
 
@@ -2292,3 +2292,14 @@ end
     end
 end
 
+@testset "isbanded/isdiag" begin
+    @testset for A in (Zeros(2,3), Ones(3,4), Ones(0,4), Ones(7,0), Ones(7,2), Ones(2,7),
+            Fill(3, 2,4), Fill(0, 3, 4), Fill(2, 0, 4), Fill(2, 6, 0), Fill(0, 8, 8))
+        B = Array(A)
+        @test isdiag(A) == isdiag(B)
+        for k in -5:5
+            @test istriu(A, k) == istriu(B, k)
+            @test istril(A, k) == istril(B, k)
+        end
+    end
+end
