@@ -644,9 +644,19 @@ end
 # In particular, these make iszero(Eye(n))  efficient.
 # use any/all on scalar to get Boolean error message
 any(f::Function, x::AbstractFill) = !isempty(x) && any(f(getindex_value(x)))
-# evaluating all(f(getindex_value(x))) before isempty(x) allows short-curcuiting
-# in case the value is known from the type, e.g. in Zeros
-all(f::Function, x::AbstractFill) = all(f(getindex_value(x))) || isempty(x)
+function all(f::Function, x::AbstractFill)
+    fval = f(getindex_value(x))
+    # checking the Bool path before isempty(x) allows short-curcuiting
+    # in case the value is known from the type, e.g. in Zeros
+    if fval isa Bool
+        return fval || isempty(x)
+    elseif isempty(x) # cases like all(Fill(2,0))
+        return true
+    elseif fval # throw an error for non-Bool values
+        return fval
+    end
+    return false
+end
 any(x::AbstractFill) = any(identity, x)
 all(x::AbstractFill) = all(identity, x)
 
