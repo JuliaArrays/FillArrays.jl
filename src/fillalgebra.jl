@@ -516,3 +516,11 @@ function kron(f::AbstractFillVecOrMat, g::AbstractFillVecOrMat)
     sz = _kronsize(f, g)
     return _kron(f, g, sz)
 end
+
+# bandedness
+function LinearAlgebra.istriu(A::AbstractFillMatrix, k::Integer = 0)
+    iszero(A) || k <= -(size(A,1)-1)
+end
+function LinearAlgebra.istril(A::AbstractFillMatrix, k::Integer = 0)
+    iszero(A) || k >= size(A,2)-1
+end
