@@ -522,10 +522,9 @@ function kron(f::AbstractFillVecOrMat, g::AbstractFillVecOrMat)
 end
 
 # bandedness
-LinearAlgebra.isdiag(A::AbstractFillMatrix) = iszero(getindex_value(A)) || isempty(A)
 function LinearAlgebra.istriu(A::AbstractFillMatrix, k::Integer = 0)
-    iszero(getindex_value(A)) || isempty(A) || k <= -(size(A,1)-1)
+    iszero(A) || k <= -(size(A,1)-1)
 end
 function LinearAlgebra.istril(A::AbstractFillMatrix, k::Integer = 0)
-    iszero(getindex_value(A)) || isempty(A) || k >= size(A,2)-1
+    iszero(A) || k >= size(A,2)-1
 end

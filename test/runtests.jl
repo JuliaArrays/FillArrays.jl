@@ -2293,8 +2293,9 @@ end
 end
 
 @testset "isbanded/isdiag" begin
-    @testset for A in (Zeros(2,3), Ones(3,4), Ones(0,4), Ones(7,0), Ones(7,2), Ones(2,7),
-            Fill(3, 2,4), Fill(0, 3, 4), Fill(2, 0, 4), Fill(2, 6, 0), Fill(0, 8, 8))
+    @testset for A in Any[Zeros(2,3), Zeros(0,1), Zeros(1,1), Zeros(1,2),
+            Ones(0,1), Ones(1,1), Ones(3,4), Ones(0,4), Ones(7,0), Ones(7,2), Ones(2,7),
+            Fill(3, 0,1), Fill(3, 1,1), Fill(3, 2,4), Fill(0, 3, 4), Fill(2, 0, 4), Fill(2, 6, 0), Fill(0, 8, 8)]
         B = Array(A)
         @test isdiag(A) == isdiag(B)
         for k in -5:5
