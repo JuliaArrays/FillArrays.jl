@@ -1336,6 +1336,9 @@ end
     @test iszero(Fill(SMatrix{2,2}(0,0,0,0), 2))
     @test iszero(Fill(SMatrix{2,2}(0,0,0,1), 0))
 
+    # compile-time evaluation
+    @test @inferred((Z -> Val(iszero(Z)))(Zeros(3,3))) == Val(true)
+
     @testset "all/any" begin
         @test any(Ones{Bool}(10)) === all(Ones{Bool}(10)) === any(Fill(true,10)) === all(Fill(true,10)) === true
         @test any(Zeros{Bool}(10)) === all(Zeros{Bool}(10)) === any(Fill(false,10)) === all(Fill(false,10)) === false
