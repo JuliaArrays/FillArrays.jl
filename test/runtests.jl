@@ -1348,6 +1348,8 @@ end
         @test all(Fill(2,0))
         @test !any(Fill(2,0))
         @test any(Trues(2,0)) == any(trues(2,0))
+        @test_throws TypeError all(Fill(2,2))
+        @test all(iszero, Fill(missing,2)) === all(iszero, fill(missing,2))
     end
 
     @testset "Error" begin

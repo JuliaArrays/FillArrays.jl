@@ -652,10 +652,10 @@ function all(f::Function, x::AbstractFill)
         return fval || isempty(x)
     elseif isempty(x) # cases like all(Fill(2,0))
         return true
-    elseif fval # throw an error for non-Bool values
-        return fval
+    elseif ismissing(fval)
+        return missing
     end
-    return false
+    return all(fval)
 end
 any(x::AbstractFill) = any(identity, x)
 all(x::AbstractFill) = all(identity, x)
