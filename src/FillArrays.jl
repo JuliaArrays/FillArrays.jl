@@ -4,7 +4,7 @@ module FillArrays
 using LinearAlgebra
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
-    any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
+    any, all, axes, isone, iszero, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, map, zero,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
     parent, similar, issorted
@@ -94,14 +94,10 @@ Typically created by `Fill` or `Zeros` or `Ones`
 
 ```jldoctest
 julia> Fill(7, (2,3))
-2×3 Fill{Int64,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}:
- 7  7  7
- 7  7  7
+2×3 Fill{Int64}, with entries equal to 7
 
-julia> Fill{Float64, 1, Tuple{UnitRange{Int64}}}(7., (1:2,))
-2-element Fill{Float64,1,Tuple{UnitRange{Int64}}} with indices 1:2:
- 7.0
- 7.0
+julia> Fill{Float64, 1, Tuple{UnitRange{Int64}}}(7.0, (1:2,))
+2-element Fill{Float64, 1, Tuple{UnitRange{Int64}}} with indices 1:2, with entries equal to 7.0
 ```
 """
 struct Fill{T, N, Axes} <: AbstractFill{T, N, Axes}
@@ -621,9 +617,10 @@ end
 #########
 
 function isone(AF::AbstractFillMatrix)
-    isone(getindex_value(AF)) || return false
     (n,m) = size(AF)
     n != m && return false
+    (n == 0 || m == 0) && return true
+    isone(getindex_value(AF)) || return false
     n == 1 && return true
     return false
 end
@@ -715,12 +712,9 @@ function Base.show(io::IO, ::MIME"text/plain", x::Union{Eye, AbstractFill})
         return show(io, x)
     end
     summary(io, x)
-    if x isa Union{AbstractZeros, AbstractOnes, Eye}
-        # then no need to print entries
-    elseif length(x) > 1
-        print(io, ", with entries equal to ", getindex_value(x))
-    else
-        print(io, ", with entry equal to ", getindex_value(x))
+    if !(x isa Union{AbstractZeros, AbstractOnes, Eye})
+        print(io, ", with ", length(x) > 1 ? "entries" : "entry", " equal to ")
+        show(io, getindex_value(x))
     end
 end
 
@@ -742,7 +736,13 @@ function Base.show(io::IO, x::AbstractFill)  # for example (Fill(π,3),)
     join(io, size(x), ", ")
     print(io, ")")
 end
-Base.show(io::IO, x::Eye) = print(io, "Eye(", size(x,1), ")")
+function Base.show(io::IO, x::Eye)
+    print(io, "Eye(", size(x,1))
+    if size(x,1) != size(x,2)
+        print(io, ",", size(x,2))
+    end
+    print(io, ")")
+end
 
 Base.array_summary(io::IO, ::Zeros{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
     print(io, Base.dims2string(length.(inds)), " Zeros{$T}")

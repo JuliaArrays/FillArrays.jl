@@ -1,6 +1,10 @@
 using FillArrays, LinearAlgebra, PDMats, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
+using Documenter
+DocMeta.setdocmeta!(FillArrays, :DocTestSetup, :(using FillArrays))
+doctest(FillArrays; manual = false)
+
 using Aqua
 @testset "Project quality" begin
     Aqua.test_all(FillArrays;
@@ -1238,40 +1242,62 @@ end
             @test ! all(iszero, m)
             @test ! all(isone, m)
         end
-        for d in (1, )
+        @testset for d in (0, 1)
             for m in (Eye{T}(d), Eye{T}(d, d))
+                M = Array(m)
                 @test ! any(iszero, m)
                 @test ! all(iszero, m)
-                @test any(isone, m)
-                @test all(isone, m)
+                @test any(isone, m) == !isempty(m)
+                @test all(isone, m) == !isempty(m)
+                if !isempty(m)
+                    @test ! any(iszero, m) == ! any(iszero, M)
+                    @test ! all(iszero, m) == ! all(iszero, M)
+                    @test any(isone, m) == any(isone, M)
+                    @test all(isone, m) == all(isone, M)
+                end
             end
 
             for m in (Eye{T}(d, d + 1), Eye{T}(d + 1, d))
-                @test any(iszero, m)
+                M = Array(m)
+                @test any(iszero, m) == !isempty(m)
                 @test ! all(iszero, m)
-                @test any(isone, m)
+                @test any(isone, m) == !isempty(m)
                 @test ! all(isone, m)
+                if !isempty(M)
+                    @test any(iszero, m) == any(iszero, M)
+                    @test ! all(iszero, m) == ! all(iszero, M)
+                    @test any(isone, m) == any(isone, M)
+                    @test ! all(isone, m) == ! all(isone, M)
+                end
             end
 
             onem = Ones{T}(d, d)
-            @test isone(onem)
-            @test ! iszero(onem)
+            @test isone(onem) == isone(Array(onem))
+            @test iszero(onem) == isempty(onem) == iszero(Array(onem))
+
+            if d > 0
+                @test !isone(Ones{T}(d, 2d))
+            end
 
             zerom = Zeros{T}(d, d)
-            @test ! isone(zerom)
-            @test  iszero(zerom)
+            @test  isone(zerom) == isempty(zerom) == isone(Array(zerom))
+            @test  iszero(zerom) == iszero(Array(zerom))
+
+            if d > 0
+                @test iszero(Zeros{T}(d, 2d))
+            end
 
             fillm0 = Fill(T(0), d, d)
-            @test ! isone(fillm0)
-            @test   iszero(fillm0)
+            @test   isone(fillm0) == isempty(fillm0) == isone(Array(fillm0))
+            @test   iszero(fillm0) == iszero(Array(fillm0))
 
             fillm1 = Fill(T(1), d, d)
-            @test isone(fillm1)
-            @test ! iszero(fillm1)
+            @test isone(fillm1) == isone(Array(fillm1))
+            @test iszero(fillm1) == isempty(fillm1) == iszero(Array(fillm1))
 
             fillm2 = Fill(T(2), d, d)
-            @test ! isone(fillm2)
-            @test ! iszero(fillm2)
+            @test isone(fillm2) == isempty(fillm2) == isone(Array(fillm2))
+            @test iszero(fillm2) == isempty(fillm2) == iszero(Array(fillm2))
         end
         for d in (2, 3)
             for m in (Eye{T}(d), Eye{T}(d, d), Eye{T}(d, d + 2), Eye{T}(d + 2, d))
@@ -1305,6 +1331,10 @@ end
             @test ! iszero(m4)
         end
     end
+
+    @test iszero(Zeros{SMatrix{2,2,Int,4}}(2))
+    @test iszero(Fill(SMatrix{2,2}(0,0,0,0), 2))
+    @test iszero(Fill(SMatrix{2,2}(0,0,0,1), 0))
 
     @testset "all/any" begin
         @test any(Ones{Bool}(10)) === all(Ones{Bool}(10)) === any(Fill(true,10)) === all(Fill(true,10)) === true
@@ -1818,6 +1848,7 @@ end
     @test repr(Fill(1f0,10)) == "Fill(1.0f0, 10)"  # Float32!
     @test repr(Fill(0)) == "Fill(0)"
     @test repr(Eye(9)) == "Eye(9)"
+    @test repr(Eye(9,4)) == "Eye(9,4)"
     # also used for arrays of arrays:
     @test occursin("Eye(2) ", stringmime("text/plain", [Eye(2) for i in 1:2, j in 1:2]))
 end
