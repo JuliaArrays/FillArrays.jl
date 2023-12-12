@@ -1,4 +1,4 @@
-using FillArrays, LinearAlgebra, PDMats, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics
+using FillArrays, LinearAlgebra, PDMats, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics, Quaternions
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 using Documenter
@@ -1558,11 +1558,25 @@ end
         Z = Zeros(SMatrix{2,3,Float64,6}, 2)
         @test Z' * D == Array(Z)' * D
 
+        S = SMatrix{2,3}(1:6)
+        A = reshape([S,2S,3S,4S],2,2)
+        F = Fill(S',2,2)
+        @test A * F == A * fill(S',size(F))
+        @test mul!(A * F, A, F, 2, 1) == 3 * A * fill(S',size(F))
+        @test F * A == fill(S',size(F)) * A
+        @test mul!(F * A, F, A, 2, 1) == 3 * fill(S',size(F)) * A
+
         # doubly nested
         A = [[[1,2]]]'
         Z = Zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)
         Z2 = zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)
         @test A * Z == A * Z2
+
+        x = [1 2 3; 4 5 6]
+        A = reshape([x,2x,3x,4x],2,2)
+        F = Fill(x,2,2)
+        @test A' * F == A' * fill(x,size(F))
+        @test mul!(A' * F, A', F, 2, 1) == 3 * A' * fill(x,size(F))
     end
 
     for W in (zeros(3,4), @MMatrix zeros(3,4))
@@ -1695,6 +1709,40 @@ end
         @test transpose(A)*fillmat ≈ transpose(A)*Array(fillmat)
         @test adjoint(A)*fillvec ≈ adjoint(A)*Array(fillvec)
         @test adjoint(A)*fillmat ≈ adjoint(A)*Array(fillmat)
+    end
+
+    @testset "non-commutative" begin
+        A = Fill(quat(rand(4)...), 2, 2)
+        M = Array(A)
+        α, β = quat(0,1,1,0), quat(1,0,0,1)
+        @testset "matvec" begin
+            f = Fill(quat(rand(4)...), size(A,2))
+            v = Array(f)
+            D = copy(v)
+            exp_res = M * v * α + D * β
+            @test mul!(copy(D), A, f, α, β) ≈ mul!(copy(D), M, v, α, β) ≈ exp_res
+            @test mul!(copy(D), M, f, α, β) ≈ mul!(copy(D), M, v, α, β) ≈ exp_res
+            @test mul!(copy(D), A, v, α, β) ≈ mul!(copy(D), M, v, α, β) ≈ exp_res
+
+            @test mul!(copy(D), M', f, α, β) ≈ mul!(copy(D), M', v, α, β) ≈ M' * v * α + D * β
+            @test mul!(copy(D), transpose(M), f, α, β) ≈ mul!(copy(D), transpose(M), v, α, β) ≈ transpose(M) * v * α + D * β
+        end
+
+        @testset "matmat" begin
+            B = Fill(quat(rand(4)...), 2, 2)
+            N = Array(B)
+            D = copy(N)
+            exp_res = M * N * α + D * β
+            @test mul!(copy(D), A, B, α, β) ≈ mul!(copy(D), M, N, α, β) ≈ exp_res
+            @test mul!(copy(D), M, B, α, β) ≈ mul!(copy(D), M, N, α, β) ≈ exp_res
+            @test mul!(copy(D), A, N, α, β) ≈ mul!(copy(D), M, N, α, β) ≈ exp_res
+
+            @test mul!(copy(D), M', B, α, β) ≈ mul!(copy(D), M', N, α, β) ≈ M' * N * α + D * β
+            @test mul!(copy(D), transpose(M), B, α, β) ≈ mul!(copy(D), transpose(M), N, α, β) ≈ transpose(M) * N * α + D * β
+
+            @test mul!(copy(D), A, N', α, β) ≈ mul!(copy(D), M, N', α, β) ≈ M * N' * α + D * β
+            @test mul!(copy(D), A, transpose(N), α, β) ≈ mul!(copy(D), M, transpose(N), α, β) ≈ M * transpose(N) * α + D * β
+        end
     end
 
     @testset "ambiguities" begin

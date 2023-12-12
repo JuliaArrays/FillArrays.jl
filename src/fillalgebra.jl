@@ -150,12 +150,12 @@ end
 function mul!(y::AbstractVector, A::AbstractFillMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, b)
 
-    αAb = alpha * getindex_value(A) * getindex_value(b) * length(b)
+    Abα = Ref(getindex_value(A) * getindex_value(b) * alpha * length(b))
 
     if iszero(beta)
-        y .= αAb
+        y .= Abα
     else
-        y .= αAb .+ beta .* y
+        y .= Abα .+ y .* beta
     end
     y
 end
@@ -163,18 +163,15 @@ end
 function mul!(y::StridedVector, A::StridedMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, b)
 
-    αb = alpha * getindex_value(b)
+    bα = Ref(getindex_value(b) * alpha)
 
     if iszero(beta)
-        y .= zero(eltype(y))
-        for col in eachcol(A)
-            y .+= αb .* col
-        end
+        y .= Ref(zero(eltype(y)))
     else
-        lmul!(beta, y)
-        for col in eachcol(A)
-            y .+= αb .* col
-        end
+        rmul!(y, beta)
+    end
+    for Acol in eachcol(A)
+        @. y += Acol * bα
     end
     y
 end
@@ -182,28 +179,27 @@ end
 function mul!(y::StridedVector, A::AbstractFillMatrix, b::StridedVector, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, b)
 
-    αA = alpha * getindex_value(A)
+    Abα = Ref(getindex_value(A) * sum(b) * alpha)
 
     if iszero(beta)
-        y .= αA .* sum(b)
+        y .= Abα
     else
-        y .= αA .* sum(b) .+ beta .* y
+        y .= Abα .+ y .* beta
     end
     y
 end
 
-function _mul_adjtrans!(y::AbstractVector, A::AbstractMatrix, b::AbstractVector, alpha, beta, f)
-    α = alpha * getindex_value(b)
-
+function _mul_adjtrans!(y::AbstractVector, A::AbstractMatrix, b::AbstractFillVector, alpha, beta, f)
+    bα = getindex_value(b) * alpha
     At = f(A)
 
     if iszero(beta)
-        for (ind, col) in zip(eachindex(y), eachcol(At))
-            y[ind] = α .* f(sum(col))
+        for (ind, Atcol) in zip(eachindex(y), eachcol(At))
+            y[ind] = f(sum(Atcol)) * bα
         end
     else
-        for (ind, col) in zip(eachindex(y), eachcol(At))
-            y[ind] = α .* f(sum(col)) .+ beta .* y[ind]
+        for (ind, Atcol) in zip(eachindex(y), eachcol(At))
+            y[ind] = f(sum(Atcol)) * bα .+ y[ind] .* beta
         end
     end
     y
@@ -218,11 +214,11 @@ end
 
 function mul!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
     check_matmul_sizes(C, A, B)
-    αAB = alpha * getindex_value(A) * getindex_value(B) * size(B,1)
+    ABα = getindex_value(A) * getindex_value(B) * alpha * size(B,1)
     if iszero(beta)
-        C .= αAB
+        C .= ABα
     else
-        C .= αAB .+ beta .* C
+        C .= ABα .+ C .* beta
     end
     C
 end
@@ -248,7 +244,7 @@ _firstcol(C::Union{Adjoint, Transpose}) = view(parent(C), 1, :)
 function _mulfill!(C, A, B::AbstractFillMatrix, alpha, beta)
     check_matmul_sizes(C, A, B)
     if iszero(size(B,2))
-        return lmul!(beta, C)
+        return rmul!(C, beta)
     end
     mul!(_firstcol(C), A, view(B, :, 1), alpha, beta)
     copyfirstcol!(C)
