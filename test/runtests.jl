@@ -2219,7 +2219,7 @@ end
         @test A / (2 + 3.0im) === OneElement(val / (2 + 3.0im), (2,2), (3,4)) == B / (2 + 3.0im)
     end
 
-    @testset "zero" begin
+    @testset "zero/iszero" begin
         v = OneElement(10, 3, 4)
         @test v + zero(v) == v
         @test v + zero(v) isa typeof(v)
@@ -2227,6 +2227,15 @@ end
         @test !iszero(v)
         @test iszero(OneElement(0, 3, 4))
         @test iszero(OneElement(0, 5, 4))
+        @test iszero(OneElement(3, (2,2), (0,0)))
+        @test iszero(OneElement(3, (2,2), (1,2)))
+    end
+
+    @testset "isone" begin
+        @test isone(OneElement(3, (0,0), (0,0)))
+        @test isone(OneElement(1, (1,1), (1,1)))
+        @test !isone(OneElement(2, (1,1), (1,1)))
+        @test !isone(OneElement(1, (2,2), (2,2)))
     end
 end
 
