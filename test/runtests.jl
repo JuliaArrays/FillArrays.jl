@@ -2218,6 +2218,36 @@ end
         @test A * (2 + 3.0im) === OneElement(val * (2 + 3.0im), (2,2), (3,4)) == B * (2 + 3.0im)
         @test A / (2 + 3.0im) === OneElement(val / (2 + 3.0im), (2,2), (3,4)) == B / (2 + 3.0im)
     end
+
+    @testset "isbanded" begin
+        A = OneElement(3, (2,3), (4,5))
+        @test !isdiag(A)
+        @test istriu(A)
+        @test !istril(A)
+        @test LinearAlgebra.isbanded(A, 1, 2)
+        @test LinearAlgebra.isbanded(A, -1, 2)
+        @test !LinearAlgebra.isbanded(A, 2, 2)
+
+        A = OneElement(3, (4,2), (4,5))
+        @test !isdiag(A)
+        @test !istriu(A)
+        @test istril(A)
+        @test LinearAlgebra.isbanded(A, -2, -2)
+        @test LinearAlgebra.isbanded(A, -2, 2)
+        @test !LinearAlgebra.isbanded(A, 2, 2)
+
+        for A in (OneElement(3, (2,2), (4,5)), OneElement(3, (1,1), (1,2)), OneElement(3, (8,7), (2,1)))
+            @test isdiag(A)
+            @test istriu(A)
+            @test istril(A)
+        end
+
+        for A in (OneElement(0, (2,3), (4,5)), OneElement(0, (3,2), (4,5)))
+            @test isdiag(A)
+            @test istriu(A)
+            @test istril(A)
+        end
+    end
 end
 
 @testset "repeat" begin
