@@ -151,3 +151,26 @@ end
 
 adjoint(A::OneElementMatrix) = OneElement(adjoint(A.val), reverse(A.ind), reverse(A.axes))
 transpose(A::OneElementMatrix) = OneElement(transpose(A.val), reverse(A.ind), reverse(A.axes))
+
+# broadcast
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::OneElement{<:Any,N}) where {N}
+    OneElement(conj(r.val), r.ind, axes(r))
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(real), r::OneElement{<:Any,N}) where {N}
+    OneElement(real(r.val), r.ind, axes(r))
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(imag), r::OneElement{<:Any,N}) where {N}
+    OneElement(imag(r.val), r.ind, axes(r))
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(^), r::OneElement{<:Any,N}, x::Number) where {N}
+    OneElement(r.val^x, r.ind, axes(r))
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(*), r::OneElement{<:Any,N}, x::Number) where {N}
+    OneElement(r.val*x, r.ind, axes(r))
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(/), r::OneElement{<:Any,N}, x::Number) where {N}
+    OneElement(r.val/x, r.ind, axes(r))
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(\), x::Number, r::OneElement{<:Any,N}) where {N}
+    OneElement(x \ r.val, r.ind, axes(r))
+end
