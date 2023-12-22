@@ -2218,6 +2218,16 @@ end
         @test A * (2 + 3.0im) === OneElement(val * (2 + 3.0im), (2,2), (3,4)) == B * (2 + 3.0im)
         @test A / (2 + 3.0im) === OneElement(val / (2 + 3.0im), (2,2), (3,4)) == B / (2 + 3.0im)
     end
+
+    @testset "tril/triu" begin
+        for A in (OneElement(3, (4,2), (4,5)), OneElement(3, (2,3), (4,5)), OneElement(3, (3,3), (4,5)))
+            B = Array(A)
+            for k in -5:5
+                @test tril(A, k) == tril(B, k)
+                @test triu(A, k) == triu(B, k)
+            end
+        end
+    end
 end
 
 @testset "repeat" begin
@@ -2382,4 +2392,12 @@ end
             @test istril(A, k) == istril(B, k)
         end
     end
+end
+
+@testset "triu/tril for Zeros" begin
+    Z = Zeros(3, 4)
+    @test triu(Z) === Z
+    @test tril(Z) === Z
+    @test triu(Z, 2) === Z
+    @test tril(Z, 2) === Z
 end
