@@ -62,6 +62,8 @@ Base.@propagate_inbounds function Base.setindex(A::AbstractZeros{T,N}, v, kj::Va
     OneElement(convert(T, v), kj, axes(A))
 end
 
+Base.zero(A::OneElement) = Zeros{eltype(A)}(axes(A))
+
 *(x::OneElement, b::Number) = OneElement(x.val * b, x.ind, x.axes)
 *(b::Number, x::OneElement) = OneElement(b * x.val, x.ind, x.axes)
 /(x::OneElement, b::Number) = OneElement(x.val / b, x.ind, x.axes)

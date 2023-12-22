@@ -2218,6 +2218,12 @@ end
         @test A * (2 + 3.0im) === OneElement(val * (2 + 3.0im), (2,2), (3,4)) == B * (2 + 3.0im)
         @test A / (2 + 3.0im) === OneElement(val / (2 + 3.0im), (2,2), (3,4)) == B / (2 + 3.0im)
     end
+
+    @testset "zero" begin
+        v = OneElement(10, 3, 4)
+        @test v + zero(v) == v
+        @test v + zero(v) isa typeof(v)
+    end
 end
 
 @testset "repeat" begin
