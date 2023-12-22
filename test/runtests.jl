@@ -2223,6 +2223,10 @@ end
         v = OneElement(10, 3, 4)
         @test v + zero(v) == v
         @test v + zero(v) isa typeof(v)
+
+        @test !iszero(v)
+        @test iszero(OneElement(0, 3, 4))
+        @test iszero(OneElement(0, 5, 4))
     end
 end
 

@@ -64,6 +64,8 @@ end
 
 Base.zero(A::OneElement) = Zeros{eltype(A)}(axes(A))
 
+Base.iszero(A::OneElement) = iszero(getindex_value(A))
+
 *(x::OneElement, b::Number) = OneElement(x.val * b, x.ind, x.axes)
 *(b::Number, x::OneElement) = OneElement(b * x.val, x.ind, x.axes)
 /(x::OneElement, b::Number) = OneElement(x.val / b, x.ind, x.axes)
