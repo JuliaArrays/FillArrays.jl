@@ -2268,6 +2268,25 @@ end
                 @test mul!(C, O, D, 2, 2) == 2 * O * D .+ 2
             end
         end
+        @testset "array elements" begin
+            A = [SMatrix{2,3}(1:6)*(i+j) for i in 1:3, j in 1:2]
+            B = OneElement(SMatrix{3,2}(1:6), (size(A,2),2), (size(A,2),4))
+            C = [SMatrix{2,2}(1:4) for i in 1:size(A,1), j in 1:size(B,2)]
+            @test mul!(copy(C), A, B) == A * B
+            @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            B = OneElement(SMatrix{3,2}(1:6), (size(A,2),), (size(A,2),))
+            C = [SMatrix{2,2}(1:4) for i in 1:size(A,1)]
+            @test mul!(copy(C), A, B) == A * B
+            @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+        end
+        @testset "non-commutative" begin
+            A = [quat(rand(4)...)*(i+j) for i in 1:2, j in 1:3]
+            B = OneElement(quat(rand(4)...), 1, size(A,2))
+            C = [quat(rand(4)...) for i in axes(A,1)]
+            @test mul!(copy(C), A, B) ≈ A * B
+            α, β = quat(0,0,1,0), quat(1,0,1,0)
+            @test mul!(copy(C), A, B, α, β) ≈ mul!(copy(C), A, Array(B), α, β) ≈ A * B * α + C * β
+        end
     end
 
     @testset "multiplication/division by a number" begin
