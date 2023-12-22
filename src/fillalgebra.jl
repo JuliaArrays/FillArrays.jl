@@ -562,3 +562,41 @@ end
 
 triu(A::AbstractZerosMatrix, k::Integer=0) = A
 tril(A::AbstractZerosMatrix, k::Integer=0) = A
+
+# eigen
+_eigenind(λ0, n, sortby) = (isnothing(sortby) || sortby(λ0) <= sortby(zero(λ0))) ? 1 : n
+
+function eigvals(A::AbstractFillMatrix{<:Union{Real, Complex}}; sortby = nothing)
+    Base.require_one_based_indexing(A)
+    n = checksquare(A)
+    # only one non-trivial eigenvalue for a rank-1 matrix
+    λ0 = float(getindex_value(A)) * n
+    ind = _eigenind(λ0, n, sortby)
+    OneElement(λ0, ind, n)
+end
+
+function eigvecs(A::AbstractFillMatrix{<:Union{Real, Complex}}; sortby = nothing)
+    Base.require_one_based_indexing(A)
+    n = checksquare(A)
+    M = similar(A, real(float(eltype(A))))
+    n == 0 && return M
+    val = getindex_value(A)
+    ind = _eigenind(val, n, sortby)
+    # The non-trivial eigenvector is normalize(ones(n))
+    M[:, ind] .= inv(sqrt(n))
+    # eigenvectors corresponding to zero eigenvalues
+    for (i, j) in enumerate(axes(M,2)[(ind == 1) .+ (1:end-1)])
+        # The eigenvectors are v = normalize([ones(n-1); -(n-1)]), and sum(v) == 0
+        # The ordering is arbitrary,
+        # and we choose to order in terms of the number of non-zero elements
+        nrm = 1/sqrt(i*(i+1))
+        M[1:i, j] .= nrm
+        M[i+1, j] = -i * nrm
+        M[i+2:end, j] .= zero(eltype(M))
+    end
+    return M
+end
+
+function eigen(A::AbstractFillMatrix{<:Number}; sortby = nothing)
+    Eigen(eigvals(A; sortby), eigvecs(A; sortby))
+end
