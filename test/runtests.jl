@@ -1,5 +1,9 @@
-using FillArrays, LinearAlgebra, PDMats, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics
+using FillArrays, LinearAlgebra, PDMats, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics, Quaternions
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
+
+using Documenter
+DocMeta.setdocmeta!(FillArrays, :DocTestSetup, :(using FillArrays))
+doctest(FillArrays; manual = false)
 
 using Aqua
 @testset "Project quality" begin
@@ -1114,7 +1118,7 @@ end
                 @test Zeros(S, 10) .* (T(1):T(10)) ≡ Zeros(U, 10)
                 @test_throws DimensionMismatch Zeros(S, 10) .* (T(1):T(11))
             end
-        end        
+        end
     end
 end
 
@@ -1238,40 +1242,62 @@ end
             @test ! all(iszero, m)
             @test ! all(isone, m)
         end
-        for d in (1, )
+        @testset for d in (0, 1)
             for m in (Eye{T}(d), Eye{T}(d, d))
+                M = Array(m)
                 @test ! any(iszero, m)
                 @test ! all(iszero, m)
-                @test any(isone, m)
-                @test all(isone, m)
+                @test any(isone, m) == !isempty(m)
+                @test all(isone, m) == !isempty(m)
+                if !isempty(m)
+                    @test ! any(iszero, m) == ! any(iszero, M)
+                    @test ! all(iszero, m) == ! all(iszero, M)
+                    @test any(isone, m) == any(isone, M)
+                    @test all(isone, m) == all(isone, M)
+                end
             end
 
             for m in (Eye{T}(d, d + 1), Eye{T}(d + 1, d))
-                @test any(iszero, m)
+                M = Array(m)
+                @test any(iszero, m) == !isempty(m)
                 @test ! all(iszero, m)
-                @test any(isone, m)
+                @test any(isone, m) == !isempty(m)
                 @test ! all(isone, m)
+                if !isempty(M)
+                    @test any(iszero, m) == any(iszero, M)
+                    @test ! all(iszero, m) == ! all(iszero, M)
+                    @test any(isone, m) == any(isone, M)
+                    @test ! all(isone, m) == ! all(isone, M)
+                end
             end
 
             onem = Ones{T}(d, d)
-            @test isone(onem)
-            @test ! iszero(onem)
+            @test isone(onem) == isone(Array(onem))
+            @test iszero(onem) == isempty(onem) == iszero(Array(onem))
+
+            if d > 0
+                @test !isone(Ones{T}(d, 2d))
+            end
 
             zerom = Zeros{T}(d, d)
-            @test ! isone(zerom)
-            @test  iszero(zerom)
+            @test  isone(zerom) == isempty(zerom) == isone(Array(zerom))
+            @test  iszero(zerom) == iszero(Array(zerom))
+
+            if d > 0
+                @test iszero(Zeros{T}(d, 2d))
+            end
 
             fillm0 = Fill(T(0), d, d)
-            @test ! isone(fillm0)
-            @test   iszero(fillm0)
+            @test   isone(fillm0) == isempty(fillm0) == isone(Array(fillm0))
+            @test   iszero(fillm0) == iszero(Array(fillm0))
 
             fillm1 = Fill(T(1), d, d)
-            @test isone(fillm1)
-            @test ! iszero(fillm1)
+            @test isone(fillm1) == isone(Array(fillm1))
+            @test iszero(fillm1) == isempty(fillm1) == iszero(Array(fillm1))
 
             fillm2 = Fill(T(2), d, d)
-            @test ! isone(fillm2)
-            @test ! iszero(fillm2)
+            @test isone(fillm2) == isempty(fillm2) == isone(Array(fillm2))
+            @test iszero(fillm2) == isempty(fillm2) == iszero(Array(fillm2))
         end
         for d in (2, 3)
             for m in (Eye{T}(d), Eye{T}(d, d), Eye{T}(d, d + 2), Eye{T}(d + 2, d))
@@ -1305,6 +1331,10 @@ end
             @test ! iszero(m4)
         end
     end
+
+    @test iszero(Zeros{SMatrix{2,2,Int,4}}(2))
+    @test iszero(Fill(SMatrix{2,2}(0,0,0,0), 2))
+    @test iszero(Fill(SMatrix{2,2}(0,0,0,1), 0))
 
     @testset "all/any" begin
         @test any(Ones{Bool}(10)) === all(Ones{Bool}(10)) === any(Fill(true,10)) === all(Fill(true,10)) === true
@@ -1382,6 +1412,19 @@ end
     @test copy(transpose(Ones(5))) ≡ transpose(Ones(5))
     @test Fill([1+im 2; 3 4; 5 6], 2,3)' == Fill([1+im 2; 3 4; 5 6]', 3,2)
     @test transpose(Fill([1+im 2; 3 4; 5 6], 2,3)) == Fill(transpose([1+im 2; 3 4; 5 6]), 3,2)
+    
+    @testset "recursive" begin
+        S = SMatrix{2,3}(1:6)
+        Z = Zeros(typeof(S), 2, 3)
+        Y = zeros(typeof(S), 2, 3)
+        @test Z' == Y'
+        @test transpose(Z) == transpose(Y)
+
+        F = Fill(S, 2, 3)
+        G = fill(S, 2, 3)
+        @test F' == G'
+        @test transpose(F) == transpose(G)
+    end
 
     @test @inferred(permutedims(Ones(10))) ≡ Ones(1,10)
     @test @inferred(permutedims(Zeros(10))) ≡ Zeros(1,10)
@@ -1527,11 +1570,25 @@ end
         Z = Zeros(SMatrix{2,3,Float64,6}, 2)
         @test Z' * D == Array(Z)' * D
 
+        S = SMatrix{2,3}(1:6)
+        A = reshape([S,2S,3S,4S],2,2)
+        F = Fill(S',2,2)
+        @test A * F == A * fill(S',size(F))
+        @test mul!(A * F, A, F, 2, 1) == 3 * A * fill(S',size(F))
+        @test F * A == fill(S',size(F)) * A
+        @test mul!(F * A, F, A, 2, 1) == 3 * fill(S',size(F)) * A
+
         # doubly nested
         A = [[[1,2]]]'
         Z = Zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)
         Z2 = zeros(SMatrix{1,1,SMatrix{2,2,Int,4},1},1)
         @test A * Z == A * Z2
+
+        x = [1 2 3; 4 5 6]
+        A = reshape([x,2x,3x,4x],2,2)
+        F = Fill(x,2,2)
+        @test A' * F == A' * fill(x,size(F))
+        @test mul!(A' * F, A', F, 2, 1) == 3 * A' * fill(x,size(F))
     end
 
     for W in (zeros(3,4), @MMatrix zeros(3,4))
@@ -1577,6 +1634,14 @@ end
             @test A*Zeros(nA)  ≡ Zeros(mA)
             @test A*Zeros(nA,1) ≡ Zeros(mA,1)
             @test a*Zeros(na,3) ≡ Zeros(la,3)
+
+            @test transpose(A) * Zeros(mA) ≡ Zeros(nA)
+            @test A' * Zeros(mA) ≡ Zeros(nA)
+
+            @test transpose(a) * Zeros(la, 3) ≡ Zeros(1,3)
+            @test a' * Zeros(la,3) ≡ Zeros(1,3)
+
+            @test Zeros(la)' * Transpose(Adjoint(a)) == 0.0
 
             w = zeros(mA)
             @test mul!(w, A, Fill(2,nA), true, false) ≈ A * fill(2,nA)
@@ -1656,6 +1721,56 @@ end
         @test transpose(A)*fillmat ≈ transpose(A)*Array(fillmat)
         @test adjoint(A)*fillvec ≈ adjoint(A)*Array(fillvec)
         @test adjoint(A)*fillmat ≈ adjoint(A)*Array(fillmat)
+    end
+
+    @testset "non-commutative" begin
+        A = Fill(quat(rand(4)...), 2, 2)
+        M = Array(A)
+        α, β = quat(0,1,1,0), quat(1,0,0,1)
+        @testset "matvec" begin
+            f = Fill(quat(rand(4)...), size(A,2))
+            v = Array(f)
+            D = copy(v)
+            exp_res = M * v * α + D * β
+            @test mul!(copy(D), A, f, α, β) ≈ mul!(copy(D), M, v, α, β) ≈ exp_res
+            @test mul!(copy(D), M, f, α, β) ≈ mul!(copy(D), M, v, α, β) ≈ exp_res
+            @test mul!(copy(D), A, v, α, β) ≈ mul!(copy(D), M, v, α, β) ≈ exp_res
+
+            @test mul!(copy(D), M', f, α, β) ≈ mul!(copy(D), M', v, α, β) ≈ M' * v * α + D * β
+            @test mul!(copy(D), transpose(M), f, α, β) ≈ mul!(copy(D), transpose(M), v, α, β) ≈ transpose(M) * v * α + D * β
+        end
+
+        @testset "matmat" begin
+            B = Fill(quat(rand(4)...), 2, 2)
+            N = Array(B)
+            D = copy(N)
+            exp_res = M * N * α + D * β
+            @test mul!(copy(D), A, B, α, β) ≈ mul!(copy(D), M, N, α, β) ≈ exp_res
+            @test mul!(copy(D), M, B, α, β) ≈ mul!(copy(D), M, N, α, β) ≈ exp_res
+            @test mul!(copy(D), A, N, α, β) ≈ mul!(copy(D), M, N, α, β) ≈ exp_res
+
+            @test mul!(copy(D), M', B, α, β) ≈ mul!(copy(D), M', N, α, β) ≈ M' * N * α + D * β
+            @test mul!(copy(D), transpose(M), B, α, β) ≈ mul!(copy(D), transpose(M), N, α, β) ≈ transpose(M) * N * α + D * β
+
+            @test mul!(copy(D), A, N', α, β) ≈ mul!(copy(D), M, N', α, β) ≈ M * N' * α + D * β
+            @test mul!(copy(D), A, transpose(N), α, β) ≈ mul!(copy(D), M, transpose(N), α, β) ≈ M * transpose(N) * α + D * β
+        end
+    end
+
+    @testset "ambiguities" begin
+        UT33 = UpperTriangular(ones(3,3))
+        UT11 = UpperTriangular(ones(1,1))
+        @test transpose(Zeros(3)) * Transpose(Adjoint([1,2,3])) == 0
+        @test Zeros(3)' * Adjoint(Transpose([1,2,3])) == 0
+        @test Zeros(3)' * UT33 == Zeros(3)'
+        @test transpose(Zeros(3)) * UT33 == transpose(Zeros(3))
+        @test UT11 * Zeros(3)' == Zeros(1,3)
+        @test UT11 * transpose(Zeros(3)) == Zeros(1,3)
+        @test Zeros(2,3) * UT33 == Zeros(2,3)
+        @test UT33 * Zeros(3,2) == Zeros(3,2)
+        @test UT33 * Zeros(3) == Zeros(3)
+        @test Diagonal([1]) * transpose(Zeros(3)) == Zeros(1,3)
+        @test Diagonal([1]) * Zeros(3)' == Zeros(1,3)
     end
 end
 
@@ -1793,6 +1908,7 @@ end
     @test repr(Fill(1f0,10)) == "Fill(1.0f0, 10)"  # Float32!
     @test repr(Fill(0)) == "Fill(0)"
     @test repr(Eye(9)) == "Eye(9)"
+    @test repr(Eye(9,4)) == "Eye(9,4)"
     # also used for arrays of arrays:
     @test occursin("Eye(2) ", stringmime("text/plain", [Eye(2) for i in 1:2, j in 1:2]))
 end
@@ -2267,3 +2383,15 @@ end
     end
 end
 
+@testset "isbanded/isdiag" begin
+    @testset for A in Any[Zeros(2,3), Zeros(0,1), Zeros(1,1), Zeros(1,2),
+            Ones(0,1), Ones(1,1), Ones(3,4), Ones(0,4), Ones(7,0), Ones(7,2), Ones(2,7),
+            Fill(3, 0,1), Fill(3, 1,1), Fill(3, 2,4), Fill(0, 3, 4), Fill(2, 0, 4), Fill(2, 6, 0), Fill(0, 8, 8)]
+        B = Array(A)
+        @test isdiag(A) == isdiag(B)
+        for k in -5:5
+            @test istriu(A, k) == istriu(B, k)
+            @test istril(A, k) == istril(B, k)
+        end
+    end
+end

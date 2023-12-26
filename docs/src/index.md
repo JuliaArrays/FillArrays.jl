@@ -69,7 +69,7 @@ The elements of a `Fill` array don't need to be restricted to numbers, and these
 
 ```jldoctest
 julia> f = Fill("hello", 2,5)
-2×5 Fill{String}, with entries equal to hello
+2×5 Fill{String}, with entries equal to "hello"
 
 julia> Array(f)
 2×5 Matrix{String}:

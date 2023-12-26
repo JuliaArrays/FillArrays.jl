@@ -7,17 +7,24 @@ Typically created using `Trues(dims)` or `Trues(dims...)`
 
 # Example
 ```jldoctest
-julia> Trues(1,3)
-1×3 Ones{Bool,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}} = true
+julia> T = Trues(1,3)
+1×3 Ones{Bool}
 
-julia> Trues((2,3))
-2×3 Ones{Bool,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}} = true
+julia> Array(T)
+1×3 Matrix{Bool}:
+ 1  1  1
 ```
 """
 const Trues = Ones{Bool, N, Axes} where {N, Axes}
 
 
-""" `Falses = Zeros{Bool, N, Axes}` (see `Trues`) """
+"""
+    Falses = Zeros{Bool, N, Axes}
+
+Lazy version of `falses` with axes.
+
+See also: [`Trues`](@ref)
+"""
 const Falses = Zeros{Bool, N, Axes} where {N, Axes}
 
 
