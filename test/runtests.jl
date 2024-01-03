@@ -2218,6 +2218,20 @@ end
         @test A * (2 + 3.0im) === OneElement(val * (2 + 3.0im), (2,2), (3,4)) == B * (2 + 3.0im)
         @test A / (2 + 3.0im) === OneElement(val / (2 + 3.0im), (2,2), (3,4)) == B / (2 + 3.0im)
     end
+
+    @testset "broadcasting" begin
+        for v in (OneElement(2, 3, 4), OneElement(2im, (1,2), (3,4)))
+            w = Array(v)
+            n = 2
+            @test real.(v) == real.(w)
+            @test imag.(v) == imag.(w)
+            @test conj.(v) == conj.(w)
+            @test v .^ n == w .^ n
+            @test v .* n == w .* n
+            @test v ./ n == w ./ n
+            @test n .\ v == n .\ w
+        end
+    end
 end
 
 @testset "repeat" begin
