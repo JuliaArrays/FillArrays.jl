@@ -36,9 +36,9 @@ jobs:
         package:
           - {repo: Distributions.jl, group: JuliaStats}
           - {repo: BlockArrays.jl, group: JuliaArrays}
-          - {repo: LazyArrays.jl, group: JuliaArrays}
+          # - {repo: LazyArrays.jl, group: JuliaArrays}
           - {repo: ArrayLayouts.jl, group: JuliaLinearAlgebra}
-          - {repo: LazyBandedMatrices.jl, group: JuliaLinearAlgebra}
+          # - {repo: LazyBandedMatrices.jl, group: JuliaLinearAlgebra}
           - {repo: BandedMatrices.jl, group: JuliaLinearAlgebra}
           - {repo: BlockBandedMatrices.jl, group: JuliaLinearAlgebra}
           - {repo: InfiniteLinearAlgebra.jl, group: JuliaLinearAlgebra}
