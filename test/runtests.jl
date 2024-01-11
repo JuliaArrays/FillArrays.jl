@@ -5,13 +5,7 @@ using Documenter
 DocMeta.setdocmeta!(FillArrays, :DocTestSetup, :(using FillArrays))
 doctest(FillArrays; manual = false)
 
-using Aqua
-@testset "Project quality" begin
-    Aqua.test_all(FillArrays;
-        # https://github.com/JuliaArrays/FillArrays.jl/issues/105#issuecomment-1582516319
-        ambiguities=(; broken=true),
-    )
-end
+include("aqua.jl")
 
 include("infinitearrays.jl")
 import .InfiniteArrays
