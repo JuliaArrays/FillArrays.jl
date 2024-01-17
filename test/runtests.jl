@@ -1708,6 +1708,8 @@ end
         Ank  = rand(T, n, k)
         Akn = rand(T, k, n)
         Ak = rand(T, k)
+        onesm = ones(m)
+        zerosm = zeros(m)
 
         fv = T == Float64 ? T(1.6) : T(1.6, 1.3)
 
@@ -1722,9 +1724,17 @@ end
 
             for A  in (Akn, Ak)
                 @test transpose(A)*fillvec ≈ transpose(A)*Afillvec
-                @test transpose(A)*fillmat ≈ transpose(A)*Afillmat
+                AtF = transpose(A)*fillmat
+                AtM = transpose(A)*Afillmat
+                @test AtF ≈ AtM
+                @test AtF * Ones(m) ≈ AtM * onesm
+                @test AtF * Zeros(m) ≈ AtM * zerosm
                 @test adjoint(A)*fillvec ≈ adjoint(A)*Afillvec
-                @test adjoint(A)*fillmat ≈ adjoint(A)*Afillmat
+                AadjF = adjoint(A)*fillmat
+                AadjM = adjoint(A)*Afillmat
+                @test AadjF ≈ AadjM
+                @test AadjF * Ones(m) ≈ AadjM * onesm
+                @test AadjF * Zeros(m) ≈ AadjM * zerosm
             end
         end
 
