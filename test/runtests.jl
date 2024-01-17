@@ -1688,21 +1688,30 @@ end
     @test (1:5)'E == (1.0:5)'
     @test E*E ≡ E
 
+    n  = 10
+    k  = 12
+    m  = 15
+    Ank  = rand(ComplexF64, n, k)
+    Akn = rand(ComplexF64, k, n)
+    Ak = rand(ComplexF64, k)
     for T in (Float64, ComplexF64)
         fv = T == Float64 ? Float64(1.6) : ComplexF64(1.6, 1.3)
-        n  = 10
-        k  = 12
-        m  = 15
-        fillvec = Fill(fv, k)
-        fillmat = Fill(fv, k, m)
-        A  = rand(ComplexF64, n, k)
-        @test A*fillvec ≈ A*Array(fillvec)
-        @test A*fillmat ≈ A*Array(fillmat)
-        A  = rand(ComplexF64, k, n)
-        @test transpose(A)*fillvec ≈ transpose(A)*Array(fillvec)
-        @test transpose(A)*fillmat ≈ transpose(A)*Array(fillmat)
-        @test adjoint(A)*fillvec ≈ adjoint(A)*Array(fillvec)
-        @test adjoint(A)*fillmat ≈ adjoint(A)*Array(fillmat)
+        for (fillvec, fillmat) in ((Fill(fv, k), Fill(fv, k, m)),
+                                    (Ones(T, k), Ones(T, k, m)),
+                                    (Zeros(T, k), Zeros(T, k, m)))
+
+            Afillvec = Array(fillvec)
+            Afillmat = Array(fillmat)
+            @test Ank * fillvec ≈ Ank * Afillvec
+            @test Ank * fillmat ≈ Ank * Afillmat
+
+            for A  in (Akn, Ak)
+                @test transpose(A)*fillvec ≈ transpose(A)*Afillvec
+                @test transpose(A)*fillmat ≈ transpose(A)*Afillmat
+                @test adjoint(A)*fillvec ≈ adjoint(A)*Afillvec
+                @test adjoint(A)*fillmat ≈ adjoint(A)*Afillmat
+            end
+        end
     end
 
     @testset "non-commutative" begin
