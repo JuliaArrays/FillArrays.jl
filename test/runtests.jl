@@ -1620,8 +1620,8 @@ end
             @test transpose(A) * Zeros(mA) ≡ Zeros(nA)
             @test A' * Zeros(mA) ≡ Zeros(nA)
 
-            @test transpose(a) * Zeros(la, 3) ≡ Zeros(1,3)
-            @test a' * Zeros(la,3) ≡ Zeros(1,3)
+            @test transpose(a) * Zeros(la, 3) ≡ transpose(Zeros(3))
+            @test a' * Zeros(la,3) ≡ adjoint(Zeros(3))
 
             @test Zeros(la)' * Transpose(Adjoint(a)) == 0.0
 
