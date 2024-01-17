@@ -1695,6 +1695,8 @@ end
     Akn = rand(ComplexF64, k, n)
     Ak = rand(ComplexF64, k)
     for T in (Float64, ComplexF64)
+        onesm = ones(m)
+        zerosm = zeros(m)
         fv = T == Float64 ? Float64(1.6) : ComplexF64(1.6, 1.3)
         for (fillvec, fillmat) in ((Fill(fv, k), Fill(fv, k, m)),
                                     (Ones(T, k), Ones(T, k, m)),
@@ -1707,9 +1709,17 @@ end
 
             for A  in (Akn, Ak)
                 @test transpose(A)*fillvec ≈ transpose(A)*Afillvec
-                @test transpose(A)*fillmat ≈ transpose(A)*Afillmat
+                AtF = transpose(A)*fillmat
+                AtM = transpose(A)*Afillmat
+                @test AtF ≈ AtM
+                @test AtF * Ones(m) ≈ AtM * onesm
+                @test AtF * Zeros(m) ≈ AtM * zerosm
                 @test adjoint(A)*fillvec ≈ adjoint(A)*Afillvec
-                @test adjoint(A)*fillmat ≈ adjoint(A)*Afillmat
+                AadjF = adjoint(A)*fillmat
+                AadjM = adjoint(A)*Afillmat
+                @test AadjF ≈ AadjM
+                @test AadjF * Ones(m) ≈ AadjM * onesm
+                @test AadjF * Zeros(m) ≈ AadjM * zerosm
             end
         end
     end
