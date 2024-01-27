@@ -7,7 +7,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     any, all, axes, isone, iszero, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, map, zero,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
-    parent, similar, issorted
+    parent, similar, issorted, add_sum, mul_prod
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
@@ -552,21 +552,10 @@ end
 
 
 #########
-# maximum/minimum
-#########
-
-for op in (:maximum, :minimum)
-    @eval $op(x::AbstractFill) = getindex_value(x)
-end
-
-
-#########
 # Cumsum
 #########
 
 # These methods are necessary to deal with infinite arrays
-sum(x::AbstractFill) = getindex_value(x)*length(x)
-sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
 sum(x::AbstractZeros) = getindex_value(x)
 
 # needed to support infinite case
@@ -643,10 +632,8 @@ end
 
 # In particular, these make iszero(Eye(n))  efficient.
 # use any/all on scalar to get Boolean error message
-any(f::Function, x::AbstractFill) = !isempty(x) && any(f(getindex_value(x)))
-all(f::Function, x::AbstractFill) = isempty(x) || all(f(getindex_value(x)))
-any(x::AbstractFill) = any(identity, x)
-all(x::AbstractFill) = all(identity, x)
+Base._any(f::Function, x::AbstractFill, ::Colon) = !isempty(x) && any(f(getindex_value(x)))
+Base._all(f::Function, x::AbstractFill, ::Colon) = isempty(x) || all(f(getindex_value(x)))
 
 count(x::AbstractOnes{Bool}) = length(x)
 count(x::AbstractZeros{Bool}) = 0
