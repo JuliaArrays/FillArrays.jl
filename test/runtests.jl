@@ -1391,9 +1391,14 @@ end
     @test axes(E .+ E) === axes(E)
 end
 
-@testset "Issue #31" begin
-    @test convert(SparseMatrixCSC{Float64,Int64}, Zeros{Float64}(3, 3)) == spzeros(3, 3)
-    @test sparse(Zeros(4, 2)) == spzeros(4, 2)
+@testset "Issues" begin
+    @testset "#31" begin
+        @test convert(SparseMatrixCSC{Float64,Int64}, Zeros{Float64}(3, 3)) == spzeros(3, 3)
+        @test sparse(Zeros(4, 2)) == spzeros(4, 2)
+    end
+    @testset "#178" begin
+        @test Zeros(10)'*spzeros(10) == 0
+    end
 end
 
 @testset "Adjoint/Transpose/permutedims" begin
