@@ -57,6 +57,7 @@ end
 # TODO: remove in v2.0
 @deprecate kron(E1::RectDiagonalFill, E2::RectDiagonalFill) kron(sparse(E1), sparse(E2))
 
+# Ambiguity. see #178
 dot(x::AbstractFillVector, y::SparseVectorUnion) = _fill_dot(x, y)
 
 end # module
