@@ -47,6 +47,15 @@ Base.@propagate_inbounds function Base.getindex(A::OneElement{T,N}, kj::Vararg{I
     ifelse(kj == A.ind, A.val, zero(T))
 end
 
+"""
+    nzind(A::OneElement)
+
+Return the index where `A` contains a non-zero value.
+The indices are not guaranteed to lie within the valid index bounds for `A`,
+and if `all(!in.(nzind(A), axes(A)))` then `all(iszero, A)`.
+"""
+nzind(f::OneElement) = f.ind
+
 getindex_value(A::OneElement) = all(in.(A.ind, axes(A))) ? A.val : zero(eltype(A))
 
 Base.AbstractArray{T,N}(A::OneElement{<:Any,N}) where {T,N} = OneElement(T(A.val), A.ind, A.axes)
