@@ -48,14 +48,53 @@ Base.@propagate_inbounds function Base.getindex(A::OneElement{T,N}, kj::Vararg{I
 end
 
 """
-    nzind(A::OneElement)
+    nzind(A::OneElement{T,N}) -> CartesianIndex{N}
 
 Return the index where `A` contains a non-zero value.
-The indices are not guaranteed to lie within the valid index bounds for `A`,
-and if `all(!in.(nzind(A), axes(A)))` then `all(iszero, A)`.
-"""
-nzind(f::OneElement) = f.ind
 
+!!! note
+    The indices are not guaranteed to lie within the valid index bounds for `A`,
+    and if `FillArrays.nzind(A) ∉ CartesianIndices(A)` then `all(iszero, A)`.
+    On the other hand, if `FillArrays.nzind(A) in CartesianIndices(A)` then
+    `A[FillArrays.nzind(A)] == FillArrays.getindex_value(A)`
+
+# Examples
+```jldoctest
+julia> A = OneElement(2, (1,2), (2,2))
+2×2 OneElement{Int64, 2, Tuple{Int64, Int64}, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}:
+ ⋅  2
+ ⋅  ⋅
+
+julia> FillArrays.nzind(A)
+CartesianIndex(1, 2)
+
+julia> A[FillArrays.nzind(A)]
+2
+```
+"""
+nzind(f::OneElement) = CartesianIndex(f.ind)
+
+"""
+    getindex_value(A::OneElement)
+
+Return the only non-zero value stored in `A`.
+
+!!! note
+    If the index at which the value is stored doesn't lie within the valid indices of `A`, then
+    this returns `zero(eltype(A))`.
+
+# Examples
+```jldoctest
+julia> A = OneElement(2, 3)
+3-element OneElement{Int64, 1, Tuple{Int64}, Tuple{Base.OneTo{Int64}}}:
+ ⋅
+ 1
+ ⋅
+
+julia> FillArrays.getindex_value(A)
+1
+```
+"""
 getindex_value(A::OneElement) = all(in.(A.ind, axes(A))) ? A.val : zero(eltype(A))
 
 Base.AbstractArray{T,N}(A::OneElement{<:Any,N}) where {T,N} = OneElement(T(A.val), A.ind, A.axes)
