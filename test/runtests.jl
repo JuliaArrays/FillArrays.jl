@@ -2226,6 +2226,15 @@ end
             @test n .\ v == n .\ w
         end
     end
+
+    @testset "show" begin
+        B = OneElement(2, (1, 2), (3, 4))
+        @test repr(B) == "OneElement(2, (1, 2), (3, 4))"
+        B = OneElement(2, 1, 3)
+        @test repr(B) == "OneElement(2, 1, 3)"
+        B = OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))
+        @test repr(B) == "OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))"
+    end
 end
 
 @testset "repeat" begin

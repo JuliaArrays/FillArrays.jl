@@ -174,3 +174,10 @@ end
 function broadcasted(::DefaultArrayStyle{N}, ::typeof(\), x::Number, r::OneElement{<:Any,N}) where {N}
     OneElement(x \ r.val, r.ind, axes(r))
 end
+
+# show
+_maybesize(t::Tuple{Base.OneTo{Int}, Vararg{Base.OneTo{Int}}}) = size.(t,1)
+_maybesize(t) = t
+Base.show(io::IO, A::OneElement) = print(io, OneElement, "(", A.val, ", ", A.ind, ", ", _maybesize(axes(A)), ")")
+Base.show(io::IO, A::OneElement{<:Any,1,Tuple{Int},Tuple{Base.OneTo{Int}}}) =
+    print(io, OneElement, "(", A.val, ", ", A.ind[1], ", ", size(A,1), ")")
