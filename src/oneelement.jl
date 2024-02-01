@@ -78,6 +78,46 @@ function *(A::OneElementMatrix, B::OneElementVecOrMat)
     OneElement(val, (A.ind[1], B.ind[2:end]...), (axes(A,1), axes(B)[2:end]...))
 end
 
+function *(A::AbstractFillMatrix, x::OneElementVector)
+    check_matmul_sizes(A, x)
+    val = getindex_value(A) * getindex_value(x)
+    Fill(val, (axes(A,1),))
+end
+*(A::AbstractZerosMatrix, x::OneElementVector) = mult_zeros(A, x)
+
+*(A::OneElementMatrix, x::AbstractZerosVector) = mult_zeros(A, x)
+
+function *(A::OneElementMatrix, B::AbstractFillVector)
+    check_matmul_sizes(A, B)
+    val = getindex_value(A) * getindex_value(B)
+    OneElement(val, A.ind[1], size(A,1))
+end
+
+# Special matrix types
+
+function *(A::OneElementMatrix, D::Diagonal)
+    check_matmul_sizes(A, D)
+    nzcol = A.ind[2]
+    val = if nzcol in axes(D,1)
+        A.val * D[nzcol, nzcol]
+    else
+        A.val * zero(eltype(D))
+    end
+    OneElement(val, A.ind, size(A))
+end
+function *(D::Diagonal, A::OneElementMatrix)
+    check_matmul_sizes(D, A)
+    nzrow = A.ind[1]
+    val = if nzrow in axes(D,2)
+        D[nzrow, nzrow] * A.val
+    else
+        zero(eltype(D)) * A.val
+    end
+    OneElement(val, A.ind, size(A))
+end
+
+# Inplace multiplication
+
 function __mulonel!(C, A, B, alpha, beta)
     ABα = A * B * alpha
     if iszero(beta)
@@ -100,21 +140,6 @@ function mul!(C::AbstractMatrix, A::OneElementMatrix, B::OneElementMatrix, alpha
 end
 function mul!(C::AbstractVector, A::OneElementMatrix, B::OneElementVector, alpha::Number, beta::Number)
     _mul!(C, A, B, alpha, beta)
-end
-
-function *(A::AbstractFillMatrix, x::OneElementVector)
-    check_matmul_sizes(A, x)
-    val = getindex_value(A) * getindex_value(x)
-    Fill(val, (axes(A,1),))
-end
-*(A::AbstractZerosMatrix, x::OneElementVector) = mult_zeros(A, x)
-
-*(A::OneElementMatrix, x::AbstractZerosVector) = mult_zeros(A, x)
-
-function *(A::OneElementMatrix, B::AbstractFillVector)
-    check_matmul_sizes(A, B)
-    val = getindex_value(A) * getindex_value(B)
-    OneElement(val, A.ind[1], size(A,1))
 end
 
 @inline function __mul!(y, A::AbstractMatrix, x::OneElement, alpha, beta)
@@ -154,6 +179,28 @@ function _mul!(C::AbstractMatrix, A::AbstractMatrix, B::OneElementMatrix, alpha,
     __mul!(y, A, B, alpha, beta)
     C
 end
+function _mul!(C::AbstractMatrix, A::Diagonal, B::OneElementMatrix, alpha, beta)
+    check_matmul_sizes(C, A, B)
+    if iszero(getindex_value(B))
+        mul!(C, A, Zeros{eltype(B)}(axes(B)), alpha, beta)
+        return C
+    end
+    if iszero(beta)
+        C .= zero(eltype(C))
+    else
+        view(C, :, 1:B.ind[2]-1) .*= beta
+        view(C, :, B.ind[2]+1:size(C,2)) .*= beta
+    end
+    ABα = A * B * alpha
+    nzrow, nzcol = B.ind
+    if iszero(beta)
+        C[B.ind...] = ABα[B.ind...]
+    else
+        y = view(C, :, nzcol)
+        y .= view(ABα, :, nzcol) .+ y .* beta
+    end
+    C
+end
 
 function _mul!(C::AbstractMatrix, A::OneElementMatrix, B::AbstractMatrix, alpha, beta)
     check_matmul_sizes(C, A, B)
@@ -174,6 +221,28 @@ function _mul!(C::AbstractMatrix, A::OneElementMatrix, B::AbstractMatrix, alpha,
         y .= Aval .* view(B, ind2, :) .* alpha
     else
         y .= Aval .* view(B, ind2, :) .* alpha .+ y .* beta
+    end
+    C
+end
+function _mul!(C::AbstractMatrix, A::OneElementMatrix, B::Diagonal, alpha, beta)
+    check_matmul_sizes(C, A, B)
+    if iszero(getindex_value(A))
+        mul!(C, Zeros{eltype(A)}(axes(A)), B, alpha, beta)
+        return C
+    end
+    if iszero(beta)
+        C .= zero(eltype(C))
+    else
+        view(C, 1:A.ind[1]-1, :) .*= beta
+        view(C, A.ind[1]+1:size(C,1), :) .*= beta
+    end
+    ABα = A * B * alpha
+    nzrow, nzcol = A.ind
+    if iszero(beta)
+        C[A.ind...] = ABα[A.ind...]
+    else
+        y = view(C, nzrow, :)
+        y .= view(ABα, nzrow, :) .+ y .* beta
     end
     C
 end
@@ -204,6 +273,9 @@ for MT in (:StridedMatrix, :(Transpose{<:Any, <:StridedMatrix}), :(Adjoint{<:Any
     @eval function mul!(y::StridedVector, A::$MT, x::OneElementVector, alpha::Number, beta::Number)
         _mul!(y, A, x, alpha, beta)
     end
+end
+for MT in (:StridedMatrix, :(Transpose{<:Any, <:StridedMatrix}), :(Adjoint{<:Any, <:StridedMatrix}),
+            :Diagonal)
     @eval function mul!(C::StridedMatrix, A::$MT, B::OneElementMatrix, alpha::Number, beta::Number)
         _mul!(C, A, B, alpha, beta)
     end

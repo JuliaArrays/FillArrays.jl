@@ -2251,6 +2251,23 @@ end
             B = Zeros(4)
             @test A * B === Zeros(5)
         end
+        @testset "Diagonal and OneElementMatrix" begin
+            for ind in ((2,3), (2,2), (10,10))
+                O = OneElement(3, ind, (4,3))
+                Oarr = Array(O)
+                C = zeros(size(O))
+                D = Diagonal(axes(O,1))
+                @test D * O == D * Oarr
+                @test mul!(C, D, O) == D * O
+                C .= 1
+                @test mul!(C, D, O, 2, 2) == 2 * D * O .+ 2
+                D = Diagonal(axes(O,2))
+                @test O * D == Oarr * D
+                @test mul!(C, O, D) == O * D
+                C .= 1
+                @test mul!(C, O, D, 2, 2) == 2 * O * D .+ 2
+            end
+        end
     end
 
     @testset "multiplication/division by a number" begin
