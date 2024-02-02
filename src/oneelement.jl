@@ -118,6 +118,8 @@ end
 
 # Inplace multiplication
 
+# We use this for out overloads for _mul! for OneElement because its more efficient
+# due to how efficient 2 arg mul is when one or more of the args are OneElement
 function __mulonel!(C, A, B, alpha, beta)
     ABα = A * B * alpha
     if iszero(beta)
