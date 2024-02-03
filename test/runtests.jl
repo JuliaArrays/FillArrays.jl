@@ -2270,22 +2270,90 @@ end
         end
         @testset "array elements" begin
             A = [SMatrix{2,3}(1:6)*(i+j) for i in 1:3, j in 1:2]
-            B = OneElement(SMatrix{3,2}(1:6), (size(A,2),2), (size(A,2),4))
-            C = [SMatrix{2,2}(1:4) for i in 1:size(A,1), j in 1:size(B,2)]
-            @test mul!(copy(C), A, B) == A * B
-            @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
-            B = OneElement(SMatrix{3,2}(1:6), (size(A,2),), (size(A,2),))
-            C = [SMatrix{2,2}(1:4) for i in 1:size(A,1)]
-            @test mul!(copy(C), A, B) == A * B
-            @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            @testset "StridedMatrix * OneElementMatrix" begin
+                B = OneElement(SMatrix{3,2}(1:6), (size(A,2),2), (size(A,2),4))
+                C = [SMatrix{2,2}(1:4) for i in axes(A,1), j in axes(B,2)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+            @testset "StridedMatrix * OneElementVector" begin
+                B = OneElement(SMatrix{3,2}(1:6), (size(A,2),), (size(A,2),))
+                C = [SMatrix{2,2}(1:4) for i in axes(A,1)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+
+            A = OneElement(SMatrix{3,2}(1:6), (3,2), (5,4))
+            @testset "OneElementMatrix * StridedMatrix" begin
+                B = [SMatrix{2,3}(1:6)*(i+j) for i in axes(A,2), j in 1:2]
+                C = [SMatrix{3,3}(1:9) for i in axes(A,1), j in axes(B,2)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+            @testset "OneElementMatrix * StridedVector" begin
+                B = [SMatrix{2,3}(1:6)*i for i in axes(A,2)]
+                C = [SMatrix{3,3}(1:9) for i in axes(A,1)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+            @testset "OneElementMatrix * OneElementMatrix" begin
+                B = OneElement(SMatrix{2,3}(1:6), (2,4), (size(A,2), 3))
+                C = [SMatrix{3,3}(1:9) for i in axes(A,1), j in axes(B,2)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+            @testset "OneElementMatrix * OneElementVector" begin
+                B = OneElement(SMatrix{2,3}(1:6), 2, size(A,2))
+                C = [SMatrix{3,3}(1:9) for i in axes(A,1)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
         end
         @testset "non-commutative" begin
+            A = OneElement(quat(rand(4)...), (2,3), (3,4))
+            for (B,C) in (
+                        # OneElementMatrix * OneElementVector
+                        (OneElement(quat(rand(4)...), 3, size(A,2)),
+                            [quat(rand(4)...) for i in axes(A,1)]),
+
+                        # OneElementMatrix * OneElementMatrix
+                        (OneElement(quat(rand(4)...), (3,2), (size(A,2), 4)),
+                            [quat(rand(4)...) for i in axes(A,1), j in 1:4]),
+                        )
+                @test mul!(copy(C), A, B) ≈ A * B
+                α, β = quat(0,0,1,0), quat(1,0,1,0)
+                @test mul!(copy(C), A, B, α, β) ≈ mul!(copy(C), A, Array(B), α, β) ≈ A * B * α + C * β
+            end
+
             A = [quat(rand(4)...)*(i+j) for i in 1:2, j in 1:3]
-            B = OneElement(quat(rand(4)...), 1, size(A,2))
-            C = [quat(rand(4)...) for i in axes(A,1)]
-            @test mul!(copy(C), A, B) ≈ A * B
-            α, β = quat(0,0,1,0), quat(1,0,1,0)
-            @test mul!(copy(C), A, B, α, β) ≈ mul!(copy(C), A, Array(B), α, β) ≈ A * B * α + C * β
+            for (B,C) in (
+                        # StridedMatrix * OneElementVector
+                        (OneElement(quat(rand(4)...), 1, size(A,2)),
+                            [quat(rand(4)...) for i in axes(A,1)]),
+
+                        # StridedMatrix * OneElementMatrix
+                        (OneElement(quat(rand(4)...), (2,2), (size(A,2), 4)),
+                            [quat(rand(4)...) for i in axes(A,1), j in 1:4]),
+                        )
+                @test mul!(copy(C), A, B) ≈ A * B
+                α, β = quat(0,0,1,0), quat(1,0,1,0)
+                @test mul!(copy(C), A, B, α, β) ≈ mul!(copy(C), A, Array(B), α, β) ≈ A * B * α + C * β
+            end
+
+            A = OneElement(quat(rand(4)...), (2,2), (3, 4))
+            for (B,C) in (
+                        # OneElementMatrix * StridedMatrix
+                        ([quat(rand(4)...) for i in axes(A,2), j in 1:3],
+                            [quat(rand(4)...) for i in axes(A,1), j in 1:3]),
+
+                        # OneElementMatrix * StridedVector
+                        ([quat(rand(4)...) for i in axes(A,2)],
+                            [quat(rand(4)...) for i in axes(A,1)]),
+                        )
+                @test mul!(copy(C), A, B) ≈ A * B
+                α, β = quat(0,0,1,0), quat(1,0,1,0)
+                @test mul!(copy(C), A, B, α, β) ≈ mul!(copy(C), A, Array(B), α, β) ≈ A * B * α + C * β
+            end
         end
     end
 

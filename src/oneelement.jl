@@ -213,11 +213,11 @@ function _mul!(C::AbstractMatrix, A::OneElementMatrix, B::AbstractMatrix, alpha,
     Aval = A.val
     if iszero(beta)
         C .= Ref(zero(eltype(C)))
-        y .= Aval .* view(B, nzcol, :) .* alpha
+        y .= Ref(Aval) .* view(B, nzcol, :) .* alpha
     else
         view(C, 1:nzrow-1, :) .*= beta
         view(C, nzrow+1:size(C,1), :) .*= beta
-        y .= Aval .* view(B, nzcol, :) .* alpha .+ y .* beta
+        y .= Ref(Aval) .* view(B, nzcol, :) .* alpha .+ y .* beta
     end
     C
 end
