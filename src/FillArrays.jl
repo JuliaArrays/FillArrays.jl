@@ -643,19 +643,17 @@ end
 
 # In particular, these make iszero(Eye(n))  efficient.
 # use any/all on scalar to get Boolean error message
-any(f::Function, x::AbstractFill) = !isempty(x) && any(f(getindex_value(x)))
-function all(f::Function, x::AbstractFill)
+function any(f::Function, x::AbstractFill)
+    isempty(x) && return false
+    # If the condition is true for one value, then it's true for all
     fval = f(getindex_value(x))
-    # checking the Bool path before isempty(x) allows short-curcuiting
-    # in case the value is known from the type, e.g. in Zeros
-    if fval isa Bool
-        return fval || isempty(x)
-    elseif isempty(x) # cases like all(Fill(2,0))
-        return true
-    elseif ismissing(fval)
-        return missing
-    end
-    return all(fval)
+    any((fval,))
+end
+function all(f::Function, x::AbstractFill)
+    isempty(x) && return true
+    # If the condition is true for one value, then it's true for all
+    fval = f(getindex_value(x))
+    return all((fval,))
 end
 any(x::AbstractFill) = any(identity, x)
 all(x::AbstractFill) = all(identity, x)
