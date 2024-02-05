@@ -1330,6 +1330,9 @@ end
     @test iszero(Fill(SMatrix{2,2}(0,0,0,0), 2))
     @test iszero(Fill(SMatrix{2,2}(0,0,0,1), 0))
 
+    # compile-time evaluation
+    @test @inferred((Z -> Val(iszero(Z)))(Zeros(3,3))) == Val(true)
+
     @testset "all/any" begin
         @test any(Ones{Bool}(10)) === all(Ones{Bool}(10)) === any(Fill(true,10)) === all(Fill(true,10)) === true
         @test any(Zeros{Bool}(10)) === all(Zeros{Bool}(10)) === any(Fill(false,10)) === all(Fill(false,10)) === false
@@ -1339,6 +1342,11 @@ end
         @test all(Fill(2,0))
         @test !any(Fill(2,0))
         @test any(Trues(2,0)) == any(trues(2,0))
+        @test_throws TypeError all(Fill(2,2))
+        @test all(iszero, Fill(missing,0)) === all(iszero, fill(missing,0)) === true
+        @test all(iszero, Fill(missing,2)) === all(iszero, fill(missing,2)) === missing
+        @test any(iszero, Fill(missing,0)) === any(iszero, fill(missing,0)) === false
+        @test any(iszero, Fill(missing,2)) === any(iszero, fill(missing,2)) === missing
     end
 
     @testset "Error" begin
