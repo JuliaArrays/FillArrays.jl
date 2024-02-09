@@ -261,6 +261,14 @@ end
     end
 end
 
+@testset "isassigned" begin
+    for f in (Fill("", 3, 4), Zeros(3,4), Ones(3,4))
+        @test !isassigned(f, 0, 0)
+        @test isassigned(f, 2, 2)
+        @test !isassigned(f, 10, 10)
+    end
+end
+
 @testset "indexing" begin
     A = Fill(3.0,5)
     @test A[1:3] ≡ Fill(3.0,3)

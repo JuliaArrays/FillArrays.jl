@@ -41,6 +41,11 @@ end
 Base.@propagate_inbounds getindex(F::AbstractFill, k::Integer) = _fill_getindex(F, k)
 Base.@propagate_inbounds getindex(F::AbstractFill{T, N}, kj::Vararg{Integer, N}) where {T, N} = _fill_getindex(F, kj...)
 
+@inline function Base.isassigned(F::AbstractFill, i::Union{Integer, CartesianIndex}...)
+    @boundscheck checkbounds(Bool, F, i...) || return false
+    return true
+end
+
 @inline function setindex!(F::AbstractFill, v, k::Integer)
     @boundscheck checkbounds(F, k)
     v == getindex_value(F) || throw(ArgumentError("Cannot setindex! to $v for an AbstractFill with value $(getindex_value(F))."))
