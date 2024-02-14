@@ -32,6 +32,10 @@ const AbstractFillVecOrMat{T} = Union{AbstractFillVector{T},AbstractFillMatrix{T
 
 ==(a::AbstractFill, b::AbstractFill) = axes(a) == axes(b) && getindex_value(a) == getindex_value(b)
 
+@inline function Base.isassigned(F::AbstractFill, i::Integer...)
+    @boundscheck checkbounds(Bool, F, i...) || return false
+    return true
+end
 
 @inline function _fill_getindex(F::AbstractFill, kj::Integer...)
     @boundscheck checkbounds(F, kj...)
@@ -40,11 +44,6 @@ end
 
 Base.@propagate_inbounds getindex(F::AbstractFill, k::Integer) = _fill_getindex(F, k)
 Base.@propagate_inbounds getindex(F::AbstractFill{T, N}, kj::Vararg{Integer, N}) where {T, N} = _fill_getindex(F, kj...)
-
-@inline function Base.isassigned(F::AbstractFill, i::Union{Integer, CartesianIndex}...)
-    @boundscheck checkbounds(Bool, F, i...) || return false
-    return true
-end
 
 @inline function setindex!(F::AbstractFill, v, k::Integer)
     @boundscheck checkbounds(F, k)
