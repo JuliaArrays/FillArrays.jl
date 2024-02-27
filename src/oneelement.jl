@@ -145,12 +145,12 @@ function mul!(C::AbstractVector, A::OneElementMatrix, B::OneElementVector, alpha
 end
 
 @inline function __mul!(y, A::AbstractMatrix, x::OneElement, alpha, beta)
-    αx = alpha * x.val
+    xα = Ref(x.val * alpha)
     ind1 = x.ind[1]
     if iszero(beta)
-        y .= αx .* view(A, :, ind1)
+        y .= view(A, :, ind1) .* xα
     else
-        y .= αx .* view(A, :, ind1) .+ beta .* y
+        y .= view(A, :, ind1) .* xα .+ y .* beta
     end
     return y
 end
@@ -171,13 +171,14 @@ function _mul!(C::AbstractMatrix, A::AbstractMatrix, B::OneElementMatrix, alpha,
         mul!(C, A, Zeros{eltype(B)}(axes(B)), alpha, beta)
         return C
     end
+    nzrow, nzcol = B.ind
     if iszero(beta)
-        C .= zero(eltype(C))
+        C .= Ref(zero(eltype(C)))
     else
-        view(C, :, 1:B.ind[2]-1) .*= beta
-        view(C, :, B.ind[2]+1:size(C,2)) .*= beta
+        view(C, :, 1:nzcol-1) .*= beta
+        view(C, :, nzcol+1:size(C,2)) .*= beta
     end
-    y = view(C, :, B.ind[2])
+    y = view(C, :, nzcol)
     __mul!(y, A, B, alpha, beta)
     C
 end
@@ -187,17 +188,14 @@ function _mul!(C::AbstractMatrix, A::Diagonal, B::OneElementMatrix, alpha, beta)
         mul!(C, A, Zeros{eltype(B)}(axes(B)), alpha, beta)
         return C
     end
-    if iszero(beta)
-        C .= zero(eltype(C))
-    else
-        view(C, :, 1:B.ind[2]-1) .*= beta
-        view(C, :, B.ind[2]+1:size(C,2)) .*= beta
-    end
-    ABα = A * B * alpha
     nzrow, nzcol = B.ind
+    ABα = A * B * alpha
     if iszero(beta)
-        C[B.ind...] = ABα[B.ind...]
+        C .= Ref(zero(eltype(C)))
+        C[nzrow, nzcol] = ABα[nzrow, nzcol]
     else
+        view(C, :, 1:nzcol-1) .*= beta
+        view(C, :, nzcol+1:size(C,2)) .*= beta
         y = view(C, :, nzcol)
         y .= view(ABα, :, nzcol) .+ y .* beta
     end
@@ -210,19 +208,16 @@ function _mul!(C::AbstractMatrix, A::OneElementMatrix, B::AbstractMatrix, alpha,
         mul!(C, Zeros{eltype(A)}(axes(A)), B, alpha, beta)
         return C
     end
-    if iszero(beta)
-        C .= zero(eltype(C))
-    else
-        view(C, 1:A.ind[1]-1, :) .*= beta
-        view(C, A.ind[1]+1:size(C,1), :) .*= beta
-    end
-    y = view(C, A.ind[1], :)
-    ind2 = A.ind[2]
+    nzrow, nzcol = A.ind
+    y = view(C, nzrow, :)
     Aval = A.val
     if iszero(beta)
-        y .= Aval .* view(B, ind2, :) .* alpha
+        C .= Ref(zero(eltype(C)))
+        y .= Ref(Aval) .* view(B, nzcol, :) .* alpha
     else
-        y .= Aval .* view(B, ind2, :) .* alpha .+ y .* beta
+        view(C, 1:nzrow-1, :) .*= beta
+        view(C, nzrow+1:size(C,1), :) .*= beta
+        y .= Ref(Aval) .* view(B, nzcol, :) .* alpha .+ y .* beta
     end
     C
 end
@@ -232,17 +227,14 @@ function _mul!(C::AbstractMatrix, A::OneElementMatrix, B::Diagonal, alpha, beta)
         mul!(C, Zeros{eltype(A)}(axes(A)), B, alpha, beta)
         return C
     end
-    if iszero(beta)
-        C .= zero(eltype(C))
-    else
-        view(C, 1:A.ind[1]-1, :) .*= beta
-        view(C, A.ind[1]+1:size(C,1), :) .*= beta
-    end
-    ABα = A * B * alpha
     nzrow, nzcol = A.ind
+    ABα = A * B * alpha
     if iszero(beta)
-        C[A.ind...] = ABα[A.ind...]
+        C .= Ref(zero(eltype(C)))
+        C[nzrow, nzcol] = ABα[nzrow, nzcol]
     else
+        view(C, 1:nzrow-1, :) .*= beta
+        view(C, nzrow+1:size(C,1), :) .*= beta
         y = view(C, nzrow, :)
         y .= view(ABα, nzrow, :) .+ y .* beta
     end
@@ -256,16 +248,13 @@ function _mul!(C::AbstractVector, A::OneElementMatrix, B::AbstractVector, alpha,
         return C
     end
     nzrow, nzcol = A.ind
+    Aval = A.val
     if iszero(beta)
-        C .= zero(eltype(C))
+        C .= Ref(zero(eltype(C)))
+        C[nzrow] = Aval * B[nzcol] * alpha
     else
         view(C, 1:nzrow-1) .*= beta
         view(C, nzrow+1:size(C,1)) .*= beta
-    end
-    Aval = A.val
-    if iszero(beta)
-        C[nzrow] = Aval * B[nzcol] * alpha
-    else
         C[nzrow] = Aval * B[nzcol] * alpha + C[nzrow] * beta
     end
     C
