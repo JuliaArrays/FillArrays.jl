@@ -102,9 +102,8 @@ for MT in (:(AbstractMatrix{T}), :(Transpose{<:Any, <:AbstractMatrix{T}}), :(Adj
             :(AbstractTriangular{T}))
     @eval *(a::$MT, b::AbstractZerosVector) where {T} = mult_zeros(a, b)
 end
-for MT in (:(Transpose{<:Any, <:AbstractVector}), :(Adjoint{<:Any, <:AbstractVector}))
-    @eval *(a::$MT, b::AbstractZerosMatrix) = mult_zeros(a, b)
-end
+*(a::Transpose{<:Any, <:AbstractVector}, b::AbstractZerosMatrix) = transpose(transpose(b) * parent(a))
+*(a::Adjoint{<:Any, <:AbstractVector}, b::AbstractZerosMatrix) = adjoint(adjoint(b) * parent(a))
 *(a::AbstractZerosMatrix, b::AbstractVector) = mult_zeros(a, b)
 
 function lmul_diag(a::Diagonal, b)
