@@ -104,7 +104,58 @@ function *(A::OneElementMatrix, B::AbstractFillVector)
     OneElement(val, A.ind[1], size(A,1))
 end
 
-@inline function __mulonel!(y, A, x, alpha, beta)
+# Special matrix types
+
+function *(A::OneElementMatrix, D::Diagonal)
+    check_matmul_sizes(A, D)
+    nzcol = A.ind[2]
+    val = if nzcol in axes(D,1)
+        A.val * D[nzcol, nzcol]
+    else
+        A.val * zero(eltype(D))
+    end
+    OneElement(val, A.ind, size(A))
+end
+function *(D::Diagonal, A::OneElementMatrix)
+    check_matmul_sizes(D, A)
+    nzrow = A.ind[1]
+    val = if nzrow in axes(D,2)
+        D[nzrow, nzrow] * A.val
+    else
+        zero(eltype(D)) * A.val
+    end
+    OneElement(val, A.ind, size(A))
+end
+
+# Inplace multiplication
+
+# We use this for out overloads for _mul! for OneElement because its more efficient
+# due to how efficient 2 arg mul is when one or more of the args are OneElement
+function __mulonel!(C, A, B, alpha, beta)
+    ABα = A * B * alpha
+    if iszero(beta)
+        C .= ABα
+    else
+        C .= ABα .+ C .* beta
+    end
+    return C
+end
+# These methods remove the ambituity in _mul!. This isn't strictly necessary, but this makes Aqua happy.
+function _mul!(C::AbstractVector, A::OneElementMatrix, B::OneElementVector, alpha, beta)
+    __mulonel!(C, A, B, alpha, beta)
+end
+function _mul!(C::AbstractMatrix, A::OneElementMatrix, B::OneElementMatrix, alpha, beta)
+    __mulonel!(C, A, B, alpha, beta)
+end
+
+function mul!(C::AbstractMatrix, A::OneElementMatrix, B::OneElementMatrix, alpha::Number, beta::Number)
+    _mul!(C, A, B, alpha, beta)
+end
+function mul!(C::AbstractVector, A::OneElementMatrix, B::OneElementVector, alpha::Number, beta::Number)
+    _mul!(C, A, B, alpha, beta)
+end
+
+@inline function __mul!(y, A::AbstractMatrix, x::OneElement, alpha, beta)
     αx = alpha * x.val
     ind1 = x.ind[1]
     if iszero(beta)
@@ -115,19 +166,19 @@ end
     return y
 end
 
-function _mulonel!(y, A, x::OneElementVector, alpha::Number, beta::Number)
+function _mul!(y::AbstractVector, A::AbstractMatrix, x::OneElementVector, alpha, beta)
     check_matmul_sizes(y, A, x)
-    if x.ind[1] ∉ axes(x,1) # in this case x is all zeros
+    if iszero(getindex_value(x))
         mul!(y, A, Zeros{eltype(x)}(axes(x)), alpha, beta)
         return y
     end
-    __mulonel!(y, A, x, alpha, beta)
+    __mul!(y, A, x, alpha, beta)
     y
 end
 
-function _mulonel!(C, A, B::OneElementMatrix, alpha::Number, beta::Number)
+function _mul!(C::AbstractMatrix, A::AbstractMatrix, B::OneElementMatrix, alpha, beta)
     check_matmul_sizes(C, A, B)
-    if B.ind[1] ∉ axes(B,1) || B.ind[2] ∉ axes(B,2) # in this case x is all zeros
+    if iszero(getindex_value(B))
         mul!(C, A, Zeros{eltype(B)}(axes(B)), alpha, beta)
         return C
     end
@@ -138,27 +189,161 @@ function _mulonel!(C, A, B::OneElementMatrix, alpha::Number, beta::Number)
         view(C, :, B.ind[2]+1:size(C,2)) .*= beta
     end
     y = view(C, :, B.ind[2])
-    __mulonel!(y, A, B, alpha, beta)
+    __mul!(y, A, B, alpha, beta)
+    C
+end
+function _mul!(C::AbstractMatrix, A::Diagonal, B::OneElementMatrix, alpha, beta)
+    check_matmul_sizes(C, A, B)
+    if iszero(getindex_value(B))
+        mul!(C, A, Zeros{eltype(B)}(axes(B)), alpha, beta)
+        return C
+    end
+    if iszero(beta)
+        C .= zero(eltype(C))
+    else
+        view(C, :, 1:B.ind[2]-1) .*= beta
+        view(C, :, B.ind[2]+1:size(C,2)) .*= beta
+    end
+    ABα = A * B * alpha
+    nzrow, nzcol = B.ind
+    if iszero(beta)
+        C[B.ind...] = ABα[B.ind...]
+    else
+        y = view(C, :, nzcol)
+        y .= view(ABα, :, nzcol) .+ y .* beta
+    end
+    C
+end
+
+function _mul!(C::AbstractMatrix, A::OneElementMatrix, B::AbstractMatrix, alpha, beta)
+    check_matmul_sizes(C, A, B)
+    if iszero(getindex_value(A))
+        mul!(C, Zeros{eltype(A)}(axes(A)), B, alpha, beta)
+        return C
+    end
+    if iszero(beta)
+        C .= zero(eltype(C))
+    else
+        view(C, 1:A.ind[1]-1, :) .*= beta
+        view(C, A.ind[1]+1:size(C,1), :) .*= beta
+    end
+    y = view(C, A.ind[1], :)
+    ind2 = A.ind[2]
+    Aval = A.val
+    if iszero(beta)
+        y .= Aval .* view(B, ind2, :) .* alpha
+    else
+        y .= Aval .* view(B, ind2, :) .* alpha .+ y .* beta
+    end
+    C
+end
+function _mul!(C::AbstractMatrix, A::OneElementMatrix, B::Diagonal, alpha, beta)
+    check_matmul_sizes(C, A, B)
+    if iszero(getindex_value(A))
+        mul!(C, Zeros{eltype(A)}(axes(A)), B, alpha, beta)
+        return C
+    end
+    if iszero(beta)
+        C .= zero(eltype(C))
+    else
+        view(C, 1:A.ind[1]-1, :) .*= beta
+        view(C, A.ind[1]+1:size(C,1), :) .*= beta
+    end
+    ABα = A * B * alpha
+    nzrow, nzcol = A.ind
+    if iszero(beta)
+        C[A.ind...] = ABα[A.ind...]
+    else
+        y = view(C, nzrow, :)
+        y .= view(ABα, nzrow, :) .+ y .* beta
+    end
+    C
+end
+
+function _mul!(C::AbstractVector, A::OneElementMatrix, B::AbstractVector, alpha, beta)
+    check_matmul_sizes(C, A, B)
+    if iszero(getindex_value(A))
+        mul!(C, Zeros{eltype(A)}(axes(A)), B, alpha, beta)
+        return C
+    end
+    nzrow, nzcol = A.ind
+    if iszero(beta)
+        C .= zero(eltype(C))
+    else
+        view(C, 1:nzrow-1) .*= beta
+        view(C, nzrow+1:size(C,1)) .*= beta
+    end
+    Aval = A.val
+    if iszero(beta)
+        C[nzrow] = Aval * B[nzcol] * alpha
+    else
+        C[nzrow] = Aval * B[nzcol] * alpha + C[nzrow] * beta
+    end
     C
 end
 
 for MT in (:StridedMatrix, :(Transpose{<:Any, <:StridedMatrix}), :(Adjoint{<:Any, <:StridedMatrix}))
     @eval function mul!(y::StridedVector, A::$MT, x::OneElementVector, alpha::Number, beta::Number)
-        _mulonel!(y, A, x, alpha, beta)
+        _mul!(y, A, x, alpha, beta)
     end
+end
+for MT in (:StridedMatrix, :(Transpose{<:Any, <:StridedMatrix}), :(Adjoint{<:Any, <:StridedMatrix}),
+            :Diagonal)
     @eval function mul!(C::StridedMatrix, A::$MT, B::OneElementMatrix, alpha::Number, beta::Number)
-        _mulonel!(C, A, B, alpha, beta)
+        _mul!(C, A, B, alpha, beta)
     end
+    @eval function mul!(C::StridedMatrix, A::OneElementMatrix, B::$MT, alpha::Number, beta::Number)
+        _mul!(C, A, B, alpha, beta)
+    end
+end
+function mul!(C::StridedVector, A::OneElementMatrix, B::StridedVector, alpha::Number, beta::Number)
+    _mul!(C, A, B, alpha, beta)
 end
 
 function mul!(y::AbstractVector, A::AbstractFillMatrix, x::OneElementVector, alpha::Number, beta::Number)
-    _mulonel!(y, A, x, alpha, beta)
+    _mul!(y, A, x, alpha, beta)
 end
 function mul!(C::AbstractMatrix, A::AbstractFillMatrix, B::OneElementMatrix, alpha::Number, beta::Number)
-    _mulonel!(C, A, B, alpha, beta)
+    _mul!(C, A, B, alpha, beta)
+end
+function mul!(C::AbstractVector, A::OneElementMatrix, B::AbstractFillVector, alpha::Number, beta::Number)
+    _mul!(C, A, B, alpha, beta)
+end
+function mul!(C::AbstractMatrix, A::OneElementMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
+    _mul!(C, A, B, alpha, beta)
 end
 
 # adjoint/transpose
 
 adjoint(A::OneElementMatrix) = OneElement(adjoint(A.val), reverse(A.ind), reverse(A.axes))
 transpose(A::OneElementMatrix) = OneElement(transpose(A.val), reverse(A.ind), reverse(A.axes))
+
+# broadcast
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::OneElement{<:Any,N}) where {N}
+    OneElement(conj(r.val), r.ind, axes(r))
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(real), r::OneElement{<:Any,N}) where {N}
+    OneElement(real(r.val), r.ind, axes(r))
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(imag), r::OneElement{<:Any,N}) where {N}
+    OneElement(imag(r.val), r.ind, axes(r))
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(^), r::OneElement{<:Any,N}, x::Number) where {N}
+    OneElement(r.val^x, r.ind, axes(r))
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(*), r::OneElement{<:Any,N}, x::Number) where {N}
+    OneElement(r.val*x, r.ind, axes(r))
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(/), r::OneElement{<:Any,N}, x::Number) where {N}
+    OneElement(r.val/x, r.ind, axes(r))
+end
+function broadcasted(::DefaultArrayStyle{N}, ::typeof(\), x::Number, r::OneElement{<:Any,N}) where {N}
+    OneElement(x \ r.val, r.ind, axes(r))
+end
+
+# show
+_maybesize(t::Tuple{Base.OneTo{Int}, Vararg{Base.OneTo{Int}}}) = size.(t,1)
+_maybesize(t) = t
+Base.show(io::IO, A::OneElement) = print(io, OneElement, "(", A.val, ", ", A.ind, ", ", _maybesize(axes(A)), ")")
+Base.show(io::IO, A::OneElement{<:Any,1,Tuple{Int},Tuple{Base.OneTo{Int}}}) =
+    print(io, OneElement, "(", A.val, ", ", A.ind[1], ", ", size(A,1), ")")
