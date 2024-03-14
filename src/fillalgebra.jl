@@ -443,11 +443,6 @@ end
     a .+ getindex_value(b)
 end
 
-# following needed since as of Julia v1.8 convert(AbstractArray{T}, ::AbstractRange) might return a Vector
-@inline elconvert(::Type{T}, A::AbstractRange) where T = T(first(A)):T(step(A)):T(last(A))
-@inline elconvert(::Type{T}, A::AbstractUnitRange) where T<:Integer = AbstractUnitRange{T}(A)
-@inline elconvert(::Type{T}, A::AbstractArray) where T = AbstractArray{T}(A)
-
 ####
 # norm
 ####
