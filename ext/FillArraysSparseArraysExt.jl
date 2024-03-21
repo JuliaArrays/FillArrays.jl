@@ -1,10 +1,11 @@
 module FillArraysSparseArraysExt
 
 using SparseArrays
+using SparseArrays: SparseVectorUnion
 import Base: convert, kron
 using FillArrays
-using FillArrays: RectDiagonalFill, RectOrDiagonalFill, ZerosVector, ZerosMatrix, getindex_value
-using LinearAlgebra
+using FillArrays: RectDiagonalFill, RectOrDiagonalFill, ZerosVector, ZerosMatrix, getindex_value, AbstractFillVector, _fill_dot
+import LinearAlgebra: dot, kron, I
 
 ##################
 ## Sparse arrays
@@ -55,5 +56,13 @@ end
 
 # TODO: remove in v2.0
 @deprecate kron(E1::RectDiagonalFill, E2::RectDiagonalFill) kron(sparse(E1), sparse(E2))
+
+# Ambiguity. see #178
+if VERSION >= v"1.8"
+    dot(x::AbstractFillVector, y::SparseVectorUnion) = _fill_dot(x, y)
+else
+    dot(x::AbstractFillVector{<:Number}, y::SparseVectorUnion{<:Number}) = _fill_dot(x, y)
+end
+
 
 end # module
