@@ -2,11 +2,19 @@ name: Documentation
 
 on:
   pull_request:
+    paths-ignore:
+      - 'LICENSE'
+      - 'README.md'
+      - '.github/workflows/TagBot.yml'
   push:
     branches:
       - 'master'
       - 'release-'
     tags: '*'
+    paths-ignore:
+      - 'LICENSE'
+      - 'README.md'
+      - '.github/workflows/TagBot.yml'
   release:
     types: [published]
 
