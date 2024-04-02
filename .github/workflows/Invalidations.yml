@@ -2,6 +2,10 @@ name: Invalidations
 
 on:
   pull_request:
+    paths-ignore:
+      - 'LICENSE'
+      - 'README.md'
+      - '.github/workflows/TagBot.yml'
 
 concurrency:
   # Skip intermediate builds: always.
