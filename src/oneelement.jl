@@ -392,19 +392,23 @@ end
 # show
 _maybesize(t::Tuple{Base.OneTo{Int}, Vararg{Base.OneTo{Int}}}) = size.(t,1)
 _maybesize(t) = t
-Base.show(io::IO, A::OneElement) = print(io, OneElement, "(", A.val, ", ", A.ind, ", ", _maybesize(axes(A)), ")")
-function Base.show(io::IO, A::OneElement{<:Any,1,Tuple{Int},Tuple{Base.OneTo{Int}}})
+function Base.show(io::IO, @nospecialize(A::OneElement))
+    # We always print the inds and axes (or size, for Base.OneTo axes)
+    # We print the value only if it isn't 1
+    # this way, we have at least two arguments displayed that are unambiguous
     print(io, OneElement)
-    if eltype(A) != Int
+    isvector = ndims(A) == 1
+    sz = _maybesize(axes(A))
+    hasstandardaxes = sz isa Tuple{Vararg{Integer}}
+    isstandardvector = isvector & hasstandardaxes
+    if hasstandardaxes && eltype(A) != Int && isone(A.val)
         print(io, "{", eltype(A), "}")
     end
     print(io, "(")
-    if !isone(A.val)
+    if !(hasstandardaxes && isone(A.val))
         print(io, A.val, ", ")
     end
-    print(io, A.ind[1])
-    if A.ind[1] != size(A,1)
-        print(io, ", ", size(A,1))
-    end
+    print(io, isstandardvector ? A.ind[1] : A.ind, ", ")
+    print(io, isstandardvector ? sz[1] : sz)
     print(io,  ")")
 end

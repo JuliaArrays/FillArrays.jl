@@ -2346,6 +2346,31 @@ end
         @test repr(B) == "OneElement(2, 1, 3)"
         B = OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))
         @test repr(B) == "OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))"
+
+        B = OneElement(2.0, (1, 2), (3, 4))
+        @test repr(B) == "OneElement(2.0, (1, 2), (3, 4))"
+        B = OneElement(2.0, 1, 3)
+        @test repr(B) == "OneElement(2.0, 1, 3)"
+        B = OneElement(2.0, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))
+        @test repr(B) == "OneElement(2.0, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))"
+
+        B = OneElement((1, 2), (3, 4))
+        @test repr(B) == "OneElement((1, 2), (3, 4))"
+        B = OneElement((1, 2))
+        @test repr(B) == "OneElement((1, 2), (1, 2))"
+        B = OneElement(2, 3)
+        @test repr(B) == "OneElement(2, 3)" 
+        B = OneElement(2)
+        @test repr(B) == "OneElement(2, 2)" 
+
+        B = OneElement{Bool}((1, 2), (3, 4))
+        @test repr(B) == "OneElement{Bool}((1, 2), (3, 4))"
+        B = OneElement(1.0, (1, 2), (3, 4))
+        @test repr(B) == "OneElement{Float64}((1, 2), (3, 4))"
+        B = OneElement{Bool}(2, 3)
+        @test repr(B) == "OneElement{Bool}(2, 3)" 
+        B = OneElement(1.0, 2, 3)
+        @test repr(B) == "OneElement{Float64}(2, 3)" 
     end
 end
 
