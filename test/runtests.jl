@@ -1132,8 +1132,13 @@ end
     @test_throws DimensionMismatch map(+, x2', x2)
 
     # Issue https://github.com/JuliaArrays/FillArrays.jl/issues/179
-    @test map(() -> "ok") == "ok"  # was MethodError: reducing over an empty collection is not allowed
-    @test mapreduce(() -> "ok", *) == "ok"
+    if VERSION < v"1.11.0-"
+        @test map(() -> "ok") == "ok"  # was MethodError: reducing over an empty collection is not allowed
+        @test mapreduce(() -> "ok", *) == "ok"
+    else
+        @test_throws "no method matching map" map(() -> "ok")
+        @test_throws "no method matching map" mapreduce(() -> "ok", *)
+    end
 end
 
 @testset "mapreduce" begin
