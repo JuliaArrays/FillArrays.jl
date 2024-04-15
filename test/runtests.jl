@@ -1132,7 +1132,7 @@ end
     @test_throws DimensionMismatch map(+, x2', x2)
 
     # Issue https://github.com/JuliaArrays/FillArrays.jl/issues/179
-    if VERSION < v"1.11.0-"
+    if VERSION < v"1.11.0-"  # In 1.11, 1-arg map & mapreduce was removed
         @test map(() -> "ok") == "ok"  # was MethodError: reducing over an empty collection is not allowed
         @test mapreduce(() -> "ok", *) == "ok"
     else
