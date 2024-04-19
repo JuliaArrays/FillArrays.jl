@@ -1701,7 +1701,7 @@ end
     @test (1:5)'E == (1.0:5)'
     @test E*E ≡ E
 
-    for T in (Float64, ComplexF64)
+    @testset for T in (Float64, ComplexF64)
         fv = T == Float64 ? Float64(1.6) : ComplexF64(1.6, 1.3)
         n  = 10
         k  = 12
@@ -1716,6 +1716,16 @@ end
         @test transpose(A)*fillmat ≈ transpose(A)*Array(fillmat)
         @test adjoint(A)*fillvec ≈ adjoint(A)*Array(fillvec)
         @test adjoint(A)*fillmat ≈ adjoint(A)*Array(fillmat)
+
+        # inplace C = F * B' * alpha + C * beta
+        F = Fill(fv, m, k)
+        A = Array(F)
+        B = rand(T, n, k)
+        C = rand(T, m, n)
+        @testset for f in (adjoint, transpose)
+            @test mul!(copy(C), F, f(B)) ≈ mul!(copy(C), A, f(B))
+            @test mul!(copy(C), F, f(B), 1.0, 2.0) ≈ mul!(copy(C), A, f(B), 1.0, 2.0)
+        end
     end
 
     @testset "non-commutative" begin

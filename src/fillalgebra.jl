@@ -224,30 +224,27 @@ function mul!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, a
 end
 
 function copyfirstcol!(C)
-    @views for i in axes(C,2)[2:end]
-        C[:, i] .= C[:, 1]
-    end
-    return C
-end
-function copyfirstcol!(C::Union{Adjoint, Transpose})
-    # in this case, we copy the first row of the parent to others
-    Cp = parent(C)
-    for colind in axes(Cp, 2)
-        Cp[2:end, colind] .= Cp[1, colind]
-    end
+    @views C[:, begin+1:end] .= _firstcol(C)
     return C
 end
 
-_firstcol(C::AbstractMatrix) = view(C, :, 1)
-_firstcol(C::Union{Adjoint, Transpose}) = view(parent(C), 1, :)
+_firstcol(C::AbstractMatrix) = first(eachcol(C))
+# remove wrappers in case of transposed matrices
+function _firstcol(C::Union{Adjoint{<:Real, <:AbstractMatrix}, Transpose{<:Any, <:AbstractMatrix}})
+    view(parent(C), firstindex(parent(C),1), :)
+end
 
 function _mulfill!(C, A, B::AbstractFillMatrix, alpha, beta)
     check_matmul_sizes(C, A, B)
     if iszero(size(B,2))
         return rmul!(C, beta)
     end
-    mul!(_firstcol(C), A, view(B, :, 1), alpha, beta)
-    copyfirstcol!(C)
+    if iszero(beta)
+        mul!(_firstcol(C), A, view(B, :, firstindex(B,2)), alpha, beta)
+        copyfirstcol!(C)
+    else
+        mul!(C, A, B, alpha, beta)
+    end
     C
 end
 
