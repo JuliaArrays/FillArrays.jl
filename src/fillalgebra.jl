@@ -237,7 +237,12 @@ end
 _firstcol(C::AbstractMatrix) = first(eachcol(C))
 
 function copyfirstrow!(C)
-    C[begin+1:end, :] .= permutedims(_firstrow(C))
+    # C[begin+1:end, ind] .= permutedims(_firstrow(C))
+    # we loop here as the aliasing check isn't smart enough to
+    # detect that the two sides don't alias, and ends up materializing the RHS
+    for (ind, v) in pairs(_firstrow(C))
+        C[begin+1:end, ind] .= Ref(v)
+    end
     return C
 end
 _firstrow(C::AbstractMatrix) = first(eachrow(C))
