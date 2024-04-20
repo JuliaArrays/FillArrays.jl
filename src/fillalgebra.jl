@@ -212,7 +212,8 @@ for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
     end
 end
 
-function mul!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
+# unnecessary indirection, added for ambiguity resolution
+function _mulfill!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, alpha, beta)
     check_matmul_sizes(C, A, B)
     ABα = getindex_value(A) * getindex_value(B) * alpha * size(B,1)
     if iszero(beta)
@@ -220,56 +221,79 @@ function mul!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, a
     else
         C .= ABα .+ C .* beta
     end
-    C
+    return C
+end
+
+function mul!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
+    _mulfill!(C, A, B, alpha, beta)
+    return C
 end
 
 function copyfirstcol!(C)
-    @views C[:, begin+1:end] .= _firstcol(C)
+    C[:, begin+1:end] .= _firstcol(C)
     return C
 end
 
 _firstcol(C::AbstractMatrix) = first(eachcol(C))
-# remove wrappers in case of transposed matrices
-function _firstcol(C::Union{Adjoint{<:Real, <:AbstractMatrix}, Transpose{<:Any, <:AbstractMatrix}})
-    view(parent(C), firstindex(parent(C),1), :)
-end
 
-function _mulfill!(C, A, B::AbstractFillMatrix, alpha, beta)
+function copyfirstrow!(C)
+    C[begin+1:end, :] .= permutedims(_firstrow(C))
+    return C
+end
+_firstrow(C::AbstractMatrix) = first(eachrow(C))
+
+function _mulfill!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractFillMatrix, alpha, beta)
     check_matmul_sizes(C, A, B)
-    if iszero(size(B,2))
-        return rmul!(C, beta)
-    end
+    iszero(size(B,2)) && return C # no columns in B and C, empty matrix
     if iszero(beta)
-        mul!(_firstcol(C), A, view(B, :, firstindex(B,2)), alpha, beta)
+        # the mat-vec product sums along the rows of A
+        mul!(_firstcol(C), A, _firstcol(B), alpha, beta)
         copyfirstcol!(C)
     else
-        mul!(C, A, B, alpha, beta)
+        # the mat-vec product sums along the rows of A, which produces the first column of ABα
+        # allocate a temporary column vector to store the result
+        v = A * (_firstcol(B) * alpha)
+        C .= v .+ C .* beta
     end
-    C
+    return C
+end
+function _mulfill!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractMatrix, alpha, beta)
+    check_matmul_sizes(C, A, B)
+    iszero(size(A,1)) && return C # no rows in A and C, empty matrix
+    Aval = getindex_value(A)
+    if iszero(beta)
+        Crow = _firstrow(C)
+        # sum along the columns of B
+        Crow .= Ref(Aval) .* sum.(eachcol(B)) .* alpha
+        copyfirstrow!(C)
+    else
+        # sum along the columns of B, and allocate the result.
+        # This is the first row of ABα
+        ABα_row = Ref(Aval) .* sum.(eachcol(B)) .* alpha
+        C .= permutedims(ABα_row) .+ C .* beta
+    end
+    return C
 end
 
 function mul!(C::StridedMatrix, A::StridedMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
     _mulfill!(C, A, B, alpha, beta)
+    return C
+end
+function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::StridedMatrix, alpha::Number, beta::Number)
+    _mulfill!(C, A, B, alpha, beta)
+    return C
 end
 
 for T in (:Adjoint, :Transpose)
-    @eval function mul!(C::StridedMatrix, A::$T{<:Any, <:StridedMatrix}, B::AbstractFillMatrix, alpha::Number, beta::Number)
-        _mulfill!(C, A, B, alpha, beta)
-    end
-end
-
-function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::StridedMatrix, alpha::Number, beta::Number)
-    check_matmul_sizes(C, A, B)
-    for (colC, colB) in zip(eachcol(C), eachcol(B))
-        mul!(colC, A, colB, alpha, beta)
-    end
-    C
-end
-
-for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
-    @eval function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::$T{<:Any, <:StridedMatrix}, alpha::Number, beta::Number)
-        _mulfill!($f(C), $f(B), $f(A), alpha, beta)
-        C
+    @eval begin
+        function mul!(C::StridedMatrix, A::$T{<:Any, <:StridedMatrix}, B::AbstractFillMatrix, alpha::Number, beta::Number)
+            _mulfill!(C, A, B, alpha, beta)
+            return C
+        end
+        function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::$T{<:Any, <:StridedMatrix}, alpha::Number, beta::Number)
+            _mulfill!(C, A, B, alpha, beta)
+            return C
+        end
     end
 end
 
