@@ -230,7 +230,9 @@ function mul!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, a
 end
 
 function copyfirstcol!(C)
-    C[:, begin+1:end] .= _firstcol(C)
+    @views for i in axes(C,2)[2:end]
+        C[:, i] .= C[:, 1]
+    end
     return C
 end
 

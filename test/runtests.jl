@@ -1701,7 +1701,7 @@ end
     @test (1:5)'E == (1.0:5)'
     @test E*E ≡ E
 
-    @testset for T in (Float64, ComplexF64)
+    for T in (Float64, ComplexF64)
         fv = T == Float64 ? Float64(1.6) : ComplexF64(1.6, 1.3)
         n  = 10
         k  = 12
