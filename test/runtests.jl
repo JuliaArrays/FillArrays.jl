@@ -1633,8 +1633,8 @@ end
             @test transpose(A) * Zeros(mA) ≡ Zeros(nA)
             @test A' * Zeros(mA) ≡ Zeros(nA)
 
-            @test transpose(a) * Zeros(la, 3) ≡ Zeros(1,3)
-            @test a' * Zeros(la,3) ≡ Zeros(1,3)
+            @test transpose(a) * Zeros(la, 3) ≡ transpose(Zeros(3))
+            @test a' * Zeros(la,3) ≡ adjoint(Zeros(3))
 
             @test Zeros(la)' * Transpose(Adjoint(a)) == 0.0
 
@@ -1701,30 +1701,50 @@ end
     @test (1:5)'E == (1.0:5)'
     @test E*E ≡ E
 
+    n  = 10
+    k  = 12
+    m  = 15
     for T in (Float64, ComplexF64)
-        fv = T == Float64 ? Float64(1.6) : ComplexF64(1.6, 1.3)
-        n  = 10
-        k  = 12
-        m  = 15
-        fillvec = Fill(fv, k)
-        fillmat = Fill(fv, k, m)
-        A  = rand(ComplexF64, n, k)
-        @test A*fillvec ≈ A*Array(fillvec)
-        @test A*fillmat ≈ A*Array(fillmat)
-        A  = rand(ComplexF64, k, n)
-        @test transpose(A)*fillvec ≈ transpose(A)*Array(fillvec)
-        @test transpose(A)*fillmat ≈ transpose(A)*Array(fillmat)
-        @test adjoint(A)*fillvec ≈ adjoint(A)*Array(fillvec)
-        @test adjoint(A)*fillmat ≈ adjoint(A)*Array(fillmat)
+        Ank  = rand(T, n, k)
+        Akn = rand(T, k, n)
+        Ak = rand(T, k)
+        onesm = ones(m)
+        zerosm = zeros(m)
 
-        # inplace C = F * B' * alpha + C * beta
+        fv = T == Float64 ? T(1.6) : T(1.6, 1.3)
+
+        for (fillvec, fillmat) in ((Fill(fv, k), Fill(fv, k, m)),
+                                    (Ones(T, k), Ones(T, k, m)),
+                                    (Zeros(T, k), Zeros(T, k, m)))
+
+            Afillvec = Array(fillvec)
+            Afillmat = Array(fillmat)
+            @test Ank * fillvec ≈ Ank * Afillvec
+            @test Ank * fillmat ≈ Ank * Afillmat
+
+            for A  in (Akn, Ak)
+                @test transpose(A)*fillvec ≈ transpose(A)*Afillvec
+                AtF = transpose(A)*fillmat
+                AtM = transpose(A)*Afillmat
+                @test AtF ≈ AtM
+                @test AtF * Ones(m) ≈ AtM * onesm
+                @test AtF * Zeros(m) ≈ AtM * zerosm
+                @test adjoint(A)*fillvec ≈ adjoint(A)*Afillvec
+                AadjF = adjoint(A)*fillmat
+                AadjM = adjoint(A)*Afillmat
+                @test AadjF ≈ AadjM
+                @test AadjF * Ones(m) ≈ AadjM * onesm
+                @test AadjF * Zeros(m) ≈ AadjM * zerosm
+            end
+        end
+
+        # inplace C = F * A' * alpha + C * beta
         F = Fill(fv, m, k)
-        A = Array(F)
-        B = rand(T, n, k)
+        M = Array(F)
         C = rand(T, m, n)
         @testset for f in (adjoint, transpose)
-            @test mul!(copy(C), F, f(B)) ≈ mul!(copy(C), A, f(B))
-            @test mul!(copy(C), F, f(B), 1.0, 2.0) ≈ mul!(copy(C), A, f(B), 1.0, 2.0)
+            @test mul!(copy(C), F, f(Ank)) ≈ mul!(copy(C), M, f(Ank))
+            @test mul!(copy(C), F, f(Ank), 1.0, 2.0) ≈ mul!(copy(C), M, f(Ank), 1.0, 2.0)
         end
     end
 
