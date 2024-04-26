@@ -266,6 +266,7 @@ end
         @test !isassigned(f, 0, 0)
         @test isassigned(f, 2, 2)
         @test !isassigned(f, 10, 10)
+        @test_throws ArgumentError isassigned(f, true)
     end
 end
 
@@ -2125,6 +2126,14 @@ end
         @test adjoint(A) isa Adjoint
         @test transpose(A) == OneElement(3, (1,2), (1,4))
         @test adjoint(A) == OneElement(3, (1,2), (1,4))
+    end
+
+    @testset "isassigned" begin
+        f = OneElement(2, (3,3), (4,4))
+        @test !isassigned(f, 0, 0)
+        @test isassigned(f, 2, 2)
+        @test !isassigned(f, 10, 10)
+        @test_throws ArgumentError isassigned(f, true)
     end
 
     @testset "matmul" begin
