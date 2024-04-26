@@ -23,7 +23,8 @@ import Base: oneto
 """
     AbstractFill{T, N, Axes} <: AbstractArray{T, N}
 
-Supertype for lazy array types whose entries are all equal to constant.
+Supertype for lazy array types whose entries are all equal.
+Subtypes of `AbstractFill` should implement [`FillArrays.getindex_value`](@ref) to return the value of the entries.
 """
 abstract type AbstractFill{T, N, Axes} <: AbstractArray{T, N} end
 const AbstractFillVector{T} = AbstractFill{T,1}
@@ -141,7 +142,7 @@ Fill{T,0}(x, ::Tuple{}) where T = Fill{T,0,Tuple{}}(convert(T, x)::T, ()) # ambi
 @inline size(F::Fill) = map(length, F.axes)
 
 """
-    getindex_value(F::AbstractFill)
+    FillArrays.getindex_value(F::AbstractFill)
 
 Return the value that `F` is filled with.
 
@@ -643,8 +644,18 @@ end
 
 # In particular, these make iszero(Eye(n))  efficient.
 # use any/all on scalar to get Boolean error message
-any(f::Function, x::AbstractFill) = !isempty(x) && any(f(getindex_value(x)))
-all(f::Function, x::AbstractFill) = isempty(x) || all(f(getindex_value(x)))
+function any(f::Function, x::AbstractFill)
+    isempty(x) && return false
+    # If the condition is true for one value, then it's true for all
+    fval = f(getindex_value(x))
+    any((fval,))
+end
+function all(f::Function, x::AbstractFill)
+    isempty(x) && return true
+    # If the condition is true for one value, then it's true for all
+    fval = f(getindex_value(x))
+    return all((fval,))
+end
 any(x::AbstractFill) = any(identity, x)
 all(x::AbstractFill) = all(identity, x)
 

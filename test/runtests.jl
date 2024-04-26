@@ -5,13 +5,7 @@ using Documenter
 DocMeta.setdocmeta!(FillArrays, :DocTestSetup, :(using FillArrays))
 doctest(FillArrays; manual = false)
 
-using Aqua
-@testset "Project quality" begin
-    Aqua.test_all(FillArrays;
-        # https://github.com/JuliaArrays/FillArrays.jl/issues/105#issuecomment-1582516319
-        ambiguities=(; broken=true),
-    )
-end
+include("aqua.jl")
 
 include("infinitearrays.jl")
 import .InfiniteArrays
@@ -384,22 +378,22 @@ end
 # type, and produce numerically correct results.
 as_array(x::AbstractArray) = Array(x)
 as_array(x::UniformScaling) = x
-equal_or_undef(a::Number, b::Number) = (a == b) || isequal(a, b)
-equal_or_undef(a, b) = all(equal_or_undef.(a, b))
+isapprox_or_undef(a::Number, b::Number) = (a ≈ b) || isequal(a, b)
+isapprox_or_undef(a, b) = all(((x,y),) -> isapprox_or_undef(x,y), zip(a, b))
 function test_addition_subtraction_dot(As, Bs, Tout::Type)
     for A in As, B in Bs
         @testset "$(typeof(A)) and $(typeof(B))" begin
             @test @inferred(A + B) isa Tout{promote_type(eltype(A), eltype(B))}
-            @test equal_or_undef(as_array(A + B), as_array(A) + as_array(B))
+            @test isapprox_or_undef(as_array(A + B), as_array(A) + as_array(B))
 
             @test @inferred(A - B) isa Tout{promote_type(eltype(A), eltype(B))}
-            @test equal_or_undef(as_array(A - B), as_array(A) - as_array(B))
+            @test isapprox_or_undef(as_array(A - B), as_array(A) - as_array(B))
 
             @test @inferred(B + A) isa Tout{promote_type(eltype(B), eltype(A))}
-            @test equal_or_undef(as_array(B + A), as_array(B) + as_array(A))
+            @test isapprox_or_undef(as_array(B + A), as_array(B) + as_array(A))
 
             @test @inferred(B - A) isa Tout{promote_type(eltype(B), eltype(A))}
-            @test equal_or_undef(as_array(B - A), as_array(B) - as_array(A))
+            @test isapprox_or_undef(as_array(B - A), as_array(B) - as_array(A))
 
             # Julia 1.6 doesn't support dot(UniformScaling)
             if VERSION < v"1.6.0" || VERSION >= v"1.8.0"
@@ -1138,8 +1132,13 @@ end
     @test_throws DimensionMismatch map(+, x2', x2)
 
     # Issue https://github.com/JuliaArrays/FillArrays.jl/issues/179
-    @test map(() -> "ok") == "ok"  # was MethodError: reducing over an empty collection is not allowed
-    @test mapreduce(() -> "ok", *) == "ok"
+    if VERSION < v"1.11.0-"  # In 1.11, 1-arg map & mapreduce was removed
+        @test map(() -> "ok") == "ok"  # was MethodError: reducing over an empty collection is not allowed
+        @test mapreduce(() -> "ok", *) == "ok"
+    else
+        @test_throws "no method matching map" map(() -> "ok")
+        @test_throws "no method matching map" mapreduce(() -> "ok", *)
+    end
 end
 
 @testset "mapreduce" begin
@@ -1336,6 +1335,9 @@ end
     @test iszero(Fill(SMatrix{2,2}(0,0,0,0), 2))
     @test iszero(Fill(SMatrix{2,2}(0,0,0,1), 0))
 
+    # compile-time evaluation
+    @test @inferred((Z -> Val(iszero(Z)))(Zeros(3,3))) == Val(true)
+
     @testset "all/any" begin
         @test any(Ones{Bool}(10)) === all(Ones{Bool}(10)) === any(Fill(true,10)) === all(Fill(true,10)) === true
         @test any(Zeros{Bool}(10)) === all(Zeros{Bool}(10)) === any(Fill(false,10)) === all(Fill(false,10)) === false
@@ -1345,6 +1347,11 @@ end
         @test all(Fill(2,0))
         @test !any(Fill(2,0))
         @test any(Trues(2,0)) == any(trues(2,0))
+        @test_throws TypeError all(Fill(2,2))
+        @test all(iszero, Fill(missing,0)) === all(iszero, fill(missing,0)) === true
+        @test all(iszero, Fill(missing,2)) === all(iszero, fill(missing,2)) === missing
+        @test any(iszero, Fill(missing,0)) === any(iszero, fill(missing,0)) === false
+        @test any(iszero, Fill(missing,2)) === any(iszero, fill(missing,2)) === missing
     end
 
     @testset "Error" begin
@@ -1626,8 +1633,8 @@ end
             @test transpose(A) * Zeros(mA) ≡ Zeros(nA)
             @test A' * Zeros(mA) ≡ Zeros(nA)
 
-            @test transpose(a) * Zeros(la, 3) ≡ Zeros(1,3)
-            @test a' * Zeros(la,3) ≡ Zeros(1,3)
+            @test transpose(a) * Zeros(la, 3) ≡ transpose(Zeros(3))
+            @test a' * Zeros(la,3) ≡ adjoint(Zeros(3))
 
             @test Zeros(la)' * Transpose(Adjoint(a)) == 0.0
 
@@ -1694,21 +1701,51 @@ end
     @test (1:5)'E == (1.0:5)'
     @test E*E ≡ E
 
+    n  = 10
+    k  = 12
+    m  = 15
     for T in (Float64, ComplexF64)
-        fv = T == Float64 ? Float64(1.6) : ComplexF64(1.6, 1.3)
-        n  = 10
-        k  = 12
-        m  = 15
-        fillvec = Fill(fv, k)
-        fillmat = Fill(fv, k, m)
-        A  = rand(ComplexF64, n, k)
-        @test A*fillvec ≈ A*Array(fillvec)
-        @test A*fillmat ≈ A*Array(fillmat)
-        A  = rand(ComplexF64, k, n)
-        @test transpose(A)*fillvec ≈ transpose(A)*Array(fillvec)
-        @test transpose(A)*fillmat ≈ transpose(A)*Array(fillmat)
-        @test adjoint(A)*fillvec ≈ adjoint(A)*Array(fillvec)
-        @test adjoint(A)*fillmat ≈ adjoint(A)*Array(fillmat)
+        Ank  = rand(T, n, k)
+        Akn = rand(T, k, n)
+        Ak = rand(T, k)
+        onesm = ones(m)
+        zerosm = zeros(m)
+
+        fv = T == Float64 ? T(1.6) : T(1.6, 1.3)
+
+        for (fillvec, fillmat) in ((Fill(fv, k), Fill(fv, k, m)),
+                                    (Ones(T, k), Ones(T, k, m)),
+                                    (Zeros(T, k), Zeros(T, k, m)))
+
+            Afillvec = Array(fillvec)
+            Afillmat = Array(fillmat)
+            @test Ank * fillvec ≈ Ank * Afillvec
+            @test Ank * fillmat ≈ Ank * Afillmat
+
+            for A  in (Akn, Ak)
+                @test transpose(A)*fillvec ≈ transpose(A)*Afillvec
+                AtF = transpose(A)*fillmat
+                AtM = transpose(A)*Afillmat
+                @test AtF ≈ AtM
+                @test AtF * Ones(m) ≈ AtM * onesm
+                @test AtF * Zeros(m) ≈ AtM * zerosm
+                @test adjoint(A)*fillvec ≈ adjoint(A)*Afillvec
+                AadjF = adjoint(A)*fillmat
+                AadjM = adjoint(A)*Afillmat
+                @test AadjF ≈ AadjM
+                @test AadjF * Ones(m) ≈ AadjM * onesm
+                @test AadjF * Zeros(m) ≈ AadjM * zerosm
+            end
+        end
+
+        # inplace C = F * A' * alpha + C * beta
+        F = Fill(fv, m, k)
+        M = Array(F)
+        C = rand(T, m, n)
+        @testset for f in (adjoint, transpose)
+            @test mul!(copy(C), F, f(Ank)) ≈ mul!(copy(C), M, f(Ank))
+            @test mul!(copy(C), F, f(Ank), 1.0, 2.0) ≈ mul!(copy(C), M, f(Ank), 1.0, 2.0)
+        end
     end
 
     @testset "non-commutative" begin
@@ -2010,6 +2047,33 @@ end
         @test FillArrays.getindex_value(transpose(a)) == FillArrays.unique_value(transpose(a)) == 2.0 + im
         @test convert(Fill, transpose(a)) ≡ Fill(2.0+im,1,5)
     end
+
+    @testset "custom AbstractFill types" begin
+        # implicit axes
+        struct StaticZerosVec{L,T} <: FillArrays.AbstractZeros{T,1,Tuple{SOneTo{L}}} end
+        Base.size(::StaticZerosVec{L}) where {L} = (L,)
+        Base.axes(::StaticZerosVec{L}) where {L} = (SOneTo(L),)
+        S = StaticZerosVec{3,Int}()
+        @test real.(S) == S
+        @test imag.(S) == S
+
+        struct StaticOnesVec{L,T} <: FillArrays.AbstractOnes{T,1,Tuple{SOneTo{L}}} end
+        Base.size(::StaticOnesVec{L}) where {L} = (L,)
+        Base.axes(::StaticOnesVec{L}) where {L} = (SOneTo(L),)
+        S = StaticOnesVec{3,Int}()
+        @test real.(S) == S
+        @test imag.(S) == zero(S)
+
+        struct StaticFill{S1,S2,T} <: FillArrays.AbstractFill{T,2,Tuple{SOneTo{S1},SOneTo{S2}}}
+            x :: T
+        end
+        StaticFill{S1,S2}(x::T) where {S1,S2,T} = StaticFill{S1,S2,T}(x)
+        Base.size(::StaticFill{S1,S2}) where {S1,S2} = (S1,S2)
+        Base.axes(::StaticFill{S1,S2}) where {S1,S2} = (SOneTo(S1), SOneTo(S2))
+        FillArrays.getindex_value(S::StaticFill) = S.x
+        S = StaticFill{2,3}(2)
+        @test permutedims(S) == Fill(2, reverse(size(S)))
+    end
 end
 
 @testset "Statistics" begin
@@ -2119,14 +2183,16 @@ end
 
     @testset "matmul" begin
         A = reshape(Float64[1:9;], 3, 3)
+        v = reshape(Float64[1:3;], 3)
         testinds(w::AbstractArray) = testinds(size(w))
         testinds(szw::Tuple{Int}) = (szw .- 1, szw .+ 1)
         function testinds(szA::Tuple{Int,Int})
             (szA .- 1, szA .+ (-1,0), szA .+ (0,-1), szA .+ 1, szA .+ (1,-1), szA .+ (-1,1))
         end
-        function test_A_mul_OneElement(A, (w, w2))
-            @testset for ind in testinds(w)
-                x = OneElement(3, ind, size(w))
+        # test matvec if w is a vector, or matmat if w is a matrix
+        function test_mat_mul_OneElement(A, (w, w2), sz)
+            @testset for ind in testinds(sz)
+                x = OneElement(3, ind, sz)
                 xarr = Array(x)
                 Axarr = A * xarr
                 Aadjxarr = A' * xarr
@@ -2149,15 +2215,69 @@ end
                 @test mul!(w2, F, x, 1.0, 1.0) ≈ Array(F) * xarr .+ 1
             end
         end
+        function test_OneElementMatrix_mul_mat(A, (w, w2), sz)
+            @testset for ind in testinds(sz)
+                O = OneElement(3, ind, sz)
+                Oarr = Array(O)
+                OarrA = Oarr * A
+                OarrAadj = Oarr * A'
+
+                @test O * A ≈ OarrA
+                @test O * A' ≈ OarrAadj
+                @test O * transpose(A) ≈ Oarr * transpose(A)
+
+                @test mul!(w, O, A) ≈ OarrA
+                # check columnwise to ensure zero columns
+                @test all(((c1, c2),) -> c1 ≈ c2, zip(eachcol(w), eachcol(OarrA)))
+                @test mul!(w, O, A') ≈ OarrAadj
+                w .= 1
+                @test mul!(w, O, A, 1.0, 2.0) ≈ OarrA .+ 2
+                w .= 1
+                @test mul!(w, O, A', 1.0, 2.0) ≈ OarrAadj .+ 2
+
+                F = Fill(3, size(A))
+                w2 .= 1
+                @test mul!(w2, O, F, 1.0, 1.0) ≈ Oarr * Array(F) .+ 1
+            end
+        end
+        function test_OneElementMatrix_mul_vec(v, (w, w2), sz)
+            @testset for ind in testinds(sz)
+                O = OneElement(3, ind, sz)
+                Oarr = Array(O)
+                Oarrv = Oarr * v
+
+                @test O * v == Oarrv
+
+                @test mul!(w, O, v) == Oarrv
+                # check rowwise to ensure zero rows
+                @test all(((r1, r2),) -> r1 == r2, zip(eachrow(w), eachrow(Oarrv)))
+                w .= 1
+                @test mul!(w, O, v, 1.0, 2.0) == Oarrv .+ 2
+
+                F = Fill(3, size(v))
+                w2 .= 1
+                @test mul!(w2, O, F, 1.0, 1.0) == Oarr * Array(F) .+ 1
+            end
+        end
         @testset "Matrix * OneElementVector" begin
             w = zeros(size(A,1))
             w2 = MVector{length(w)}(w)
-            test_A_mul_OneElement(A, (w, w2))
+            test_mat_mul_OneElement(A, (w, w2), size(w))
         end
         @testset "Matrix * OneElementMatrix" begin
             C = zeros(size(A))
             C2 = MMatrix{size(C)...}(C)
-            test_A_mul_OneElement(A, (C, C2))
+            test_mat_mul_OneElement(A, (C, C2), size(C))
+        end
+        @testset "OneElementMatrix * Vector" begin
+            w = zeros(size(v))
+            w2 = MVector{size(v)...}(v)
+            test_OneElementMatrix_mul_vec(v, (w, w2), size(A))
+        end
+        @testset "OneElementMatrix * Matrix" begin
+            C = zeros(size(A))
+            C2 = MMatrix{size(C)...}(C)
+            test_OneElementMatrix_mul_mat(A, (C, C2), size(A))
         end
         @testset "OneElementMatrix * OneElement" begin
             @testset for ind in testinds(A)
@@ -2165,10 +2285,14 @@ end
                 v = OneElement(4, ind[2], size(A,1))
                 @test O * v isa OneElement
                 @test O * v == Array(O) * Array(v)
+                @test mul!(ones(size(O,1)), O, v) == O * v
+                @test mul!(ones(size(O,1)), O, v, 2, 1) == 2 * O * v .+ 1
 
                 B = OneElement(4, ind, size(A))
                 @test O * B isa OneElement
                 @test O * B == Array(O) * Array(B)
+                @test mul!(ones(size(O,1), size(B,2)), O, B) == O * B
+                @test mul!(ones(size(O,1), size(B,2)), O, B, 2, 1) == 2 * O * B .+ 1
             end
 
             @test OneElement(3, (2,3), (5,4)) * OneElement(2, 2, 4) == Zeros(5)
@@ -2197,6 +2321,110 @@ end
             B = Zeros(4)
             @test A * B === Zeros(5)
         end
+        @testset "Diagonal and OneElementMatrix" begin
+            for ind in ((2,3), (2,2), (10,10))
+                O = OneElement(3, ind, (4,3))
+                Oarr = Array(O)
+                C = zeros(size(O))
+                D = Diagonal(axes(O,1))
+                @test D * O == D * Oarr
+                @test mul!(C, D, O) == D * O
+                C .= 1
+                @test mul!(C, D, O, 2, 2) == 2 * D * O .+ 2
+                D = Diagonal(axes(O,2))
+                @test O * D == Oarr * D
+                @test mul!(C, O, D) == O * D
+                C .= 1
+                @test mul!(C, O, D, 2, 2) == 2 * O * D .+ 2
+            end
+        end
+        @testset "array elements" begin
+            A = [SMatrix{2,3}(1:6)*(i+j) for i in 1:3, j in 1:2]
+            @testset "StridedMatrix * OneElementMatrix" begin
+                B = OneElement(SMatrix{3,2}(1:6), (size(A,2),2), (size(A,2),4))
+                C = [SMatrix{2,2}(1:4) for i in axes(A,1), j in axes(B,2)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+            @testset "StridedMatrix * OneElementVector" begin
+                B = OneElement(SMatrix{3,2}(1:6), (size(A,2),), (size(A,2),))
+                C = [SMatrix{2,2}(1:4) for i in axes(A,1)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+
+            A = OneElement(SMatrix{3,2}(1:6), (3,2), (5,4))
+            @testset "OneElementMatrix * StridedMatrix" begin
+                B = [SMatrix{2,3}(1:6)*(i+j) for i in axes(A,2), j in 1:2]
+                C = [SMatrix{3,3}(1:9) for i in axes(A,1), j in axes(B,2)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+            @testset "OneElementMatrix * StridedVector" begin
+                B = [SMatrix{2,3}(1:6)*i for i in axes(A,2)]
+                C = [SMatrix{3,3}(1:9) for i in axes(A,1)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+            @testset "OneElementMatrix * OneElementMatrix" begin
+                B = OneElement(SMatrix{2,3}(1:6), (2,4), (size(A,2), 3))
+                C = [SMatrix{3,3}(1:9) for i in axes(A,1), j in axes(B,2)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+            @testset "OneElementMatrix * OneElementVector" begin
+                B = OneElement(SMatrix{2,3}(1:6), 2, size(A,2))
+                C = [SMatrix{3,3}(1:9) for i in axes(A,1)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+        end
+        @testset "non-commutative" begin
+            A = OneElement(quat(rand(4)...), (2,3), (3,4))
+            for (B,C) in (
+                        # OneElementMatrix * OneElementVector
+                        (OneElement(quat(rand(4)...), 3, size(A,2)),
+                            [quat(rand(4)...) for i in axes(A,1)]),
+
+                        # OneElementMatrix * OneElementMatrix
+                        (OneElement(quat(rand(4)...), (3,2), (size(A,2), 4)),
+                            [quat(rand(4)...) for i in axes(A,1), j in 1:4]),
+                        )
+                @test mul!(copy(C), A, B) ≈ A * B
+                α, β = quat(0,0,1,0), quat(1,0,1,0)
+                @test mul!(copy(C), A, B, α, β) ≈ mul!(copy(C), A, Array(B), α, β) ≈ A * B * α + C * β
+            end
+
+            A = [quat(rand(4)...)*(i+j) for i in 1:2, j in 1:3]
+            for (B,C) in (
+                        # StridedMatrix * OneElementVector
+                        (OneElement(quat(rand(4)...), 1, size(A,2)),
+                            [quat(rand(4)...) for i in axes(A,1)]),
+
+                        # StridedMatrix * OneElementMatrix
+                        (OneElement(quat(rand(4)...), (2,2), (size(A,2), 4)),
+                            [quat(rand(4)...) for i in axes(A,1), j in 1:4]),
+                        )
+                @test mul!(copy(C), A, B) ≈ A * B
+                α, β = quat(0,0,1,0), quat(1,0,1,0)
+                @test mul!(copy(C), A, B, α, β) ≈ mul!(copy(C), A, Array(B), α, β) ≈ A * B * α + C * β
+            end
+
+            A = OneElement(quat(rand(4)...), (2,2), (3, 4))
+            for (B,C) in (
+                        # OneElementMatrix * StridedMatrix
+                        ([quat(rand(4)...) for i in axes(A,2), j in 1:3],
+                            [quat(rand(4)...) for i in axes(A,1), j in 1:3]),
+
+                        # OneElementMatrix * StridedVector
+                        ([quat(rand(4)...) for i in axes(A,2)],
+                            [quat(rand(4)...) for i in axes(A,1)]),
+                        )
+                @test mul!(copy(C), A, B) ≈ A * B
+                α, β = quat(0,0,1,0), quat(1,0,1,0)
+                @test mul!(copy(C), A, B, α, β) ≈ mul!(copy(C), A, Array(B), α, β) ≈ A * B * α + C * β
+            end
+        end
     end
 
     @testset "multiplication/division by a number" begin
@@ -2219,6 +2447,7 @@ end
         @test A / (2 + 3.0im) === OneElement(val / (2 + 3.0im), (2,2), (3,4)) == B / (2 + 3.0im)
     end
 
+
     @testset "tril/triu" begin
         for A in (OneElement(3, (4,2), (4,5)), OneElement(3, (2,3), (4,5)), OneElement(3, (3,3), (4,5)))
             B = Array(A)
@@ -2227,6 +2456,29 @@ end
                 @test triu(A, k) == triu(B, k)
             end
         end
+    end
+
+    @testset "broadcasting" begin
+        for v in (OneElement(2, 3, 4), OneElement(2im, (1,2), (3,4)))
+            w = Array(v)
+            n = 2
+            @test real.(v) == real.(w)
+            @test imag.(v) == imag.(w)
+            @test conj.(v) == conj.(w)
+            @test v .^ n == w .^ n
+            @test v .* n == w .* n
+            @test v ./ n == w ./ n
+            @test n .\ v == n .\ w
+        end
+    end
+
+    @testset "show" begin
+        B = OneElement(2, (1, 2), (3, 4))
+        @test repr(B) == "OneElement(2, (1, 2), (3, 4))"
+        B = OneElement(2, 1, 3)
+        @test repr(B) == "OneElement(2, 1, 3)"
+        B = OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))
+        @test repr(B) == "OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))"
     end
 end
 
