@@ -2114,11 +2114,13 @@ end
 
 @testset "OneElement" begin
     A = OneElement(2, (), ())
+    @test FillArrays.nzind(A) == CartesianIndex()
     @test A == Fill(2, ())
     @test A[] === 2
 
     e₁ = OneElement(2, 5)
     @test e₁ == [0,1,0,0,0]
+    @test FillArrays.nzind(e₁) == CartesianIndex(2)
     @test_throws BoundsError e₁[6]
 
     f₁ = AbstractArray{Float64}(e₁)
@@ -2138,6 +2140,7 @@ end
 
     V = OneElement(2, (2,3), (3,4))
     @test V == [0 0 0 0; 0 0 2 0; 0 0 0 0]
+    @test FillArrays.nzind(V) == CartesianIndex(2,3)
 
     Vf = AbstractArray{Float64}(V)
     @test Vf isa OneElement{Float64,2}
