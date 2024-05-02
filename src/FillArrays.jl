@@ -7,7 +7,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     any, all, axes, isone, iszero, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, map, zero,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
-    parent, similar, issorted
+    parent, similar, issorted, add_sum, accumulate, OneTo
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
@@ -574,12 +574,12 @@ sum(x::AbstractZeros) = getindex_value(x)
 steprangelen(st...) = StepRangeLen(st...)
 function cumsum(x::AbstractFill{T,1}) where T
     V = promote_op(add_sum, T, T)
-    steprangelen(convert(V,getindex_value(x)), convert(V,getindex_value(x)), length(x))
+    steprangelen(convert(V,getindex_value(x)), getindex_value(x), length(x))
 end
 
-cumsum(x::AbstractZerosVector{T}) where T = convert(AbstractVector{promote_op(add_sum, T, T)}, x)
-cumsum(x::AbstractZerosVector{Bool}) = convert(AbstractVector{Int}, x)
-cumsum(x::AbstractOnesVector{T}) where T<:Integer = convert(AbstractVector{promote_op(add_sum, T, T)}, oneto(length(x)))
+cumsum(x::AbstractZerosVector{T}) where T = _range_convert(AbstractVector{promote_op(add_sum, T, T)}, x)
+cumsum(x::AbstractZerosVector{Bool}) = _range_convert(AbstractVector{Int}, x)
+cumsum(x::AbstractOnesVector{T}) where T<:Integer = _range_convert(AbstractVector{promote_op(add_sum, T, T)}, oneto(length(x)))
 cumsum(x::AbstractOnesVector{Bool}) = oneto(length(x))
 
 
@@ -587,15 +587,15 @@ for op in (:+, :-)
     @eval begin
         function accumulate(::typeof($op), x::AbstractFill{T,1}) where T
             V = promote_op($op, T, T)
-            steprangelen(convert(V,getindex_value(x)), convert(V,$op(getindex_value(x))), length(x))
+            steprangelen(convert(V,getindex_value(x)), $op(getindex_value(x)), length(x))
         end
 
-        accumulate(::typeof($op), x::AbstractZerosVector{T}) where T = convert(AbstractVector{promote_op($op, T, T)}, x)
-        accumulate(::typeof($op), x::AbstractZerosVector{Bool}) = convert(AbstractVector{Int}, x)
+        accumulate(::typeof($op), x::AbstractZerosVector{T}) where T = _range_convert(AbstractVector{promote_op($op, T, T)}, x)
+        accumulate(::typeof($op), x::AbstractZerosVector{Bool}) = _range_convert(AbstractVector{Int}, x)
     end
 end
 
-accumulate(::typeof(+), x::AbstractOnesVector{T}) where T<:Integer = convert(AbstractVector{promote_op(+, T, T)}, oneto(length(x)))
+accumulate(::typeof(+), x::AbstractOnesVector{T}) where T<:Integer = _range_convert(AbstractVector{promote_op(+, T, T)}, oneto(length(x)))
 accumulate(::typeof(+), x::AbstractOnesVector{Bool}) = oneto(length(x))
 
 #########
