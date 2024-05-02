@@ -817,11 +817,11 @@ end
     @test_throws MethodError sort!(Fill(im, 2))
 end
 
-@testset "Cumsum and diff" begin
+@testset "Cumsum, accumulate and diff" begin
     @test sum(Fill(3,10)) ≡ 30
     @test reduce(+, Fill(3,10)) ≡ 30
     @test sum(x -> x + 1, Fill(3,10)) ≡ 40
-    @test cumsum(Fill(3,10)) ≡ StepRangeLen(3,3,10)
+    @test cumsum(Fill(3,10)) ≡ accumulate(+, Fill(3,10)) ≡ StepRangeLen(3,3,10)
 
     @test sum(Ones(10)) ≡ 10.0
     @test sum(x -> x + 1, Ones(10)) ≡ 20.0

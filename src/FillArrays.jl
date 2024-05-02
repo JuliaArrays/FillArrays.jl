@@ -572,13 +572,31 @@ sum(x::AbstractZeros) = getindex_value(x)
 
 # needed to support infinite case
 steprangelen(st...) = StepRangeLen(st...)
-cumsum(x::AbstractFill{<:Any,1}) = steprangelen(getindex_value(x), getindex_value(x), length(x))
+function cumsum(x::AbstractFill{T,1}) where T
+    V = promote_op(add_sum, T, T)
+    steprangelen(convert(V,getindex_value(x)), convert(V,getindex_value(x)), length(x))
+end
 
-cumsum(x::AbstractZerosVector) = x
-cumsum(x::AbstractZerosVector{Bool}) = x
-cumsum(x::AbstractOnesVector{II}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
+cumsum(x::AbstractZerosVector{T}) where T = convert(AbstractVector{promote_op(add_sum, T, T)}, x)
+cumsum(x::AbstractZerosVector{Bool}) = convert(AbstractVector{Int}, x)
+cumsum(x::AbstractOnesVector{T}) where T<:Integer = convert(AbstractVector{promote_op(add_sum, T, T)}, oneto(length(x)))
 cumsum(x::AbstractOnesVector{Bool}) = oneto(length(x))
 
+
+for op in (:+, :-)
+    @eval begin
+        function accumulate(::typeof($op), x::AbstractFill{T,1}) where T
+            V = promote_op($op, T, T)
+            steprangelen(convert(V,getindex_value(x)), convert(V,$op(getindex_value(x))), length(x))
+        end
+
+        accumulate(::typeof($op), x::AbstractZerosVector{T}) where T = convert(AbstractVector{promote_op($op, T, T)}, x)
+        accumulate(::typeof($op), x::AbstractZerosVector{Bool}) = convert(AbstractVector{Int}, x)
+    end
+end
+
+accumulate(::typeof(+), x::AbstractOnesVector{T}) where T<:Integer = convert(AbstractVector{promote_op(+, T, T)}, oneto(length(x)))
+accumulate(::typeof(+), x::AbstractOnesVector{Bool}) = oneto(length(x))
 
 #########
 # Diff
