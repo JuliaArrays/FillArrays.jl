@@ -97,6 +97,11 @@ julia> FillArrays.getindex_value(A)
 """
 getindex_value(A::OneElement) = all(in.(A.ind, axes(A))) ? A.val : zero(eltype(A))
 
+@inline function Base.isassigned(F::OneElement, i::Integer...)
+    @boundscheck checkbounds(Bool, F, to_indices(F, i)...) || return false
+    return true
+end
+
 Base.AbstractArray{T,N}(A::OneElement{<:Any,N}) where {T,N} = OneElement(T(A.val), A.ind, A.axes)
 
 Base.replace_in_print_matrix(o::OneElementVector, k::Integer, j::Integer, s::AbstractString) =

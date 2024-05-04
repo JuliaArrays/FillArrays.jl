@@ -33,6 +33,10 @@ const AbstractFillVecOrMat{T} = Union{AbstractFillVector{T},AbstractFillMatrix{T
 
 ==(a::AbstractFill, b::AbstractFill) = axes(a) == axes(b) && getindex_value(a) == getindex_value(b)
 
+@inline function Base.isassigned(F::AbstractFill, i::Integer...)
+    @boundscheck checkbounds(Bool, F, to_indices(F, i)...) || return false
+    return true
+end
 
 @inline function _fill_getindex(F::AbstractFill, kj::Integer...)
     @boundscheck checkbounds(F, kj...)
