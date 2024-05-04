@@ -826,31 +826,53 @@ end
     @test_throws MethodError sort!(Fill(im, 2))
 end
 
-@testset "Cumsum and diff" begin
-    @test sum(Fill(3,10)) ≡ 30
-    @test reduce(+, Fill(3,10)) ≡ 30
-    @test sum(x -> x + 1, Fill(3,10)) ≡ 40
-    @test cumsum(Fill(3,10)) ≡ StepRangeLen(3,3,10)
+@testset "Cumsum, accumulate and diff" begin
+    @test @inferred(sum(Fill(3,10))) ≡ 30
+    @test @inferred(reduce(+, Fill(3,10))) ≡ 30
+    @test @inferred(sum(x -> x + 1, Fill(3,10))) ≡ 40
+    @test @inferred(cumsum(Fill(3,10))) ≡ @inferred(accumulate(+, Fill(3,10))) ≡ StepRangeLen(3,3,10)
+    @test @inferred(accumulate(-, Fill(3,10))) ≡ StepRangeLen(3,-3,10)
 
-    @test sum(Ones(10)) ≡ 10.0
-    @test sum(x -> x + 1, Ones(10)) ≡ 20.0
-    @test cumsum(Ones(10)) ≡ StepRangeLen(1.0, 1.0, 10)
+    @test @inferred(sum(Ones(10))) ≡ 10.0
+    @test @inferred(sum(x -> x + 1, Ones(10))) ≡ 20.0
+    @test @inferred(cumsum(Ones(10))) ≡ @inferred(accumulate(+, Ones(10))) ≡ StepRangeLen(1.0, 1.0, 10)
+    @test @inferred(accumulate(-, Ones(10))) ≡ StepRangeLen(1.0,-1.0,10)
 
     @test sum(Ones{Int}(10)) ≡ 10
     @test sum(x -> x + 1, Ones{Int}(10)) ≡ 20
-    @test cumsum(Ones{Int}(10)) ≡ Base.OneTo(10)
+    @test cumsum(Ones{Int}(10)) ≡ accumulate(+,Ones{Int}(10)) ≡ Base.OneTo(10)
+    @test accumulate(-, Ones{Int}(10)) ≡ StepRangeLen(1,-1,10)
 
     @test sum(Zeros(10)) ≡ 0.0
     @test sum(x -> x + 1, Zeros(10)) ≡ 10.0
-    @test cumsum(Zeros(10)) ≡ Zeros(10)
+    @test cumsum(Zeros(10)) ≡ accumulate(+,Zeros(10)) ≡ accumulate(-,Zeros(10)) ≡ Zeros(10)
 
     @test sum(Zeros{Int}(10)) ≡ 0
     @test sum(x -> x + 1, Zeros{Int}(10)) ≡ 10
-    @test cumsum(Zeros{Int}(10)) ≡ Zeros{Int}(10)
+    @test cumsum(Zeros{Int}(10)) ≡ accumulate(+,Zeros{Int}(10)) ≡ accumulate(-,Zeros{Int}(10)) ≡ Zeros{Int}(10)
 
-    @test cumsum(Zeros{Bool}(10)) ≡ Zeros{Bool}(10)
-    @test cumsum(Ones{Bool}(10)) ≡ Base.OneTo{Int}(10)
-    @test cumsum(Fill(true,10)) ≡ StepRangeLen(true, true, 10)
+    # we want cumsum of fills to match the types of the standard cusum
+    @test all(cumsum(Zeros{Bool}(10)) .≡ cumsum(zeros(Bool,10)))
+    @test all(accumulate(+, Zeros{Bool}(10)) .≡ accumulate(+, zeros(Bool,10)) .≡ accumulate(-, zeros(Bool,10)))
+    @test cumsum(Zeros{Bool}(10)) ≡ accumulate(+, Zeros{Bool}(10)) ≡ accumulate(-, Zeros{Bool}(10)) ≡ Zeros{Int}(10)
+    @test cumsum(Ones{Bool}(10)) ≡ accumulate(+, Ones{Bool}(10)) ≡ Base.OneTo{Int}(10)
+    @test all(cumsum(Fill(true,10)) .≡ cumsum(fill(true,10)))
+    @test cumsum(Fill(true,10)) ≡ StepRangeLen(1, true, 10)
+
+    @test all(cumsum(Zeros{UInt8}(10)) .≡ cumsum(zeros(UInt8,10)))
+    @test all(accumulate(+, Zeros{UInt8}(10)) .≡ accumulate(+, zeros(UInt8,10)))
+    @test cumsum(Zeros{UInt8}(10)) ≡ Zeros{UInt64}(10)
+    @test accumulate(+, Zeros{UInt8}(10)) ≡ accumulate(-, Zeros{UInt8}(10)) ≡ Zeros{UInt8}(10)
+    
+    @test all(cumsum(Ones{UInt8}(10)) .≡ cumsum(ones(UInt8,10)))
+    @test all(accumulate(+, Ones{UInt8}(10)) .≡ accumulate(+, ones(UInt8,10)))
+    @test cumsum(Ones{UInt8}(10)) ≡ Base.OneTo(UInt64(10))
+    @test accumulate(+, Ones{UInt8}(10)) ≡ Base.OneTo(UInt8(10))
+    
+    @test all(cumsum(Fill(UInt8(2),10)) .≡ cumsum(fill(UInt8(2),10)))
+    @test all(accumulate(+,  Fill(UInt8(2))) .≡ accumulate(+, fill(UInt8(2))))
+    @test cumsum(Fill(UInt8(2),10)) ≡ StepRangeLen(UInt64(2), UInt8(2), 10)
+    @test accumulate(+, Fill(UInt8(2),10)) ≡ StepRangeLen(UInt8(2), UInt8(2), 10)
 
     @test diff(Fill(1,10)) ≡ Zeros{Int}(9)
     @test diff(Ones{Float64}(10)) ≡ Zeros{Float64}(9)
