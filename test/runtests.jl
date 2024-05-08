@@ -2223,6 +2223,8 @@ end
                 @test reshape(O, shp) == reshape(A, shp)
             end
         end
+        O = OneElement(2, (), ())
+        @test reshape(O, ()) === O
     end
 
     @testset "isassigned" begin
