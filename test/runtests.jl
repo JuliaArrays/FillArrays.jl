@@ -2207,6 +2207,12 @@ end
             @test @inferred(A[Base.IdentityUnitRange(2:3)]) == OneElement(2,(2,),(Base.IdentityUnitRange(2:3),))
             @test A[:,:] == reshape(A, size(A)..., 1)
 
+            @test A[reverse(axes(A,1))] == A[collect(reverse(axes(A,1)))]
+
+            @testset "repeated indices" begin
+                @test A[StepRangeLen(2, 0, 3)] == A[fill(2, 3)]
+            end
+
             B = OneElement(2, (2,), (Base.IdentityUnitRange(-1:4),))
             @test @inferred(A[:]) === @inferred(A[axes(A)...]) === A
             @test @inferred(A[3:4]) isa OneElement{Int,1}
