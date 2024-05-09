@@ -372,6 +372,16 @@ function broadcasted(::DefaultArrayStyle{N}, ::typeof(\), x::Number, r::OneEleme
     OneElement(x \ r.val, r.ind, axes(r))
 end
 
+# reshape
+
+function Base.reshape(A::OneElement, shape::Tuple{Vararg{Int}})
+    prod(shape) == length(A) || throw(DimensionMismatch("new dimension $shape must be consistent with array size $(length(A))"))
+    # we use the fact that the linear index of the non-zero value is preserved
+    oldlinind = LinearIndices(A)[A.ind...]
+    newcartind = CartesianIndices(shape)[oldlinind]
+    OneElement(A.val, Tuple(newcartind), shape)
+end
+
 # show
 _maybesize(t::Tuple{Base.OneTo{Int}, Vararg{Base.OneTo{Int}}}) = size.(t,1)
 _maybesize(t) = t

@@ -2215,6 +2215,18 @@ end
         @test adjoint(A) == OneElement(3, (1,2), (1,4))
     end
 
+    @testset "reshape" begin
+        for O in (OneElement(2, (2,3), (4,5)), OneElement(2, (2,), (20,)),
+                    OneElement(2, (1,2,2), (2,2,5)))
+            A = Array(O)
+            for shp in ((2,5,2), (5,1,4), (20,), (2,2,5,1,1))
+                @test reshape(O, shp) == reshape(A, shp)
+            end
+        end
+        O = OneElement(2, (), ())
+        @test reshape(O, ()) === O
+    end
+
     @testset "isassigned" begin
         f = OneElement(2, (3,3), (4,4))
         @test !isassigned(f, 0, 0)
