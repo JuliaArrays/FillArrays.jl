@@ -47,21 +47,22 @@ Base.@propagate_inbounds function Base.getindex(A::OneElement{T,N}, kj::Vararg{I
     @boundscheck checkbounds(A, kj...)
     ifelse(kj == A.ind, A.val, zero(T))
 end
-const VectorIndsWithColon = Union{AbstractRange{Int}, Colon, Int}
-const VectorInds = Union{AbstractRange{Int}, Int}
+const VectorInds = Union{AbstractRange{<:Integer}, Integer}
+const VectorIndsWithColon = Union{VectorInds, Colon}
 # retain the values from Ainds corresponding to the vector indices in inds
 _index_shape(Ainds, inds::Tuple{Integer, Vararg{Any}}) = _index_shape(Base.tail(Ainds), Base.tail(inds))
 _index_shape(Ainds, inds::Tuple{AbstractVector, Vararg{Any}}) = (Ainds[1], _index_shape(Base.tail(Ainds), Base.tail(inds))...)
 _index_shape(::Tuple{}, ::Tuple{}) = ()
 @inline function Base.getindex(A::OneElement{T,N}, inds::Vararg{VectorInds,N}) where {T,N}
-    @boundscheck checkbounds(A, inds...)
-    shape = _index_shape(inds, inds)
-    nzind = _index_shape(A.ind, inds) .- first.(shape) .+ firstindex.(shape)
-    containsval = all(in.(A.ind, inds))
+    I = to_indices(A, inds) # handle Bool, and convert to compatible index types (Int usually)
+    @boundscheck checkbounds(A, I...)
+    shape = _index_shape(I, I)
+    nzind = _index_shape(A.ind, I) .- first.(shape) .+ firstindex.(shape)
+    containsval = all(in.(A.ind, I))
     OneElement(getindex_value(A), containsval ? Int.(nzind) : Int.(lastindex.(shape,1)).+1, axes.(shape,1))
 end
 Base.@propagate_inbounds function Base.getindex(A::OneElement{T,N}, inds::Vararg{VectorIndsWithColon,N}) where {T,N}
-    getindex(A, Base.to_indices(A, inds)...)
+    getindex(A, to_indices(A, inds)...)
 end
 
 """

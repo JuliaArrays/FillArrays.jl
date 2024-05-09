@@ -2229,6 +2229,7 @@ end
             @test @inferred(A[:,:]) === @inferred(A[axes(A)...]) === A
             @test @inferred(A[:,1]) isa OneElement{Int,1}
             @test @inferred(A[:,1]) == Zeros(4)
+            @test A[:, Int64(1)] === A[:, Int32(1)]
             @test @inferred(A[1,:]) isa OneElement{Int,1}
             @test @inferred(A[1,:]) == Zeros(5)
             @test @inferred(A[:,3]) === OneElement(2, 2, 4)
