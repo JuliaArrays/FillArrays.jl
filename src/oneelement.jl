@@ -349,7 +349,20 @@ end
 adjoint(A::OneElementMatrix) = OneElement(adjoint(A.val), reverse(A.ind), reverse(A.axes))
 transpose(A::OneElementMatrix) = OneElement(transpose(A.val), reverse(A.ind), reverse(A.axes))
 
+# tril/triu
+
+function tril(A::OneElementMatrix, k::Integer=0)
+    nzband = A.ind[2] - A.ind[1]
+    OneElement(nzband > k ? zero(A.val) : A.val, A.ind, axes(A))
+end
+
+function triu(A::OneElementMatrix, k::Integer=0)
+    nzband = A.ind[2] - A.ind[1]
+    OneElement(nzband < k ? zero(A.val) : A.val, A.ind, axes(A))
+end
+
 # broadcast
+
 function broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::OneElement{<:Any,N}) where {N}
     OneElement(conj(r.val), r.ind, axes(r))
 end

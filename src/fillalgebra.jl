@@ -551,3 +551,6 @@ end
 function LinearAlgebra.istril(A::AbstractFillMatrix, k::Integer = 0)
     iszero(A) || k >= size(A,2)-1
 end
+
+triu(A::AbstractZerosMatrix, k::Integer=0) = A
+tril(A::AbstractZerosMatrix, k::Integer=0) = A
