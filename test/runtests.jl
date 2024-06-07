@@ -2222,13 +2222,17 @@ end
     @testset "zero/iszero" begin
         v = OneElement(10, 3, 4)
         @test v + zero(v) == v
-        @test v + zero(v) isa typeof(v)
+        @test typeof(zero(v)) == typeof(v)
 
         @test !iszero(v)
         @test iszero(OneElement(0, 3, 4))
         @test iszero(OneElement(0, 5, 4))
         @test iszero(OneElement(3, (2,2), (0,0)))
         @test iszero(OneElement(3, (2,2), (1,2)))
+
+        v = OneElement(SMatrix{2,2}(1:4), 3, 4)
+        @test v + zero(v) == v
+        @test typeof(zero(v)) == typeof(v)
     end
 
     @testset "isone" begin

@@ -62,7 +62,7 @@ Base.@propagate_inbounds function Base.setindex(A::AbstractZeros{T,N}, v, kj::Va
     OneElement(convert(T, v), kj, axes(A))
 end
 
-zero(A::OneElement) = Zeros{eltype(A)}(axes(A))
+zero(A::OneElement) = OneElement(zero(A.val), A.ind, A.axes)
 
 iszero(A::OneElement) = iszero(getindex_value(A))
 
