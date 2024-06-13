@@ -702,6 +702,7 @@ end
 include("fillalgebra.jl")
 include("fillbroadcast.jl")
 include("trues.jl")
+include("fillcat.jl")
 
 if !isdefined(Base, :get_extension)
     include("../ext/FillArraysPDMatsExt.jl")
