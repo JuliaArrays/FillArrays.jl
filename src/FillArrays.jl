@@ -64,7 +64,7 @@ end
 end
 
 rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
-IndexStyle(::Type{<:AbstractFill{<:Any,N,<:NTuple{N,Base.OneTo{Int}}}}) where N = IndexLinear()
+IndexStyle(::Type{<:AbstractFill}) = IndexLinear()
 
 issymmetric(F::AbstractFillMatrix) = axes(F,1) == axes(F,2)
 ishermitian(F::AbstractFillMatrix) = issymmetric(F) && iszero(imag(getindex_value(F)))
