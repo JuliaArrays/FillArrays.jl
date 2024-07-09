@@ -261,6 +261,15 @@ end
     end
 end
 
+@testset "isassigned" begin
+    for f in (Fill("", 3, 4), Zeros(3,4), Ones(3,4))
+        @test !isassigned(f, 0, 0)
+        @test isassigned(f, 2, 2)
+        @test !isassigned(f, 10, 10)
+        @test_throws ArgumentError isassigned(f, true)
+    end
+end
+
 @testset "indexing" begin
     A = Fill(3.0,5)
     @test A[1:3] ≡ Fill(3.0,3)
@@ -378,22 +387,22 @@ end
 # type, and produce numerically correct results.
 as_array(x::AbstractArray) = Array(x)
 as_array(x::UniformScaling) = x
-equal_or_undef(a::Number, b::Number) = (a == b) || isequal(a, b)
-equal_or_undef(a, b) = all(equal_or_undef.(a, b))
+isapprox_or_undef(a::Number, b::Number) = (a ≈ b) || isequal(a, b)
+isapprox_or_undef(a, b) = all(((x,y),) -> isapprox_or_undef(x,y), zip(a, b))
 function test_addition_subtraction_dot(As, Bs, Tout::Type)
     for A in As, B in Bs
         @testset "$(typeof(A)) and $(typeof(B))" begin
             @test @inferred(A + B) isa Tout{promote_type(eltype(A), eltype(B))}
-            @test equal_or_undef(as_array(A + B), as_array(A) + as_array(B))
+            @test isapprox_or_undef(as_array(A + B), as_array(A) + as_array(B))
 
             @test @inferred(A - B) isa Tout{promote_type(eltype(A), eltype(B))}
-            @test equal_or_undef(as_array(A - B), as_array(A) - as_array(B))
+            @test isapprox_or_undef(as_array(A - B), as_array(A) - as_array(B))
 
             @test @inferred(B + A) isa Tout{promote_type(eltype(B), eltype(A))}
-            @test equal_or_undef(as_array(B + A), as_array(B) + as_array(A))
+            @test isapprox_or_undef(as_array(B + A), as_array(B) + as_array(A))
 
             @test @inferred(B - A) isa Tout{promote_type(eltype(B), eltype(A))}
-            @test equal_or_undef(as_array(B - A), as_array(B) - as_array(A))
+            @test isapprox_or_undef(as_array(B - A), as_array(B) - as_array(A))
 
             # Julia 1.6 doesn't support dot(UniformScaling)
             if VERSION < v"1.6.0" || VERSION >= v"1.8.0"
@@ -817,31 +826,53 @@ end
     @test_throws MethodError sort!(Fill(im, 2))
 end
 
-@testset "Cumsum and diff" begin
-    @test sum(Fill(3,10)) ≡ 30
-    @test reduce(+, Fill(3,10)) ≡ 30
-    @test sum(x -> x + 1, Fill(3,10)) ≡ 40
-    @test cumsum(Fill(3,10)) ≡ StepRangeLen(3,3,10)
+@testset "Cumsum, accumulate and diff" begin
+    @test @inferred(sum(Fill(3,10))) ≡ 30
+    @test @inferred(reduce(+, Fill(3,10))) ≡ 30
+    @test @inferred(sum(x -> x + 1, Fill(3,10))) ≡ 40
+    @test @inferred(cumsum(Fill(3,10))) ≡ @inferred(accumulate(+, Fill(3,10))) ≡ StepRangeLen(3,3,10)
+    @test @inferred(accumulate(-, Fill(3,10))) ≡ StepRangeLen(3,-3,10)
 
-    @test sum(Ones(10)) ≡ 10.0
-    @test sum(x -> x + 1, Ones(10)) ≡ 20.0
-    @test cumsum(Ones(10)) ≡ StepRangeLen(1.0, 1.0, 10)
+    @test @inferred(sum(Ones(10))) ≡ 10.0
+    @test @inferred(sum(x -> x + 1, Ones(10))) ≡ 20.0
+    @test @inferred(cumsum(Ones(10))) ≡ @inferred(accumulate(+, Ones(10))) ≡ StepRangeLen(1.0, 1.0, 10)
+    @test @inferred(accumulate(-, Ones(10))) ≡ StepRangeLen(1.0,-1.0,10)
 
     @test sum(Ones{Int}(10)) ≡ 10
     @test sum(x -> x + 1, Ones{Int}(10)) ≡ 20
-    @test cumsum(Ones{Int}(10)) ≡ Base.OneTo(10)
+    @test cumsum(Ones{Int}(10)) ≡ accumulate(+,Ones{Int}(10)) ≡ Base.OneTo(10)
+    @test accumulate(-, Ones{Int}(10)) ≡ StepRangeLen(1,-1,10)
 
     @test sum(Zeros(10)) ≡ 0.0
     @test sum(x -> x + 1, Zeros(10)) ≡ 10.0
-    @test cumsum(Zeros(10)) ≡ Zeros(10)
+    @test cumsum(Zeros(10)) ≡ accumulate(+,Zeros(10)) ≡ accumulate(-,Zeros(10)) ≡ Zeros(10)
 
     @test sum(Zeros{Int}(10)) ≡ 0
     @test sum(x -> x + 1, Zeros{Int}(10)) ≡ 10
-    @test cumsum(Zeros{Int}(10)) ≡ Zeros{Int}(10)
+    @test cumsum(Zeros{Int}(10)) ≡ accumulate(+,Zeros{Int}(10)) ≡ accumulate(-,Zeros{Int}(10)) ≡ Zeros{Int}(10)
 
-    @test cumsum(Zeros{Bool}(10)) ≡ Zeros{Bool}(10)
-    @test cumsum(Ones{Bool}(10)) ≡ Base.OneTo{Int}(10)
-    @test cumsum(Fill(true,10)) ≡ StepRangeLen(true, true, 10)
+    # we want cumsum of fills to match the types of the standard cusum
+    @test all(cumsum(Zeros{Bool}(10)) .≡ cumsum(zeros(Bool,10)))
+    @test all(accumulate(+, Zeros{Bool}(10)) .≡ accumulate(+, zeros(Bool,10)) .≡ accumulate(-, zeros(Bool,10)))
+    @test cumsum(Zeros{Bool}(10)) ≡ accumulate(+, Zeros{Bool}(10)) ≡ accumulate(-, Zeros{Bool}(10)) ≡ Zeros{Int}(10)
+    @test cumsum(Ones{Bool}(10)) ≡ accumulate(+, Ones{Bool}(10)) ≡ Base.OneTo{Int}(10)
+    @test all(cumsum(Fill(true,10)) .≡ cumsum(fill(true,10)))
+    @test cumsum(Fill(true,10)) ≡ StepRangeLen(1, true, 10)
+
+    @test all(cumsum(Zeros{UInt8}(10)) .≡ cumsum(zeros(UInt8,10)))
+    @test all(accumulate(+, Zeros{UInt8}(10)) .≡ accumulate(+, zeros(UInt8,10)))
+    @test cumsum(Zeros{UInt8}(10)) ≡ Zeros{UInt64}(10)
+    @test accumulate(+, Zeros{UInt8}(10)) ≡ accumulate(-, Zeros{UInt8}(10)) ≡ Zeros{UInt8}(10)
+    
+    @test all(cumsum(Ones{UInt8}(10)) .≡ cumsum(ones(UInt8,10)))
+    @test all(accumulate(+, Ones{UInt8}(10)) .≡ accumulate(+, ones(UInt8,10)))
+    @test cumsum(Ones{UInt8}(10)) ≡ Base.OneTo(UInt64(10))
+    @test accumulate(+, Ones{UInt8}(10)) ≡ Base.OneTo(UInt8(10))
+    
+    @test all(cumsum(Fill(UInt8(2),10)) .≡ cumsum(fill(UInt8(2),10)))
+    @test all(accumulate(+,  Fill(UInt8(2))) .≡ accumulate(+, fill(UInt8(2))))
+    @test cumsum(Fill(UInt8(2),10)) ≡ StepRangeLen(UInt64(2), UInt8(2), 10)
+    @test accumulate(+, Fill(UInt8(2),10)) ≡ StepRangeLen(UInt8(2), UInt8(2), 10)
 
     @test diff(Fill(1,10)) ≡ Zeros{Int}(9)
     @test diff(Ones{Float64}(10)) ≡ Zeros{Float64}(9)
@@ -1132,8 +1163,13 @@ end
     @test_throws DimensionMismatch map(+, x2', x2)
 
     # Issue https://github.com/JuliaArrays/FillArrays.jl/issues/179
-    @test map(() -> "ok") == "ok"  # was MethodError: reducing over an empty collection is not allowed
-    @test mapreduce(() -> "ok", *) == "ok"
+    if VERSION < v"1.11.0-"  # In 1.11, 1-arg map & mapreduce was removed
+        @test map(() -> "ok") == "ok"  # was MethodError: reducing over an empty collection is not allowed
+        @test mapreduce(() -> "ok", *) == "ok"
+    else
+        @test_throws "no method matching map" map(() -> "ok")
+        @test_throws "no method matching map" mapreduce(() -> "ok", *)
+    end
 end
 
 @testset "mapreduce" begin
@@ -1628,8 +1664,8 @@ end
             @test transpose(A) * Zeros(mA) ≡ Zeros(nA)
             @test A' * Zeros(mA) ≡ Zeros(nA)
 
-            @test transpose(a) * Zeros(la, 3) ≡ Zeros(1,3)
-            @test a' * Zeros(la,3) ≡ Zeros(1,3)
+            @test transpose(a) * Zeros(la, 3) ≡ transpose(Zeros(3))
+            @test a' * Zeros(la,3) ≡ adjoint(Zeros(3))
 
             @test Zeros(la)' * Transpose(Adjoint(a)) == 0.0
 
@@ -1696,21 +1732,51 @@ end
     @test (1:5)'E == (1.0:5)'
     @test E*E ≡ E
 
+    n  = 10
+    k  = 12
+    m  = 15
     for T in (Float64, ComplexF64)
-        fv = T == Float64 ? Float64(1.6) : ComplexF64(1.6, 1.3)
-        n  = 10
-        k  = 12
-        m  = 15
-        fillvec = Fill(fv, k)
-        fillmat = Fill(fv, k, m)
-        A  = rand(ComplexF64, n, k)
-        @test A*fillvec ≈ A*Array(fillvec)
-        @test A*fillmat ≈ A*Array(fillmat)
-        A  = rand(ComplexF64, k, n)
-        @test transpose(A)*fillvec ≈ transpose(A)*Array(fillvec)
-        @test transpose(A)*fillmat ≈ transpose(A)*Array(fillmat)
-        @test adjoint(A)*fillvec ≈ adjoint(A)*Array(fillvec)
-        @test adjoint(A)*fillmat ≈ adjoint(A)*Array(fillmat)
+        Ank  = rand(T, n, k)
+        Akn = rand(T, k, n)
+        Ak = rand(T, k)
+        onesm = ones(m)
+        zerosm = zeros(m)
+
+        fv = T == Float64 ? T(1.6) : T(1.6, 1.3)
+
+        for (fillvec, fillmat) in ((Fill(fv, k), Fill(fv, k, m)),
+                                    (Ones(T, k), Ones(T, k, m)),
+                                    (Zeros(T, k), Zeros(T, k, m)))
+
+            Afillvec = Array(fillvec)
+            Afillmat = Array(fillmat)
+            @test Ank * fillvec ≈ Ank * Afillvec
+            @test Ank * fillmat ≈ Ank * Afillmat
+
+            for A  in (Akn, Ak)
+                @test transpose(A)*fillvec ≈ transpose(A)*Afillvec
+                AtF = transpose(A)*fillmat
+                AtM = transpose(A)*Afillmat
+                @test AtF ≈ AtM
+                @test AtF * Ones(m) ≈ AtM * onesm
+                @test AtF * Zeros(m) ≈ AtM * zerosm
+                @test adjoint(A)*fillvec ≈ adjoint(A)*Afillvec
+                AadjF = adjoint(A)*fillmat
+                AadjM = adjoint(A)*Afillmat
+                @test AadjF ≈ AadjM
+                @test AadjF * Ones(m) ≈ AadjM * onesm
+                @test AadjF * Zeros(m) ≈ AadjM * zerosm
+            end
+        end
+
+        # inplace C = F * A' * alpha + C * beta
+        F = Fill(fv, m, k)
+        M = Array(F)
+        C = rand(T, m, n)
+        @testset for f in (adjoint, transpose)
+            @test mul!(copy(C), F, f(Ank)) ≈ mul!(copy(C), M, f(Ank))
+            @test mul!(copy(C), F, f(Ank), 1.0, 2.0) ≈ mul!(copy(C), M, f(Ank), 1.0, 2.0)
+        end
     end
 
     @testset "non-commutative" begin
@@ -2079,11 +2145,13 @@ end
 
 @testset "OneElement" begin
     A = OneElement(2, (), ())
+    @test FillArrays.nzind(A) == CartesianIndex()
     @test A == Fill(2, ())
     @test A[] === 2
 
     e₁ = OneElement(2, 5)
     @test e₁ == [0,1,0,0,0]
+    @test FillArrays.nzind(e₁) == CartesianIndex(2)
     @test_throws BoundsError e₁[6]
 
     f₁ = AbstractArray{Float64}(e₁)
@@ -2103,6 +2171,7 @@ end
 
     V = OneElement(2, (2,3), (3,4))
     @test V == [0 0 0 0; 0 0 2 0; 0 0 0 0]
+    @test FillArrays.nzind(V) == CartesianIndex(2,3)
 
     Vf = AbstractArray{Float64}(V)
     @test Vf isa OneElement{Float64,2}
@@ -2144,6 +2213,26 @@ end
         @test adjoint(A) isa Adjoint
         @test transpose(A) == OneElement(3, (1,2), (1,4))
         @test adjoint(A) == OneElement(3, (1,2), (1,4))
+    end
+
+    @testset "reshape" begin
+        for O in (OneElement(2, (2,3), (4,5)), OneElement(2, (2,), (20,)),
+                    OneElement(2, (1,2,2), (2,2,5)))
+            A = Array(O)
+            for shp in ((2,5,2), (5,1,4), (20,), (2,2,5,1,1))
+                @test reshape(O, shp) == reshape(A, shp)
+            end
+        end
+        O = OneElement(2, (), ())
+        @test reshape(O, ()) === O
+    end
+
+    @testset "isassigned" begin
+        f = OneElement(2, (3,3), (4,4))
+        @test !isassigned(f, 0, 0)
+        @test isassigned(f, 2, 2)
+        @test !isassigned(f, 10, 10)
+        @test_throws ArgumentError isassigned(f, true)
     end
 
     @testset "matmul" begin
@@ -2303,6 +2392,93 @@ end
                 @test mul!(C, O, D, 2, 2) == 2 * O * D .+ 2
             end
         end
+        @testset "array elements" begin
+            A = [SMatrix{2,3}(1:6)*(i+j) for i in 1:3, j in 1:2]
+            @testset "StridedMatrix * OneElementMatrix" begin
+                B = OneElement(SMatrix{3,2}(1:6), (size(A,2),2), (size(A,2),4))
+                C = [SMatrix{2,2}(1:4) for i in axes(A,1), j in axes(B,2)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+            @testset "StridedMatrix * OneElementVector" begin
+                B = OneElement(SMatrix{3,2}(1:6), (size(A,2),), (size(A,2),))
+                C = [SMatrix{2,2}(1:4) for i in axes(A,1)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+
+            A = OneElement(SMatrix{3,2}(1:6), (3,2), (5,4))
+            @testset "OneElementMatrix * StridedMatrix" begin
+                B = [SMatrix{2,3}(1:6)*(i+j) for i in axes(A,2), j in 1:2]
+                C = [SMatrix{3,3}(1:9) for i in axes(A,1), j in axes(B,2)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+            @testset "OneElementMatrix * StridedVector" begin
+                B = [SMatrix{2,3}(1:6)*i for i in axes(A,2)]
+                C = [SMatrix{3,3}(1:9) for i in axes(A,1)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+            @testset "OneElementMatrix * OneElementMatrix" begin
+                B = OneElement(SMatrix{2,3}(1:6), (2,4), (size(A,2), 3))
+                C = [SMatrix{3,3}(1:9) for i in axes(A,1), j in axes(B,2)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+            @testset "OneElementMatrix * OneElementVector" begin
+                B = OneElement(SMatrix{2,3}(1:6), 2, size(A,2))
+                C = [SMatrix{3,3}(1:9) for i in axes(A,1)]
+                @test mul!(copy(C), A, B) == A * B
+                @test mul!(copy(C), A, B, 2, 2) == 2 * A * B + 2 * C
+            end
+        end
+        @testset "non-commutative" begin
+            A = OneElement(quat(rand(4)...), (2,3), (3,4))
+            for (B,C) in (
+                        # OneElementMatrix * OneElementVector
+                        (OneElement(quat(rand(4)...), 3, size(A,2)),
+                            [quat(rand(4)...) for i in axes(A,1)]),
+
+                        # OneElementMatrix * OneElementMatrix
+                        (OneElement(quat(rand(4)...), (3,2), (size(A,2), 4)),
+                            [quat(rand(4)...) for i in axes(A,1), j in 1:4]),
+                        )
+                @test mul!(copy(C), A, B) ≈ A * B
+                α, β = quat(0,0,1,0), quat(1,0,1,0)
+                @test mul!(copy(C), A, B, α, β) ≈ mul!(copy(C), A, Array(B), α, β) ≈ A * B * α + C * β
+            end
+
+            A = [quat(rand(4)...)*(i+j) for i in 1:2, j in 1:3]
+            for (B,C) in (
+                        # StridedMatrix * OneElementVector
+                        (OneElement(quat(rand(4)...), 1, size(A,2)),
+                            [quat(rand(4)...) for i in axes(A,1)]),
+
+                        # StridedMatrix * OneElementMatrix
+                        (OneElement(quat(rand(4)...), (2,2), (size(A,2), 4)),
+                            [quat(rand(4)...) for i in axes(A,1), j in 1:4]),
+                        )
+                @test mul!(copy(C), A, B) ≈ A * B
+                α, β = quat(0,0,1,0), quat(1,0,1,0)
+                @test mul!(copy(C), A, B, α, β) ≈ mul!(copy(C), A, Array(B), α, β) ≈ A * B * α + C * β
+            end
+
+            A = OneElement(quat(rand(4)...), (2,2), (3, 4))
+            for (B,C) in (
+                        # OneElementMatrix * StridedMatrix
+                        ([quat(rand(4)...) for i in axes(A,2), j in 1:3],
+                            [quat(rand(4)...) for i in axes(A,1), j in 1:3]),
+
+                        # OneElementMatrix * StridedVector
+                        ([quat(rand(4)...) for i in axes(A,2)],
+                            [quat(rand(4)...) for i in axes(A,1)]),
+                        )
+                @test mul!(copy(C), A, B) ≈ A * B
+                α, β = quat(0,0,1,0), quat(1,0,1,0)
+                @test mul!(copy(C), A, B, α, β) ≈ mul!(copy(C), A, Array(B), α, β) ≈ A * B * α + C * β
+            end
+        end
     end
 
     @testset "multiplication/division by a number" begin
@@ -2346,6 +2522,16 @@ end
         @test isone(OneElement(1, (1,1), (1,1)))
         @test !isone(OneElement(2, (1,1), (1,1)))
         @test !isone(OneElement(1, (2,2), (2,2)))
+    end
+
+    @testset "tril/triu" begin
+        for A in (OneElement(3, (4,2), (4,5)), OneElement(3, (2,3), (4,5)), OneElement(3, (3,3), (4,5)))
+            B = Array(A)
+            for k in -5:5
+                @test tril(A, k) == tril(B, k)
+                @test triu(A, k) == triu(B, k)
+            end
+        end
     end
 
     @testset "broadcasting" begin
@@ -2534,4 +2720,12 @@ end
             @test istril(A, k) == istril(B, k)
         end
     end
+end
+
+@testset "triu/tril for Zeros" begin
+    Z = Zeros(3, 4)
+    @test triu(Z) === Z
+    @test tril(Z) === Z
+    @test triu(Z, 2) === Z
+    @test tril(Z, 2) === Z
 end

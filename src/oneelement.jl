@@ -47,7 +47,60 @@ Base.@propagate_inbounds function Base.getindex(A::OneElement{T,N}, kj::Vararg{I
     ifelse(kj == A.ind, A.val, zero(T))
 end
 
+"""
+    nzind(A::OneElement{T,N}) -> CartesianIndex{N}
+
+Return the index where `A` contains a non-zero value.
+
+!!! note
+    The indices are not guaranteed to lie within the valid index bounds for `A`,
+    and if `FillArrays.nzind(A) ∉ CartesianIndices(A)` then `all(iszero, A)`.
+    On the other hand, if `FillArrays.nzind(A) in CartesianIndices(A)` then
+    `A[FillArrays.nzind(A)] == FillArrays.getindex_value(A)`
+
+# Examples
+```jldoctest
+julia> A = OneElement(2, (1,2), (2,2))
+2×2 OneElement{Int64, 2, Tuple{Int64, Int64}, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}:
+ ⋅  2
+ ⋅  ⋅
+
+julia> FillArrays.nzind(A)
+CartesianIndex(1, 2)
+
+julia> A[FillArrays.nzind(A)]
+2
+```
+"""
+nzind(f::OneElement) = CartesianIndex(f.ind)
+
+"""
+    getindex_value(A::OneElement)
+
+Return the only non-zero value stored in `A`.
+
+!!! note
+    If the index at which the value is stored doesn't lie within the valid indices of `A`, then
+    this returns `zero(eltype(A))`.
+
+# Examples
+```jldoctest
+julia> A = OneElement(2, 3)
+3-element OneElement{Int64, 1, Tuple{Int64}, Tuple{Base.OneTo{Int64}}}:
+ ⋅
+ 1
+ ⋅
+
+julia> FillArrays.getindex_value(A)
+1
+```
+"""
 getindex_value(A::OneElement) = all(in.(A.ind, axes(A))) ? A.val : zero(eltype(A))
+
+@inline function Base.isassigned(F::OneElement, i::Integer...)
+    @boundscheck checkbounds(Bool, F, to_indices(F, i)...) || return false
+    return true
+end
 
 Base.AbstractArray{T,N}(A::OneElement{<:Any,N}) where {T,N} = OneElement(T(A.val), A.ind, A.axes)
 
@@ -156,12 +209,12 @@ function mul!(C::AbstractVector, A::OneElementMatrix, B::OneElementVector, alpha
 end
 
 @inline function __mul!(y, A::AbstractMatrix, x::OneElement, alpha, beta)
-    αx = alpha * x.val
+    xα = Ref(x.val * alpha)
     ind1 = x.ind[1]
     if iszero(beta)
-        y .= αx .* view(A, :, ind1)
+        y .= view(A, :, ind1) .* xα
     else
-        y .= αx .* view(A, :, ind1) .+ beta .* y
+        y .= view(A, :, ind1) .* xα .+ y .* beta
     end
     return y
 end
@@ -182,13 +235,14 @@ function _mul!(C::AbstractMatrix, A::AbstractMatrix, B::OneElementMatrix, alpha,
         mul!(C, A, Zeros{eltype(B)}(axes(B)), alpha, beta)
         return C
     end
+    nzrow, nzcol = B.ind
     if iszero(beta)
-        C .= zero(eltype(C))
+        C .= Ref(zero(eltype(C)))
     else
-        view(C, :, 1:B.ind[2]-1) .*= beta
-        view(C, :, B.ind[2]+1:size(C,2)) .*= beta
+        view(C, :, 1:nzcol-1) .*= beta
+        view(C, :, nzcol+1:size(C,2)) .*= beta
     end
-    y = view(C, :, B.ind[2])
+    y = view(C, :, nzcol)
     __mul!(y, A, B, alpha, beta)
     C
 end
@@ -198,17 +252,14 @@ function _mul!(C::AbstractMatrix, A::Diagonal, B::OneElementMatrix, alpha, beta)
         mul!(C, A, Zeros{eltype(B)}(axes(B)), alpha, beta)
         return C
     end
-    if iszero(beta)
-        C .= zero(eltype(C))
-    else
-        view(C, :, 1:B.ind[2]-1) .*= beta
-        view(C, :, B.ind[2]+1:size(C,2)) .*= beta
-    end
-    ABα = A * B * alpha
     nzrow, nzcol = B.ind
+    ABα = A * B * alpha
     if iszero(beta)
-        C[B.ind...] = ABα[B.ind...]
+        C .= Ref(zero(eltype(C)))
+        C[nzrow, nzcol] = ABα[nzrow, nzcol]
     else
+        view(C, :, 1:nzcol-1) .*= beta
+        view(C, :, nzcol+1:size(C,2)) .*= beta
         y = view(C, :, nzcol)
         y .= view(ABα, :, nzcol) .+ y .* beta
     end
@@ -221,19 +272,16 @@ function _mul!(C::AbstractMatrix, A::OneElementMatrix, B::AbstractMatrix, alpha,
         mul!(C, Zeros{eltype(A)}(axes(A)), B, alpha, beta)
         return C
     end
-    if iszero(beta)
-        C .= zero(eltype(C))
-    else
-        view(C, 1:A.ind[1]-1, :) .*= beta
-        view(C, A.ind[1]+1:size(C,1), :) .*= beta
-    end
-    y = view(C, A.ind[1], :)
-    ind2 = A.ind[2]
+    nzrow, nzcol = A.ind
+    y = view(C, nzrow, :)
     Aval = A.val
     if iszero(beta)
-        y .= Aval .* view(B, ind2, :) .* alpha
+        C .= Ref(zero(eltype(C)))
+        y .= Ref(Aval) .* view(B, nzcol, :) .* alpha
     else
-        y .= Aval .* view(B, ind2, :) .* alpha .+ y .* beta
+        view(C, 1:nzrow-1, :) .*= beta
+        view(C, nzrow+1:size(C,1), :) .*= beta
+        y .= Ref(Aval) .* view(B, nzcol, :) .* alpha .+ y .* beta
     end
     C
 end
@@ -243,17 +291,14 @@ function _mul!(C::AbstractMatrix, A::OneElementMatrix, B::Diagonal, alpha, beta)
         mul!(C, Zeros{eltype(A)}(axes(A)), B, alpha, beta)
         return C
     end
-    if iszero(beta)
-        C .= zero(eltype(C))
-    else
-        view(C, 1:A.ind[1]-1, :) .*= beta
-        view(C, A.ind[1]+1:size(C,1), :) .*= beta
-    end
-    ABα = A * B * alpha
     nzrow, nzcol = A.ind
+    ABα = A * B * alpha
     if iszero(beta)
-        C[A.ind...] = ABα[A.ind...]
+        C .= Ref(zero(eltype(C)))
+        C[nzrow, nzcol] = ABα[nzrow, nzcol]
     else
+        view(C, 1:nzrow-1, :) .*= beta
+        view(C, nzrow+1:size(C,1), :) .*= beta
         y = view(C, nzrow, :)
         y .= view(ABα, nzrow, :) .+ y .* beta
     end
@@ -267,16 +312,13 @@ function _mul!(C::AbstractVector, A::OneElementMatrix, B::AbstractVector, alpha,
         return C
     end
     nzrow, nzcol = A.ind
+    Aval = A.val
     if iszero(beta)
-        C .= zero(eltype(C))
+        C .= Ref(zero(eltype(C)))
+        C[nzrow] = Aval * B[nzcol] * alpha
     else
         view(C, 1:nzrow-1) .*= beta
         view(C, nzrow+1:size(C,1)) .*= beta
-    end
-    Aval = A.val
-    if iszero(beta)
-        C[nzrow] = Aval * B[nzcol] * alpha
-    else
         C[nzrow] = Aval * B[nzcol] * alpha + C[nzrow] * beta
     end
     C
@@ -318,7 +360,20 @@ end
 adjoint(A::OneElementMatrix) = OneElement(adjoint(A.val), reverse(A.ind), reverse(A.axes))
 transpose(A::OneElementMatrix) = OneElement(transpose(A.val), reverse(A.ind), reverse(A.axes))
 
+# tril/triu
+
+function tril(A::OneElementMatrix, k::Integer=0)
+    nzband = A.ind[2] - A.ind[1]
+    OneElement(nzband > k ? zero(A.val) : A.val, A.ind, axes(A))
+end
+
+function triu(A::OneElementMatrix, k::Integer=0)
+    nzband = A.ind[2] - A.ind[1]
+    OneElement(nzband < k ? zero(A.val) : A.val, A.ind, axes(A))
+end
+
 # broadcast
+
 function broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::OneElement{<:Any,N}) where {N}
     OneElement(conj(r.val), r.ind, axes(r))
 end
@@ -339,6 +394,16 @@ function broadcasted(::DefaultArrayStyle{N}, ::typeof(/), r::OneElement{<:Any,N}
 end
 function broadcasted(::DefaultArrayStyle{N}, ::typeof(\), x::Number, r::OneElement{<:Any,N}) where {N}
     OneElement(x \ r.val, r.ind, axes(r))
+end
+
+# reshape
+
+function Base.reshape(A::OneElement, shape::Tuple{Vararg{Int}})
+    prod(shape) == length(A) || throw(DimensionMismatch("new dimension $shape must be consistent with array size $(length(A))"))
+    # we use the fact that the linear index of the non-zero value is preserved
+    oldlinind = LinearIndices(A)[A.ind...]
+    newcartind = CartesianIndices(shape)[oldlinind]
+    OneElement(A.val, Tuple(newcartind), shape)
 end
 
 # show
