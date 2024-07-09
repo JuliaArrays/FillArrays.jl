@@ -2,11 +2,19 @@ name: Documentation
 
 on:
   pull_request:
+    paths-ignore:
+      - 'LICENSE'
+      - 'README.md'
+      - '.github/workflows/TagBot.yml'
   push:
     branches:
       - 'master'
       - 'release-'
     tags: '*'
+    paths-ignore:
+      - 'LICENSE'
+      - 'README.md'
+      - '.github/workflows/TagBot.yml'
   release:
     types: [published]
 
@@ -23,7 +31,7 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
       - name: Cache artifacts
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         env:
           cache-name: cache-artifacts
         with:

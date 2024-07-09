@@ -4,14 +4,14 @@ module FillArrays
 using LinearAlgebra
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
-    any, all, axes, isone, iterate, unique, allunique, permutedims, inv,
+    any, all, axes, isone, iszero, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, map, zero,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
-    parent, similar, issorted
+    parent, similar, issorted, add_sum, accumulate, OneTo
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
-    issymmetric, ishermitian, AdjOrTransAbsVec, checksquare, mul!, kron
+    issymmetric, ishermitian, AdjOrTransAbsVec, checksquare, mul!, kron, AbstractTriangular
 
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape, BroadcastStyle, Broadcasted
@@ -23,7 +23,8 @@ import Base: oneto
 """
     AbstractFill{T, N, Axes} <: AbstractArray{T, N}
 
-Supertype for lazy array types whose entries are all equal to constant.
+Supertype for lazy array types whose entries are all equal.
+Subtypes of `AbstractFill` should implement [`FillArrays.getindex_value`](@ref) to return the value of the entries.
 """
 abstract type AbstractFill{T, N, Axes} <: AbstractArray{T, N} end
 const AbstractFillVector{T} = AbstractFill{T,1}
@@ -32,6 +33,10 @@ const AbstractFillVecOrMat{T} = Union{AbstractFillVector{T},AbstractFillMatrix{T
 
 ==(a::AbstractFill, b::AbstractFill) = axes(a) == axes(b) && getindex_value(a) == getindex_value(b)
 
+@inline function Base.isassigned(F::AbstractFill, i::Integer...)
+    @boundscheck checkbounds(Bool, F, to_indices(F, i)...) || return false
+    return true
+end
 
 @inline function _fill_getindex(F::AbstractFill, kj::Integer...)
     @boundscheck checkbounds(F, kj...)
@@ -94,14 +99,10 @@ Typically created by `Fill` or `Zeros` or `Ones`
 
 ```jldoctest
 julia> Fill(7, (2,3))
-2×3 Fill{Int64,2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}:
- 7  7  7
- 7  7  7
+2×3 Fill{Int64}, with entries equal to 7
 
-julia> Fill{Float64, 1, Tuple{UnitRange{Int64}}}(7., (1:2,))
-2-element Fill{Float64,1,Tuple{UnitRange{Int64}}} with indices 1:2:
- 7.0
- 7.0
+julia> Fill{Float64, 1, Tuple{UnitRange{Int64}}}(7.0, (1:2,))
+2-element Fill{Float64, 1, Tuple{UnitRange{Int64}}} with indices 1:2, with entries equal to 7.0
 ```
 """
 struct Fill{T, N, Axes} <: AbstractFill{T, N, Axes}
@@ -119,12 +120,10 @@ const FillVecOrMat{T} = Union{FillVector{T},FillMatrix{T}}
 Fill{T,N,Axes}(x, sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
     Fill{T,N,Axes}(convert(T, x)::T, sz)
 
-Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
+Fill{T,0}(x, ::Tuple{}) where T = Fill{T,0,Tuple{}}(convert(T, x)::T, ()) # ambiguity fix
 
-@inline Fill{T, N}(x::T, sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
-    Fill{T,N,Axes}(x, sz)
 @inline Fill{T, N}(x, sz::Axes) where Axes<:Tuple{Vararg{AbstractUnitRange,N}} where {T, N} =
-    Fill{T,N}(convert(T, x)::T, sz)
+    Fill{T,N,Axes}(convert(T, x)::T, sz)
 
 @inline Fill{T, N}(x, sz::SZ) where SZ<:Tuple{Vararg{Integer,N}} where {T, N} =
     Fill{T,N}(x, oneto.(sz))
@@ -147,7 +146,7 @@ Fill{T,0}(x::T, ::Tuple{}) where T = Fill{T,0,Tuple{}}(x, ()) # ambiguity fix
 @inline size(F::Fill) = map(length, F.axes)
 
 """
-    getindex_value(F::AbstractFill)
+    FillArrays.getindex_value(F::AbstractFill)
 
 Return the value that `F` is filled with.
 
@@ -264,6 +263,8 @@ end
 reshape(parent::AbstractFill, dims::Integer...) = reshape(parent, dims)
 reshape(parent::AbstractFill, dims::Union{Int,Colon}...) = reshape(parent, dims)
 reshape(parent::AbstractFill, dims::Union{Integer,Colon}...) = reshape(parent, dims)
+# resolve ambiguity with Base
+reshape(parent::AbstractFillVector, dims::Colon) = parent
 
 reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Integer,Colon}}}) =
     fill_reshape(parent, Base._reshape_uncolon(parent, dims)...)
@@ -273,6 +274,10 @@ reshape(parent::AbstractFill, shp::Tuple{Union{Integer,Base.OneTo}, Vararg{Union
     reshape(parent, Base.to_shape(shp))
 reshape(parent::AbstractFill, dims::Dims)        = Base._reshape(parent, dims)
 reshape(parent::AbstractFill, dims::Tuple{Integer, Vararg{Integer}})        = Base._reshape(parent, dims)
+
+# resolve ambiguity with Base
+reshape(parent::AbstractFillVector, dims::Tuple{Colon}) = parent
+
 Base._reshape(parent::AbstractFill, dims::Dims) = fill_reshape(parent, dims...)
 Base._reshape(parent::AbstractFill, dims::Tuple{Integer,Vararg{Integer}}) = fill_reshape(parent, dims...)
 # Resolves ambiguity error with `_reshape(v::AbstractArray{T, 1}, dims::Tuple{Int})`
@@ -571,13 +576,31 @@ sum(x::AbstractZeros) = getindex_value(x)
 
 # needed to support infinite case
 steprangelen(st...) = StepRangeLen(st...)
-cumsum(x::AbstractFill{<:Any,1}) = steprangelen(getindex_value(x), getindex_value(x), length(x))
+function cumsum(x::AbstractFill{T,1}) where T
+    V = promote_op(add_sum, T, T)
+    steprangelen(convert(V,getindex_value(x)), getindex_value(x), length(x))
+end
 
-cumsum(x::AbstractZerosVector) = x
-cumsum(x::AbstractZerosVector{Bool}) = x
-cumsum(x::AbstractOnesVector{II}) where II<:Integer = convert(AbstractVector{II}, oneto(length(x)))
+cumsum(x::AbstractZerosVector{T}) where T = _range_convert(AbstractVector{promote_op(add_sum, T, T)}, x)
+cumsum(x::AbstractZerosVector{Bool}) = _range_convert(AbstractVector{Int}, x)
+cumsum(x::AbstractOnesVector{T}) where T<:Integer = _range_convert(AbstractVector{promote_op(add_sum, T, T)}, oneto(length(x)))
 cumsum(x::AbstractOnesVector{Bool}) = oneto(length(x))
 
+
+for op in (:+, :-)
+    @eval begin
+        function accumulate(::typeof($op), x::AbstractFill{T,1}) where T
+            V = promote_op($op, T, T)
+            steprangelen(convert(V,getindex_value(x)), $op(getindex_value(x)), length(x))
+        end
+
+        accumulate(::typeof($op), x::AbstractZerosVector{T}) where T = _range_convert(AbstractVector{promote_op($op, T, T)}, x)
+        accumulate(::typeof($op), x::AbstractZerosVector{Bool}) = _range_convert(AbstractVector{Int}, x)
+    end
+end
+
+accumulate(::typeof(+), x::AbstractOnesVector{T}) where T<:Integer = _range_convert(AbstractVector{promote_op(+, T, T)}, oneto(length(x)))
+accumulate(::typeof(+), x::AbstractOnesVector{Bool}) = oneto(length(x))
 
 #########
 # Diff
@@ -617,9 +640,10 @@ end
 #########
 
 function isone(AF::AbstractFillMatrix)
-    isone(getindex_value(AF)) || return false
     (n,m) = size(AF)
     n != m && return false
+    (n == 0 || m == 0) && return true
+    isone(getindex_value(AF)) || return false
     n == 1 && return true
     return false
 end
@@ -642,8 +666,18 @@ end
 
 # In particular, these make iszero(Eye(n))  efficient.
 # use any/all on scalar to get Boolean error message
-any(f::Function, x::AbstractFill) = !isempty(x) && any(f(getindex_value(x)))
-all(f::Function, x::AbstractFill) = isempty(x) || all(f(getindex_value(x)))
+function any(f::Function, x::AbstractFill)
+    isempty(x) && return false
+    # If the condition is true for one value, then it's true for all
+    fval = f(getindex_value(x))
+    any((fval,))
+end
+function all(f::Function, x::AbstractFill)
+    isempty(x) && return true
+    # If the condition is true for one value, then it's true for all
+    fval = f(getindex_value(x))
+    return all((fval,))
+end
 any(x::AbstractFill) = any(identity, x)
 all(x::AbstractFill) = all(identity, x)
 
@@ -711,12 +745,9 @@ function Base.show(io::IO, ::MIME"text/plain", x::Union{Eye, AbstractFill})
         return show(io, x)
     end
     summary(io, x)
-    if x isa Union{AbstractZeros, AbstractOnes, Eye}
-        # then no need to print entries
-    elseif length(x) > 1
-        print(io, ", with entries equal to ", getindex_value(x))
-    else
-        print(io, ", with entry equal to ", getindex_value(x))
+    if !(x isa Union{AbstractZeros, AbstractOnes, Eye})
+        print(io, ", with ", length(x) > 1 ? "entries" : "entry", " equal to ")
+        show(io, getindex_value(x))
     end
 end
 
@@ -738,7 +769,13 @@ function Base.show(io::IO, x::AbstractFill)  # for example (Fill(π,3),)
     join(io, size(x), ", ")
     print(io, ")")
 end
-Base.show(io::IO, x::Eye) = print(io, "Eye(", size(x,1), ")")
+function Base.show(io::IO, x::Eye)
+    print(io, "Eye(", size(x,1))
+    if size(x,1) != size(x,2)
+        print(io, ",", size(x,2))
+    end
+    print(io, ")")
+end
 
 Base.array_summary(io::IO, ::Zeros{T}, inds::Tuple{Vararg{Base.OneTo}}) where T =
     print(io, Base.dims2string(length.(inds)), " Zeros{$T}")
