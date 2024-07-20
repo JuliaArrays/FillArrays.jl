@@ -115,6 +115,17 @@ Base.@propagate_inbounds function Base.setindex(A::AbstractZeros{T,N}, v, kj::Va
     OneElement(convert(T, v), kj, axes(A))
 end
 
+zero(A::OneElement) = OneElement(zero(A.val), A.ind, A.axes)
+
+iszero(A::OneElement) = iszero(getindex_value(A))
+
+function isone(A::OneElementMatrix)
+    lenA = length(A)
+    lenA == 0 && return true
+    lenA > 1 && return false
+    isone(getindex_value(A))
+end
+
 *(x::OneElement, b::Number) = OneElement(x.val * b, x.ind, x.axes)
 *(b::Number, x::OneElement) = OneElement(b * x.val, x.ind, x.axes)
 /(x::OneElement, b::Number) = OneElement(x.val / b, x.ind, x.axes)
