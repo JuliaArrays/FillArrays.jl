@@ -360,6 +360,11 @@ end
 adjoint(A::OneElementMatrix) = OneElement(adjoint(A.val), reverse(A.ind), reverse(A.axes))
 transpose(A::OneElementMatrix) = OneElement(transpose(A.val), reverse(A.ind), reverse(A.axes))
 
+# isbanded
+function LinearAlgebra.isbanded(A::OneElementMatrix, kl::Integer, ku::Integer)
+    iszero(getindex_value(A)) || kl <= A.ind[2] - A.ind[1] <= ku
+end
+
 # tril/triu
 
 function tril(A::OneElementMatrix, k::Integer=0)
