@@ -1,4 +1,5 @@
-using FillArrays, LinearAlgebra, PDMats, SparseArrays, StaticArrays, ReverseDiff, Random, Base64, Test, Statistics, Quaternions
+using FillArrays, LinearAlgebra, PDMats, SparseArrays, StaticArrays, ReverseDiff, Random, Test, Statistics, Quaternions
+
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
 using Documenter
@@ -13,6 +14,8 @@ import .InfiniteArrays
 # we may use this instead of rand(n) to generate deterministic arrays
 oneton(T::Type, sz...) = reshape(T.(1:prod(sz)), sz)
 oneton(sz...) = oneton(Float64, sz...)
+
+stringmime(args...) = sprint(show, args...)
 
 @testset "fill array constructors and convert" begin
     for (Typ, funcs) in ((Zeros, zeros), (Ones, ones))
