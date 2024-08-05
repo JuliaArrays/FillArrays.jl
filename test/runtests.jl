@@ -2841,6 +2841,30 @@ end
     end
 end
 
+@testset "eigen" begin
+    sortby = x -> (real(x), imag(x))
+    @testset "AbstractFill" begin
+        @testset for val in (2.0, -2, 3+2im, 4 - 5im, 2im), n in (0, 1, 4)
+            F = Fill(val, n, n)
+            M = Matrix(F)
+            @test eigvals(F; sortby) ≈ eigvals(M; sortby)
+            λ, V = eigen(F; sortby)
+            @test λ == eigvals(F; sortby)
+            @test V'V ≈ I
+            @test F * V ≈ V * Diagonal(λ)
+        end
+        @testset for MT in (Ones, Zeros), T in (Float64, Int, ComplexF64), n in (0, 1, 4)
+            F = MT{T}(n,n)
+            M = Matrix(F)
+            @test eigvals(F; sortby) ≈ eigvals(M; sortby)
+            λ, V = eigen(F; sortby)
+            @test λ == eigvals(F; sortby)
+            @test V'V ≈ I
+            @test F * V ≈ V * Diagonal(λ)
+        end
+    end
+end
+
 @testset "triu/tril for Zeros" begin
     Z = Zeros(3, 4)
     @test triu(Z) === Z
