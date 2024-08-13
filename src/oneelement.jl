@@ -426,6 +426,10 @@ function Base.reshape(A::OneElement, shape::Tuple{Vararg{Int}})
     OneElement(A.val, Tuple(newcartind), shape)
 end
 
+#permute
+
+permutedims(o::OneElementMatrix) = OneElement(o.val, reverse(o.ind), o.axes)
+
 # show
 _maybesize(t::Tuple{Base.OneTo{Int}, Vararg{Base.OneTo{Int}}}) = size.(t,1)
 _maybesize(t) = t
