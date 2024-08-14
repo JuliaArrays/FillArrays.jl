@@ -427,8 +427,10 @@ function Base.reshape(A::OneElement, shape::Tuple{Vararg{Int}})
 end
 
 #permute
-
+_permute(x::Tuple, p::Tuple) = ntuple(i -> x[p[i]], length(x))
 permutedims(o::OneElementMatrix) = OneElement(o.val, reverse(o.ind), reverse(o.axes))
+permutedims(o::OneElementVector) = OneElement(o.val, (1, o.ind[1]), (1, length(o)))
+permutedims(o::OneElement, dims::Tuple) = OneElement(o.val, _permute(o.ind, dims), _permute(o.axes, dims))
 
 # show
 _maybesize(t::Tuple{Base.OneTo{Int}, Vararg{Base.OneTo{Int}}}) = size.(t,1)
