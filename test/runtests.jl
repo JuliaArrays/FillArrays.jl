@@ -2669,12 +2669,12 @@ end
 
     @testset "permutedims" begin
         v = OneElement(1, (2,3), (2,5))
-        @test permutedims(v) == OneElement(1, (3,2), (5,2))
+        @test permutedims(v) === OneElement(1, (3,2), (5,2))
         w = OneElement(1,3,5)
-        @test permutedims(w) == OneElement(1, (1,3), (1,5))
+        @test permutedims(w) === OneElement(1, (1,3), (1,5))
         x = OneElement(1, (1,2,3), (4,5,6))
-        @test permutedims(x, (1,2,3)) == x
-        @test permutedims(x, (3,2,1)) == OneElement(1, (3,2,1), (6,5,4))
+        @test permutedims(x, (1,2,3)) === x
+        @test permutedims(x, (3,2,1)) === OneElement(1, (3,2,1), (6,5,4))
         @test_throws BoundsError permutedims(x, (2,1))
     end
     @testset "show" begin
