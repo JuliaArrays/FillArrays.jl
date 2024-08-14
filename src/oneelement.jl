@@ -428,7 +428,7 @@ end
 
 #permute
 
-permutedims(o::OneElementMatrix) = OneElement(o.val, reverse(o.ind), o.axes)
+permutedims(o::OneElementMatrix) = OneElement(o.val, reverse(o.ind), reverse(o.axes))
 
 # show
 _maybesize(t::Tuple{Base.OneTo{Int}, Vararg{Base.OneTo{Int}}}) = size.(t,1)

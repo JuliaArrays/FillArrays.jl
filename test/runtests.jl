@@ -2667,6 +2667,10 @@ end
         end
     end
 
+    @testset "permutedims" begin
+        v = OneElement(1, (2,3), (2,5))
+        @test permutedims(v) == OneElement(1, (3,2), (5,2))
+    end
     @testset "show" begin
         B = OneElement(2, (1, 2), (3, 4))
         @test repr(B) == "OneElement(2, (1, 2), (3, 4))"
