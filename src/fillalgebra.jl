@@ -399,7 +399,7 @@ dot(a::AbstractVector, b::AbstractFillVector) = _fill_dot_rev(a, b)
 function dot(u::AbstractVector, E::Eye, v::AbstractVector)
     length(u) == size(E,1) && length(v) == size(E,2) ||
         throw(DimensionMismatch("dot product arguments have dimensions $(length(u))×$(size(E))×$(length(v))"))
-    dot(u, v)
+    one(eltype(E)) * dot(u, v)
 end
 
 function dot(u::AbstractVector, D::Diagonal{<:Any,<:Fill}, v::AbstractVector)

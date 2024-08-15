@@ -1927,6 +1927,8 @@ end
         @test dot(Fill(2,N),1:N) == dot(Fill(2,N),1:N) == dot(1:N,Fill(2,N)) == 2*sum(1:N)
     end
 
+    @test dot(1:4, Eye(4), 1:4) === dot(1:4, oneunit(eltype(Eye(4))) * I(4), 1:4)
+
     @test_throws DimensionMismatch dot(u[1:end-1], D, v)
     @test_throws DimensionMismatch dot(u[1:end-1], D, v[1:end-1])
 
