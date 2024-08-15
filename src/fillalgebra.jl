@@ -102,9 +102,17 @@ for MT in (:(AbstractMatrix{T}), :(Transpose{<:Any, <:AbstractMatrix{T}}), :(Adj
             :(AbstractTriangular{T}))
     @eval *(a::$MT, b::AbstractZerosVector) where {T} = mult_zeros(a, b)
 end
-*(a::Transpose{<:Any, <:AbstractVector}, b::AbstractZerosMatrix) = transpose(transpose(b) * parent(a))
-*(a::Adjoint{<:Any, <:AbstractVector}, b::AbstractZerosMatrix) = adjoint(adjoint(b) * parent(a))
+for T in (:AbstractZerosMatrix, :AbstractFillMatrix)
+    @eval begin
+        *(a::Transpose{<:Any, <:AbstractVector}, b::$T) = transpose(transpose(b) * parent(a))
+        *(a::Adjoint{<:Any, <:AbstractVector}, b::$T) = adjoint(adjoint(b) * parent(a))
+    end
+end
 *(a::AbstractZerosMatrix, b::AbstractVector) = mult_zeros(a, b)
+function *(F::AbstractFillMatrix, v::AbstractVector)
+    check_matmul_sizes(F, v)
+    Fill(getindex_value(F) * sum(v), (axes(F,1),))
+end
 
 function lmul_diag(a::Diagonal, b)
     size(a,2) == size(b,1) || throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
@@ -322,7 +330,7 @@ function _adjvec_mul_zeros(a, b)
     return a1 * b[1]
 end
 
-for MT in (:AbstractMatrix, :AbstractTriangular, :(Adjoint{<:Any,<:TransposeAbsVec}))
+for MT in (:AbstractMatrix, :AbstractTriangular, :(Adjoint{<:Any,<:TransposeAbsVec}), :AbstractFillMatrix)
     @eval *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::$MT) = (b' * a')'
 end
 # ambiguity
@@ -332,7 +340,7 @@ function *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::TransposeAbsVec{<:A
     a * b2
 end
 *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractZerosMatrix) = (b' * a')'
-for MT in (:AbstractMatrix, :AbstractTriangular, :(Transpose{<:Any,<:AdjointAbsVec}))
+for MT in (:AbstractMatrix, :AbstractTriangular, :(Transpose{<:Any,<:AdjointAbsVec}), :AbstractFillMatrix)
     @eval *(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, b::$MT) = transpose(transpose(b) * transpose(a))
 end
 *(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractZerosMatrix) = transpose(transpose(b) * transpose(a))
