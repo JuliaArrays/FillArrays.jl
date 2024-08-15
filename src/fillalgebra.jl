@@ -463,7 +463,7 @@ end
 
 @inline function fill_add(a::AbstractArray, b::AbstractFill)
     promote_shape(a, b)
-    a .+ [getindex_value(b)]
+    a .+ (getindex_value(b),)
 end
 @inline function fill_add(a::AbstractArray{<:Number}, b::AbstractFill)
     promote_shape(a, b)
