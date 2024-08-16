@@ -2848,3 +2848,10 @@ end
     @test triu(Z, 2) === Z
     @test tril(Z, 2) === Z
 end
+
+@testset "symmetric" begin
+    for F in (Fill(3, 4, 4), Zeros(4,4), Ones(4,4))
+        @test LinearAlgebra.symmetric(F) == F
+        @test LinearAlgebra.symmetric_type(typeof(F)) == typeof(F)
+    end
+end

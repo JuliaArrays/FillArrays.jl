@@ -554,3 +554,7 @@ end
 
 triu(A::AbstractZerosMatrix, k::Integer=0) = A
 tril(A::AbstractZerosMatrix, k::Integer=0) = A
+
+# symmetric
+LinearAlgebra.symmetric(F::AbstractFillMatrix{<:Number}, uplo::Symbol=:U) = F
+LinearAlgebra.symmetric_type(::Type{T}) where {T<:AbstractFillMatrix{<:Number}} = T
