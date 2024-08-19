@@ -1643,14 +1643,16 @@ end
 
             @test Fill(2,3)*A ≈ Vector(Fill(2,3))*A
             @test Fill(2,0)*A ≈ Vector(Fill(2,0))*A
-            @test Fill(2,3,mA)*A ≈ Matrix(Fill(2,3,mA))*A
-            @test Fill(2,3,la)*a ≈ Matrix(Fill(2,3,la))*a
+            @test Fill(2,3,mA)*A ≈ mul!(similar(A, 3,nA), Fill(2,3,mA), A) ≈ Matrix(Fill(2,3,mA))*A
+            @test Fill(2,3,la)*a ≈ mul!(similar(a, 3), Fill(2,3,la), a) ≈ Matrix(Fill(2,3,la))*a
+            @test Fill(2,3,la)*a isa Fill
             @test Ones(3)*A ≈ Vector(Ones(3))*A
-            @test Ones(3,mA)*A ≈ Matrix(Ones(3,mA))*A
-            @test Ones(3,la)*a ≈ Matrix(Ones(3,la))*a
+            @test Ones(3,mA)*A ≈ mul!(similar(A, 3, nA), Ones(3,mA), A) ≈ Matrix(Ones(3,mA))*A
+            @test Ones(3,la)*a ≈ mul!(similar(a, 3), Ones(3,la), a) ≈ Matrix(Ones(3,la))*a
+            @test Ones(3,la)*a isa Fill
             @test Zeros(3)*A  ≡ Zeros(3,nA)
-            @test Zeros(3,mA)*A == Zeros(3,nA)
-            @test Zeros(3,la)*a == Zeros(3)
+            @test Zeros(3,mA)*A == mul!(similar(A, 3, nA), Zeros(3,mA), A) == Zeros(3,nA)
+            @test Zeros(3,la)*a == mul!(similar(A, 3), Zeros(3,la), a) == Zeros(3)
 
             @test A*Fill(2,nA) ≈ A*Vector(Fill(2,nA))
             @test A*Fill(2,nA,1) ≈ A*Matrix(Fill(2,nA,1))
@@ -1671,6 +1673,17 @@ end
             @test a' * Zeros(la,3) ≡ adjoint(Zeros(3))
 
             @test Zeros(la)' * Transpose(Adjoint(a)) == 0.0
+
+            F = Fill(2, mA, 3)
+            @test transpose(A) * F ≈ transpose(Fill(2, 3, mA) * A)
+            F = Fill(2, la, 3)
+            FS = Fill(2, (Base.OneTo(la), SOneTo(3)))
+            @testset for (adjf, adjT) in ((transpose, Transpose), (adjoint, Adjoint))
+                @test adjf(a) * F ≈ adjf(Fill(2, 3, la) * a)
+                @test adjf(a) * F isa adjT{<:Any, <:Fill{<:Any,1}}
+                @test adjf(a) * FS ≈ adjf(Fill(2, 3, la) * a)
+                @test axes(adjf(a) * FS, 2) == SOneTo(3)
+            end
 
             w = zeros(mA)
             @test mul!(w, A, Fill(2,nA), true, false) ≈ A * fill(2,nA)
