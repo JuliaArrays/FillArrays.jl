@@ -2699,6 +2699,15 @@ end
         B = OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))
         @test repr(B) == "OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))"
     end
+
+    @testset "sum" begin
+        O = OneElement(Int8(2),3,4)
+        @test sum(O) === 2
+        O = OneElement(3.0,5,4)
+        @test sum(O) === 0.0
+        O = OneElement(3.0,0,0)
+        @test sum(O) === 0.0
+    end
 end
 
 @testset "repeat" begin
