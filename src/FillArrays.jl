@@ -272,16 +272,11 @@ reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Int,Colon}}}) =
     fill_reshape(parent, Base._reshape_uncolon(parent, dims)...)
 reshape(parent::AbstractFill, shp::Tuple{Union{Integer,Base.OneTo}, Vararg{Union{Integer,Base.OneTo}}}) =
     reshape(parent, Base.to_shape(shp))
-reshape(parent::AbstractFill, dims::Dims)        = Base._reshape(parent, dims)
-reshape(parent::AbstractFill, dims::Tuple{Integer, Vararg{Integer}})        = Base._reshape(parent, dims)
+reshape(parent::AbstractFill, dims::Dims) = fill_reshape(parent, dims...)
+reshape(parent::AbstractFill, dims::Tuple{Integer, Vararg{Integer}}) = fill_reshape(parent, dims...)
 
 # resolve ambiguity with Base
 reshape(parent::AbstractFillVector, dims::Tuple{Colon}) = parent
-
-Base._reshape(parent::AbstractFill, dims::Dims) = fill_reshape(parent, dims...)
-Base._reshape(parent::AbstractFill, dims::Tuple{Integer,Vararg{Integer}}) = fill_reshape(parent, dims...)
-# Resolves ambiguity error with `_reshape(v::AbstractArray{T, 1}, dims::Tuple{Int})`
-Base._reshape(parent::AbstractFill{T, 1, Axes}, dims::Tuple{Int}) where {T, Axes} = fill_reshape(parent, dims...)
 
 for (AbsTyp, Typ, funcs, func) in ((:AbstractZeros, :Zeros, :zeros, :zero), (:AbstractOnes, :Ones, :ones, :one))
     @eval begin
