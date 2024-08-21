@@ -2708,17 +2708,22 @@ end
         O = OneElement(3.0,0,0)
         @test @inferred(sum(O)) === 0.0
 
-        O = OneElement(Int8(2), (1,2), (2,2))
-        A = Array(O)
-        for i in 1:3
-            @test @inferred(sum(O, dims=i)) == sum(A, dims=i)
+        for O in (OneElement(Int8(2), (1,2), (2,4)),
+                    OneElement(3, (1,2,3), (2,4,4)),
+                    OneElement(2.0, (3,2,5), (2,3,2)))
+            A = Array(O)
+            for i in 1:3
+                @test @inferred(sum(O, dims=i)) == sum(A, dims=i)
+            end
+            @test @inferred(sum(O, dims=1:1)) == sum(A, dims=1:1)
+            @test @inferred(sum(O, dims=1:2)) == sum(A, dims=1:2)
+            @test @inferred(sum(O, dims=1:3)) == sum(A, dims=1:3)
+            @test @inferred(sum(O, dims=(1,))) == sum(A, dims=(1,))
+            @test @inferred(sum(O, dims=(1,2))) == sum(A, dims=(1,2))
+            @test @inferred(sum(O, dims=(1,3))) == sum(A, dims=(1,3))
+            @test @inferred(sum(O, dims=(2,3))) == sum(A, dims=(2,3))
+            @test @inferred(sum(O, dims=(1,2,3))) == sum(A, dims=(1,2,3))
         end
-        @test @inferred(sum(O, dims=1:1)) == sum(A, dims=1:1)
-        @test @inferred(sum(O, dims=1:2)) == sum(A, dims=1:2)
-        @test @inferred(sum(O, dims=1:3)) == sum(A, dims=1:3)
-        @test @inferred(sum(O, dims=(1,))) == sum(A, dims=(1,))
-        @test @inferred(sum(O, dims=(1,2))) == sum(A, dims=(1,2))
-        @test @inferred(sum(O, dims=(1,2,3))) == sum(A, dims=(1,2,3))
     end
 end
 
