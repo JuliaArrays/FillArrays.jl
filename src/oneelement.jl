@@ -433,4 +433,11 @@ Base.show(io::IO, A::OneElement{<:Any,1,Tuple{Int},Tuple{Base.OneTo{Int}}}) =
     print(io, OneElement, "(", A.val, ", ", A.ind[1], ", ", size(A,1), ")")
 
 # mapreduce
-Base.sum(O::OneElement) = sum(getindex_value(O))
+Base.sum(O::OneElement; dims=:) = _sum(O, dims)
+_sum(O::OneElement, ::Colon) = sum(getindex_value(O))
+function _sum(O::OneElement, dims)
+    v = sum(getindex_value(O))
+    ax = Base.reduced_indices(axes(O), dims)
+    ind = ntuple(x -> x in dims ? first(ax[x]) + (O.ind[x] in axes(O)[x]) - 1 : O.ind[x], ndims(O))
+    OneElement(v, ind, ax)
+end
