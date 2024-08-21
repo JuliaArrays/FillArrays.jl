@@ -420,9 +420,14 @@ end
 
 function Base.reshape(A::OneElement, shape::Tuple{Vararg{Int}})
     prod(shape) == length(A) || throw(DimensionMismatch("new dimension $shape must be consistent with array size $(length(A))"))
-    # we use the fact that the linear index of the non-zero value is preserved
-    oldlinind = LinearIndices(A)[A.ind...]
-    newcartind = CartesianIndices(shape)[oldlinind]
+    if all(in.(A.ind, axes(A)))
+        # we use the fact that the linear index of the non-zero value is preserved
+        oldlinind = LinearIndices(A)[A.ind...]
+        newcartind = CartesianIndices(shape)[oldlinind]
+    else
+        # arbitrarily set to some value outside the domain
+        newcartind = shape .+ 1
+    end
     OneElement(A.val, Tuple(newcartind), shape)
 end
 

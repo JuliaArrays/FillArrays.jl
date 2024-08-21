@@ -2326,6 +2326,10 @@ end
         end
         O = OneElement(2, (), ())
         @test reshape(O, ()) === O
+
+        O = OneElement(5, 3)
+        @test reshape(O, 1, 3) == reshape(Array(O), 1, 3)
+        @test reshape(reshape(O, 1, 3), 3) == O
     end
 
     @testset "isassigned" begin
