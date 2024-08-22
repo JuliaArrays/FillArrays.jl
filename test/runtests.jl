@@ -2872,3 +2872,8 @@ end
     @test triu(Z, 2) === Z
     @test tril(Z, 2) === Z
 end
+
+@testset "sqrt" begin
+    F = Fill(4, 4, 4)
+    @test sqrt(F)^2 == F
+end
