@@ -2718,9 +2718,6 @@ end
     end
 end
 
-    end
-end
-
 @testset "repeat" begin
     @testset "0D" begin
         @test repeat(Zeros()) isa Zeros
