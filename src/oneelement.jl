@@ -141,6 +141,8 @@ function isone(A::OneElementMatrix)
     isone(getindex_value(A))
 end
 
+-(O::OneElement) = OneElement(-O.val, O.ind, O.axes)
+
 *(x::OneElement, b::Number) = OneElement(x.val * b, x.ind, x.axes)
 *(b::Number, x::OneElement) = OneElement(b * x.val, x.ind, x.axes)
 /(x::OneElement, b::Number) = OneElement(x.val / b, x.ind, x.axes)

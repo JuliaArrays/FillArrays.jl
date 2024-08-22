@@ -2171,6 +2171,7 @@ end
     @test FillArrays.nzind(e₁) == CartesianIndex(2)
     @test e₁[2] === e₁[2,1] === e₁[2,1,1] === 1
     @test_throws BoundsError e₁[6]
+    @test -e₁ === OneElement(-1, 2, 5)
 
     f₁ = AbstractArray{Float64}(e₁)
     @test f₁ isa OneElement{Float64,1}
@@ -2190,6 +2191,7 @@ end
     V = OneElement(2, (2,3), (3,4))
     @test V == [0 0 0 0; 0 0 2 0; 0 0 0 0]
     @test FillArrays.nzind(V) == CartesianIndex(2,3)
+    @test -V == OneElement(-2, (2,3), (3,4))
 
     Vf = AbstractArray{Float64}(V)
     @test Vf isa OneElement{Float64,2}
