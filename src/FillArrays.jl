@@ -607,7 +607,7 @@ diff(x::AbstractFillVector{T}) where T = Zeros{T}(length(x)-1)
 # unique
 #########
 
-unique(x::AbstractFill{T}) where T = isempty(x) ? T[] : T[getindex_value(x)]
+unique(x::AbstractFill{T}) where T = fillsimilar(x, Int(!isempty(x)))
 allunique(x::AbstractFill) = length(x) < 2
 
 #########
