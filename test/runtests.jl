@@ -2876,8 +2876,12 @@ end
 @testset "sqrt/cbrt" begin
     F = Fill(4, 4, 4)
     @test sqrt(F)^2 ≈ F
+    F = Fill(4+4im, 4, 4)
+    @test sqrt(F)^2 ≈ F
+    F = Fill(-4, 4, 4)
     @test cbrt(F)^3 ≈ F
 
+    # avoid overflow
     F = Fill(4, typemax(Int), typemax(Int))
     @test sqrt(F)^2 ≈ F
     @test cbrt(F)^3 ≈ F
