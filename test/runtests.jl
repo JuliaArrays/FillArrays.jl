@@ -2873,7 +2873,12 @@ end
     @test tril(Z, 2) === Z
 end
 
-@testset "sqrt" begin
+@testset "sqrt/cbrt" begin
     F = Fill(4, 4, 4)
-    @test sqrt(F)^2 == F
+    @test sqrt(F)^2 ≈ F
+    @test cbrt(F)^3 ≈ F
+
+    F = Fill(4, typemax(Int), typemax(Int))
+    @test sqrt(F)^2 ≈ F
+    @test cbrt(F)^3 ≈ F
 end
