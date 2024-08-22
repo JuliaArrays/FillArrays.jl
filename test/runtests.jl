@@ -2885,4 +2885,9 @@ end
     F = Fill(4, typemax(Int), typemax(Int))
     @test sqrt(F)^2 ≈ F
     @test cbrt(F)^3 ≈ F
+
+    # zeros
+    F = Zeros(4, 4)
+    @test sqrt(F)^2 == F
+    @test cbrt(F)^3 == F
 end
