@@ -2701,7 +2701,7 @@ end
     end
 
     @testset "issymmetric/ishermitian" begin
-        for el in (2, 3+0im, 4+5im), size in [(3,3), (3,4)]
+        for el in (2, 3+0im, 4+5im, SMatrix{2,2}(1:4), SMatrix{2,3}(1:6)), size in [(3,3), (3,4)]
             O = OneElement(el, (2,2), size)
             A = Array(O)
             @test issymmetric(O) == issymmetric(A)

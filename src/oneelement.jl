@@ -393,8 +393,8 @@ function triu(A::OneElementMatrix, k::Integer=0)
 end
 
 # issymmetric
-issymmetric(O::OneElement) = axes(O,1) == axes(O,2) && isdiag(O) && (!all(in.(O.ind, axes(O))) || issymmetric(getindex_value(O)))
-ishermitian(O::OneElement) = axes(O,1) == axes(O,2) && isdiag(O) && (!all(in.(O.ind, axes(O))) || ishermitian(getindex_value(O)))
+issymmetric(O::OneElement) = axes(O,1) == axes(O,2) && isdiag(O) && issymmetric(getindex_value(O))
+ishermitian(O::OneElement) = axes(O,1) == axes(O,2) && isdiag(O) && ishermitian(getindex_value(O))
 
 # broadcast
 
