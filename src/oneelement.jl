@@ -392,6 +392,10 @@ function triu(A::OneElementMatrix, k::Integer=0)
     OneElement(nzband < k ? zero(A.val) : A.val, A.ind, axes(A))
 end
 
+# issymmetric
+issymmetric(O::OneElement) = axes(O,1) == axes(O,2) && isdiag(O) && (!all(in.(O.ind, axes(O))) || issymmetric(getindex_value(O)))
+ishermitian(O::OneElement) = axes(O,1) == axes(O,2) && isdiag(O) && (!all(in.(O.ind, axes(O))) || ishermitian(getindex_value(O)))
+
 # broadcast
 
 function broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::OneElement{<:Any,N}) where {N}
