@@ -2701,19 +2701,29 @@ end
     end
 
     @testset "sum" begin
-        O = OneElement(Int8(2),3,4)
-        @test @inferred(sum(O)) === 2
-        O = OneElement(3.0,5,4)
-        @test @inferred(sum(O)) === 0.0
-        O = OneElement(3.0,0,0)
-        @test @inferred(sum(O)) === 0.0
+        @testset "OneElement($v, $ind, $sz)" for ((v, ind, sz), s) in (
+                                    ((Int8(2), 3, 4), 2),
+                                    ((3.0, 5, 4), 0.0),
+                                    ((3.0, 0, 0), 0.0),
+                                    ((SMatrix{2,2}(1:4), (4, 2), (12,6)), SMatrix{2,2}(1:4)),
+                                )
+            O = OneElement(v,ind,sz)
+            @test @inferred(sum(O)) === s
+            @test @inferred(sum(O, init=sum((zero(v),)))) === s
+            @test @inferred(sum(x->1, O, init=0)) === sum(Fill(1, axes(O)), init=0)
+        end
 
-        for O in (OneElement(Int8(2), (1,2), (2,4)),
+        @testset for O in (OneElement(Int8(2), (1,2), (2,4)),
                     OneElement(3, (1,2,3), (2,4,4)),
-                    OneElement(2.0, (3,2,5), (2,3,2)))
+                    OneElement(2.0, (3,2,5), (2,3,2)),
+                    OneElement(SMatrix{2,2}(1:4), (1,2), (2,4)),
+                )
             A = Array(O)
+            init = sum((zero(FillArrays.getindex_value(O)),))
             for i in 1:3
                 @test @inferred(sum(O, dims=i)) == sum(A, dims=i)
+                @test @inferred(sum(O, dims=i, init=init)) == sum(A, dims=i, init=init)
+                @test @inferred(sum(x->1, O, dims=i, init=0)) == sum(Fill(1, axes(O)), dims=i, init=0)
             end
             @test @inferred(sum(O, dims=1:1)) == sum(A, dims=1:1)
             @test @inferred(sum(O, dims=1:2)) == sum(A, dims=1:2)
@@ -2723,6 +2733,15 @@ end
             @test @inferred(sum(O, dims=(1,3))) == sum(A, dims=(1,3))
             @test @inferred(sum(O, dims=(2,3))) == sum(A, dims=(2,3))
             @test @inferred(sum(O, dims=(1,2,3))) == sum(A, dims=(1,2,3))
+            @test @inferred(sum(O, dims=1:1, init=init)) == sum(A, dims=1:1, init=init)
+            @test @inferred(sum(O, dims=1:2, init=init)) == sum(A, dims=1:2, init=init)
+            @test @inferred(sum(O, dims=1:3, init=init)) == sum(A, dims=1:3, init=init)
+            @test @inferred(sum(O, dims=(1,), init=init)) == sum(A, dims=(1,), init=init)
+            @test @inferred(sum(O, dims=(1,2), init=init)) == sum(A, dims=(1,2), init=init)
+            @test @inferred(sum(O, dims=(1,3), init=init)) == sum(A, dims=(1,3), init=init)
+            @test @inferred(sum(O, dims=(2,3), init=init)) == sum(A, dims=(2,3), init=init)
+            @test @inferred(sum(O, dims=(1,2,3), init=init)) == sum(A, dims=(1,2,3), init=init)
+            @test @inferred(sum(x->1, O, dims=(1,2,3), init=0)) == sum(Fill(1, axes(O)), dims=(1,2,3), init=0)
         end
     end
 end
