@@ -394,14 +394,10 @@ end
 
 # broadcast
 
-function broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::OneElement{<:Any,N}) where {N}
-    OneElement(conj(r.val), r.ind, axes(r))
-end
-function broadcasted(::DefaultArrayStyle{N}, ::typeof(real), r::OneElement{<:Any,N}) where {N}
-    OneElement(real(r.val), r.ind, axes(r))
-end
-function broadcasted(::DefaultArrayStyle{N}, ::typeof(imag), r::OneElement{<:Any,N}) where {N}
-    OneElement(imag(r.val), r.ind, axes(r))
+for f in (:abs, :abs2, :conj, :real, :imag)
+    @eval function broadcasted(::DefaultArrayStyle{N}, ::typeof($f), r::OneElement{<:Any,N}) where {N}
+        OneElement($f(r.val), r.ind, axes(r))
+    end
 end
 function broadcasted(::DefaultArrayStyle{N}, ::typeof(^), r::OneElement{<:Any,N}, x::Number) where {N}
     OneElement(r.val^x, r.ind, axes(r))
