@@ -2701,15 +2701,20 @@ end
     end
 
     @testset "sum" begin
-        @testset "OneElement($v, $ind, $sz)" for ((v, ind, sz), s) in (
-                                    ((Int8(2), 3, 4), 2),
-                                    ((3.0, 5, 4), 0.0),
-                                    ((3.0, 0, 0), 0.0),
-                                    ((SMatrix{2,2}(1:4), (4, 2), (12,6)), SMatrix{2,2}(1:4)),
+        @testset "OneElement($v, $ind, $sz)" for (v, ind, sz) in (
+                                    (Int8(2), 3, 4),
+                                    (3.0, 5, 4),
+                                    (3.0, 0, 0),
+                                    (SMatrix{2,2}(1:4), (4, 2), (12,6)),
                                 )
             O = OneElement(v,ind,sz)
-            @test @inferred(sum(O)) === s
-            @test @inferred(sum(O, init=sum((zero(v),)))) === s
+            A = Array(O)
+            if VERSION >= v"1.10"
+                @test @inferred(sum(O)) === sum(A)
+            else
+                @test @inferred(sum(O)) == sum(A)
+            end
+            @test @inferred(sum(O, init=zero(eltype(O)))) === sum(A, init=zero(eltype(O)))
             @test @inferred(sum(x->1, O, init=0)) === sum(Fill(1, axes(O)), init=0)
         end
 
