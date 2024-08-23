@@ -392,6 +392,14 @@ function triu(A::OneElementMatrix, k::Integer=0)
     OneElement(nzband < k ? zero(A.val) : A.val, A.ind, axes(A))
 end
 
+# diag
+function diag(O::OneElementMatrix, k::Integer=0)
+    Base.require_one_based_indexing(O)
+    len = length(diagind(O, k))
+    ind = O.ind[2] - O.ind[1] == k ? (k >= 0 ? O.ind[2] - k : O.ind[1] + k) : len + 1
+    OneElement(getindex_value(O), ind, len)
+end
+
 # broadcast
 
 function broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::OneElement{<:Any,N}) where {N}

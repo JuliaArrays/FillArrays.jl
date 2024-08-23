@@ -2699,6 +2699,16 @@ end
         B = OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))
         @test repr(B) == "OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))"
     end
+
+    @testset "diag" begin
+        @testset for sz in [(0,0), (0,1), (1,0), (1,1), (4,4), (4,6), (6,3)], ind in CartesianIndices(sz)
+            O = OneElement(4, Tuple(ind), sz)
+            @testset for k in -maximum(sz):maximum(sz)
+                @test diag(O, k) == diag(Array(O), k)
+                @test diag(O, k) isa OneElement{Int,1}
+            end
+        end
+    end
 end
 
 @testset "repeat" begin
