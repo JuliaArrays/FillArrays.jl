@@ -119,6 +119,7 @@ _isfill(f::Ref) = true
 _isfill(::Any) = false
 
 _broadcast_maybecopy(bc::Broadcast.Broadcasted{<:AbstractFillStyle}) = copy(bc)
+_broadcast_maybecopy(bc::Broadcast.Broadcasted) = Broadcast.broadcasted(bc.f, map(_broadcast_maybecopy, bc.args)...)
 _broadcast_maybecopy(x) = x
 
 function _fallback_copy(bc)
