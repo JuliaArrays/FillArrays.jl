@@ -34,7 +34,7 @@ OneElement{T}(val, inds::NTuple{N,Int}, sz::NTuple{N,Integer}) where {T,N} = One
 OneElement{T}(val, inds::Int, sz::Int) where T = OneElement{T}(val, (inds,), (sz,))
 
 """
-    OneElement{T}(val, ind::Int, n::Int)
+    OneElement{T}(ind::Int, n::Int)
 
 Creates a length `n` vector where the `ind` entry is equal to `one(T)`, and all other entries are zero.
 """
