@@ -1199,25 +1199,40 @@ end
     end
 
     @testset "preserve 0d" begin
-        for f in (real, imag, conj),
-            (F, A) in ((Fill(4 + 5im), fill(4 + 5im)),
-                            (Zeros{ComplexF64}(), zeros(ComplexF64)),
-                            (Zeros(), zeros()),
-                            (Ones(), ones()),
-                            (Ones{ComplexF64}(), ones(ComplexF64)),
-                            )
+        @testset for f in (real, imag, conj), (F, A) in (
+                    (Fill(4), fill(4)),
+                    (Fill(4 + 5im), fill(4 + 5im)),
+                    (Fill(SMatrix{2,2,ComplexF64,4}(fill(4 + 5im, 4))), fill(SMatrix{2,2,ComplexF64,4}(fill(4 + 5im, 4)))),
+                    (Zeros{ComplexF64}(), zeros(ComplexF64)),
+                    (Zeros(), zeros()),
+                    (Ones(), ones()),
+                    (Ones{ComplexF64}(), ones(ComplexF64)),
+                    )
             x = f(F)
             y = f(A)
             @test x == y
+            @test eltype(x) == eltype(y)
             @test x isa FillArrays.AbstractFill
-            if F[] isa Real
+            if F isa Ones
                 if f === imag
                     @test x isa Zeros
                 else
-                    @test x isa typeof(F)
+                    @test x isa Ones
+                end
+            end
+            if F[] isa Real
+                if f === imag
+                    @test x isa Zeros
                 end
             end
         end
+    end
+
+    @testset "issue #40" begin
+        f(x) = x
+        g(x, y) = x
+        F = Fill(1, 2)
+        @test g.(F, "a") === f.(F)
     end
 end
 
