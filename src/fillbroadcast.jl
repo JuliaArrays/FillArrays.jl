@@ -101,14 +101,14 @@ has_static_value(x::Broadcast.Broadcasted) = all(has_static_value, x.args)
 function _iszeros(bc::Broadcast.Broadcasted)
     all(has_static_value, bc.args) && _iszero(_getindex_value(bc))
 end
-# conservative check for zeros. In most cases we can't really compare with zero
+# conservative check for zeros. In most cases, there isn't a zero element to compare with
 _iszero(x::Union{Number, AbstractArray}) = iszero(x)
 _iszero(_) = false
 
 function _isones(bc::Broadcast.Broadcasted)
     all(has_static_value, bc.args) && _isone(_getindex_value(bc))
 end
-# conservative check for ones. In most cases we can't really compare with one
+# conservative check for ones. In most cases, there isn't a unit element to compare with
 _isone(x::Union{Number, AbstractArray}) = isone(x)
 _isone(_) = false
 
