@@ -1196,6 +1196,11 @@ end
 
     @testset "0d" begin
         @test real.(Fill(2)) == real.(fill(2))
+        @test (@. 2 * Fill(2) * 2) == (@. 2 * fill(2) * 2)
+        for (F, A) in ((Fill(2), fill(2)), (Zeros(), zeros()), (Ones(), ones()))
+            @test F * 2 == A * 2
+            @test 2 * F == 2 * A
+        end
     end
 
     @testset "preserve 0d" begin
