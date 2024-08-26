@@ -73,22 +73,79 @@ function mapreduce(f, op, A::AbstractFill, B::AbstractFill, Cs::AbstractArray...
 end
 
 
-### Unary broadcasting
+## BroadcastStyle
 
-function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,N}
-    return Fill(op(getindex_value(r)), axes(r))
+abstract type AbstractFillStyle{N} <: Broadcast.AbstractArrayStyle{N} end
+struct FillStyle{N} <: AbstractFillStyle{N} end
+struct ZerosStyle{N} <: AbstractFillStyle{N} end
+FillStyle{N}(::Val{M}) where {N,M} = FillStyle{M}()
+ZerosStyle{N}(::Val{M}) where {N,M} = ZerosStyle{M}()
+Broadcast.BroadcastStyle(::Type{<:AbstractFill{<:Any,N}}) where {N} = FillStyle{N}()
+Broadcast.BroadcastStyle(::Type{<:AbstractZeros{<:Any,N}}) where {N} = ZerosStyle{N}()
+Broadcast.BroadcastStyle(::FillStyle{M}, ::ZerosStyle{N}) where {M,N} = FillStyle{max(M,N)}()
+Broadcast.BroadcastStyle(S::LinearAlgebra.StructuredMatrixStyle, ::ZerosStyle{2}) = S
+Broadcast.BroadcastStyle(S::LinearAlgebra.StructuredMatrixStyle, ::ZerosStyle{1}) = S
+Broadcast.BroadcastStyle(S::LinearAlgebra.StructuredMatrixStyle, ::ZerosStyle{0}) = S
+
+_getindex_value(f::AbstractFill) = getindex_value(f)
+_getindex_value(x::Number) = x
+_getindex_value(x::Ref) = x[]
+function _getindex_value(bc::Broadcast.Broadcasted)
+    bc.f(map(_getindex_value, bc.args)...)
 end
 
-broadcasted(::DefaultArrayStyle, ::typeof(+), r::AbstractZeros) = r
-broadcasted(::DefaultArrayStyle, ::typeof(-), r::AbstractZeros) = r
-broadcasted(::DefaultArrayStyle, ::typeof(+), r::AbstractOnes) = r
+has_static_value(x) = false
+has_static_value(x::Union{AbstractZeros, AbstractOnes}) = true
+has_static_value(x::Broadcast.Broadcasted) = all(has_static_value, x.args)
 
-broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::AbstractZeros{T,N}) where {T,N} = r
-broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::AbstractOnes{T,N}) where {T,N} = r
-broadcasted(::DefaultArrayStyle{N}, ::typeof(real), r::AbstractZeros{T,N}) where {T,N} = Zeros{real(T)}(axes(r))
-broadcasted(::DefaultArrayStyle{N}, ::typeof(real), r::AbstractOnes{T,N}) where {T,N} = Ones{real(T)}(axes(r))
-broadcasted(::DefaultArrayStyle{N}, ::typeof(imag), r::AbstractZeros{T,N}) where {T,N} = Zeros{real(T)}(axes(r))
-broadcasted(::DefaultArrayStyle{N}, ::typeof(imag), r::AbstractOnes{T,N}) where {T,N} = Zeros{real(T)}(axes(r))
+function _iszeros(bc::Broadcast.Broadcasted)
+    all(has_static_value, bc.args) && _iszero(_getindex_value(bc))
+end
+# conservative check for zeros. In most cases we can't really compare with zero
+_iszero(x::Union{Number, AbstractArray}) = iszero(x)
+_iszero(_) = false
+
+function _isones(bc::Broadcast.Broadcasted)
+    all(has_static_value, bc.args) && _isone(_getindex_value(bc))
+end
+# conservative check for ones. In most cases we can't really compare with one
+_isone(x::Union{Number, AbstractArray}) = isone(x)
+_isone(_) = false
+
+_isfill(bc::Broadcast.Broadcasted) = all(_isfill, bc.args)
+_isfill(f::AbstractFill) = true
+_isfill(f::Number) = true
+_isfill(f::Ref) = true
+_isfill(::Any) = false
+
+function Base.copy(bc::Broadcast.Broadcasted{<:AbstractFillStyle{N}}) where {N}
+    if _iszeros(bc)
+        return Zeros(typeof(_getindex_value(bc)), axes(bc))
+    elseif _isones(bc)
+        return Ones(typeof(_getindex_value(bc)), axes(bc))
+    elseif _isfill(bc)
+        return Fill(_getindex_value(bc), axes(bc))
+    else
+        # fallback style
+        S = Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{N}}
+        copy(convert(S, bc))
+    end
+end
+# make the zero-dimensional case consistent with Base
+function Base.copy(bc::Broadcast.Broadcasted{<:AbstractFillStyle{0}})
+    S = Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{0}}
+    copy(convert(S, bc))
+end
+
+# some cases that preserve 0d
+function broadcast_preserving_0d(f, As...)
+    bc = Base.broadcasted(f, As...)
+    r = copy(bc)
+    length(axes(bc)) == 0 ? Fill(r) : r
+end
+for f in (:real, :imag, :conj)
+    @eval ($f)(A::AbstractFill) = broadcast_preserving_0d($f, A)
+end
 
 ### Binary broadcasting
 
@@ -99,12 +156,6 @@ broadcasted_zeros(f, a, elt, ax) = Zeros{elt}(ax)
 broadcasted_zeros(f, a, b, elt, ax) = Zeros{elt}(ax)
 broadcasted_ones(f, a, elt, ax) = Ones{elt}(ax)
 broadcasted_ones(f, a, b, elt, ax) = Ones{elt}(ax)
-
-function broadcasted(::DefaultArrayStyle, op, a::AbstractFill, b::AbstractFill)
-    val = op(getindex_value(a), getindex_value(b))
-    ax = broadcast_shape(axes(a), axes(b))
-    return broadcasted_fill(op, a, b, val, ax)
-end
 
 function _broadcasted_zeros(f, a, b)
   elt = Base.Broadcast.combine_eltypes(f, (a, b))
@@ -122,57 +173,40 @@ function _broadcasted_nan(f, a, b)
   return broadcasted_fill(f, a, b, val, ax)
 end
 
-broadcasted(::DefaultArrayStyle, ::typeof(+), a::AbstractZeros, b::AbstractZeros) = _broadcasted_zeros(+, a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(+), a::AbstractOnes, b::AbstractZeros) = _broadcasted_ones(+, a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(+), a::AbstractZeros, b::AbstractOnes) = _broadcasted_ones(+, a, b)
-
-broadcasted(::DefaultArrayStyle, ::typeof(-), a::AbstractZeros, b::AbstractZeros) = _broadcasted_zeros(-, a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(-), a::AbstractOnes, b::AbstractZeros) = _broadcasted_ones(-, a, b)
-broadcasted(::DefaultArrayStyle, ::typeof(-), a::AbstractOnes, b::AbstractOnes) = _broadcasted_zeros(-, a, b)
-
-broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::AbstractZerosVector, b::AbstractZerosVector) = _broadcasted_zeros(+, a, b)
-broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::AbstractOnesVector, b::AbstractZerosVector) = _broadcasted_ones(+, a, b)
-broadcasted(::DefaultArrayStyle{1}, ::typeof(+), a::AbstractZerosVector, b::AbstractOnesVector) = _broadcasted_ones(+, a, b)
-
-broadcasted(::DefaultArrayStyle{1}, ::typeof(-), a::AbstractZerosVector, b::AbstractZerosVector) = _broadcasted_zeros(-, a, b)
-broadcasted(::DefaultArrayStyle{1}, ::typeof(-), a::AbstractOnesVector, b::AbstractZerosVector) = _broadcasted_ones(-, a, b)
-
-
-broadcasted(::DefaultArrayStyle, ::typeof(*), a::AbstractZeros, b::AbstractZeros) = _broadcasted_zeros(*, a, b)
-
 # In following, need to restrict to <: Number as otherwise we cannot infer zero from type
 # TODO: generalise to things like SVector
 for op in (:*, :/)
     @eval begin
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractZeros, b::AbstractOnes) = _broadcasted_zeros($op, a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractZeros, b::AbstractFill{<:Number}) = _broadcasted_zeros($op, a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractZeros, b::Number) = _broadcasted_zeros($op, a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractZeros, b::AbstractRange) = _broadcasted_zeros($op, a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractZeros, b::AbstractArray{<:Number}) = _broadcasted_zeros($op, a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractZeros, b::Base.Broadcast.Broadcasted) = _broadcasted_zeros($op, a, b)
-        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractZeros, b::AbstractRange) = _broadcasted_zeros($op, a, b)
+        broadcasted(::typeof($op), a::AbstractZeros, b::AbstractFill{<:Number}) = _broadcasted_zeros($op, a, b)
+        broadcasted(::typeof($op), a::AbstractZeros, b::Number) = _broadcasted_zeros($op, a, b)
+        broadcasted(::typeof($op), a::AbstractZeros, b::AbstractOnes) = _broadcasted_zeros($op, a, b)
+        broadcasted(::typeof($op), a::AbstractZeros, b::AbstractRange) = _broadcasted_zeros($op, a, b)
+        broadcasted(::typeof($op), a::AbstractZeros, b::AbstractArray{<:Number}) = _broadcasted_zeros($op, a, b)
+        broadcasted(::typeof($op), a::AbstractZeros, b::Base.Broadcast.Broadcasted) = _broadcasted_zeros($op, a, b)
     end
 end
 
 for op in (:*, :\)
     @eval begin
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractOnes, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractFill{<:Number}, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Number, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractRange, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractArray{<:Number}, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
-        broadcasted(::DefaultArrayStyle, ::typeof($op), a::Base.Broadcast.Broadcasted, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
-        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractRange, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
+        broadcasted(::typeof($op), a::AbstractOnes, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
+        broadcasted(::typeof($op), a::AbstractFill{<:Number}, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
+        broadcasted(::typeof($op), a::Number, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
+        broadcasted(::typeof($op), a::AbstractRange, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
+        broadcasted(::typeof($op), a::AbstractArray{<:Number}, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
+        broadcasted(::typeof($op), a::Base.Broadcast.Broadcasted, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
     end
 end
+broadcasted(::typeof(*), a::AbstractZeros, b::AbstractZeros) = _broadcasted_zeros(*, a, b)
+broadcasted(::typeof(/), a::AbstractZeros, b::AbstractZeros) = _broadcasted_nan(/, a, b)
+broadcasted(::typeof(\), a::AbstractZeros, b::AbstractZeros) = _broadcasted_nan(\, a, b)
 
-for op in (:*, :/, :\)
-    @eval broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractOnes, b::AbstractOnes) = _broadcasted_ones($op, a, b)
-end
+# for op in (:*, :/, :\)
+#     @eval broadcasted(::typeof($op), a::AbstractOnes, b::AbstractOnes) = _broadcasted_ones($op, a, b)
+# end
 
-for op in (:/, :\)
-    @eval broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractZeros{<:Number}, b::AbstractZeros{<:Number}) = _broadcasted_nan($op, a, b)
-end
+# for op in (:/, :\)
+#     @eval broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractZeros{<:Number}, b::AbstractZeros{<:Number}) = _broadcasted_nan($op, a, b)
+# end
 
 # special case due to missing converts for ranges
 _range_convert(::Type{AbstractVector{T}}, a::AbstractRange{T}) where T = a
@@ -205,13 +239,13 @@ _range_convert(::Type{AbstractVector{T}}, a::ZerosVector) where T = ZerosVector{
 #     end
 # end
 
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractOnesVector, b::AbstractRange)
+function broadcasted(::FillStyle{1}, ::typeof(*), a::AbstractOnes, b::AbstractRange)
     broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
     TT = typeof(zero(eltype(a)) * zero(eltype(b)))
     return _range_convert(AbstractVector{TT}, b)
 end
 
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractOnesVector)
+function broadcasted(::FillStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractOnes)
     broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
     TT = typeof(zero(eltype(a)) * zero(eltype(b)))
     return _range_convert(AbstractVector{TT}, a)
@@ -219,51 +253,46 @@ end
 
 for op in (:+, :-)
     @eval begin
-        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector, b::AbstractZerosVector)
-            broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
+        function broadcasted(::typeof($op), a::AbstractVector, b::AbstractZerosVector)
+            ax = broadcast_shape(axes(a), axes(b))
+            ax == axes(a) || throw(ArgumentError("cannot broadcast an array with size $(size(a)) with $b"))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
             # Use `TT ∘ (+)` to fix AD issues with `broadcasted(TT, x)`
             eltype(a) === TT ? a : broadcasted(TT ∘ (+), a)
         end
-        function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractZerosVector, b::AbstractVector)
-            broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $a to a Vector first."))
+        function broadcasted(::typeof($op), a::AbstractZerosVector, b::AbstractVector)
+            ax = broadcast_shape(axes(a), axes(b))
+            ax == axes(b) || throw(ArgumentError("cannot broadcast $a with an array with size $(size(b))"))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
             $op === (+) && eltype(b) === TT ? b : broadcasted(TT ∘ ($op), b)
         end
-
-        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractFillVector, b::AbstractZerosVector) =
-            Base.invoke(broadcasted, Tuple{DefaultArrayStyle, typeof($op), AbstractFill, AbstractFill}, DefaultArrayStyle{1}(), $op, a, b)
-
-        broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractZerosVector, b::AbstractFillVector) =
-            Base.invoke(broadcasted, Tuple{DefaultArrayStyle, typeof($op), AbstractFill, AbstractFill}, DefaultArrayStyle{1}(), $op, a, b)
+        function broadcasted(::typeof($op), a::AbstractZerosVector, b::AbstractZerosVector)
+            ax = broadcast_shape(axes(a), axes(b))
+            TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
+            Zeros(TT, ax)
+        end
     end
 end
 
 # Need to prevent array-valued fills from broadcasting over entry
-_broadcast_getindex_value(a::AbstractFill{<:Number}) = getindex_value(a)
-_broadcast_getindex_value(a::AbstractFill) = Ref(getindex_value(a))
+_mayberef(x) = Ref(x)
+_mayberef(x::Number) = x
 
-
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractFill, b::AbstractRange)
+function broadcasted(::FillStyle{1}, ::typeof(*), a::AbstractFill, b::AbstractRange)
     broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-    return broadcasted(*, _broadcast_getindex_value(a), b)
+    return broadcasted(*, _mayberef(getindex_value(a)), b)
 end
 
-function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractFill)
+function broadcasted(::FillStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractFill)
     broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
-    return broadcasted(*, a, _broadcast_getindex_value(b))
+    return broadcasted(*, a, _mayberef(getindex_value(b)))
 end
-
-broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Number) where {T,N} = broadcasted_fill(op, r, op(getindex_value(r),x), axes(r))
-broadcasted(::DefaultArrayStyle{N}, op, x::Number, r::AbstractFill{T,N}) where {T,N} = broadcasted_fill(op, r, op(x, getindex_value(r)), axes(r))
-broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Ref) where {T,N} = broadcasted_fill(op, r, op(getindex_value(r),x[]), axes(r))
-broadcasted(::DefaultArrayStyle{N}, op, x::Ref, r::AbstractFill{T,N}) where {T,N} = broadcasted_fill(op, r, op(x[], getindex_value(r)), axes(r))
 
 # support AbstractFill .^ k
-broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractFill{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = broadcasted_fill(op, r, getindex_value(r)^k, axes(r))
-broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractOnes{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = broadcasted_ones(op, r, T, axes(r))
-broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractZeros{T,N}, ::Base.RefValue{Val{0}}) where {T,N} = broadcasted_ones(op, r, T, axes(r))
-broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractZeros{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = broadcasted_zeros(op, r, T, axes(r))
+broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractFill{T,N}, ::Val{k}) where {T,N,k} = broadcasted_fill(op, r, getindex_value(r)^k, axes(r))
+broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractOnes{T,N}, ::Val{k}) where {T,N,k} = broadcasted_ones(op, r, T, axes(r))
+broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractZeros{T,N}, ::Val{0}) where {T,N} = broadcasted_ones(op, r, T, axes(r))
+broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractZeros{T,N}, ::Val{k}) where {T,N,k} = broadcasted_zeros(op, r, T, axes(r))
 
 # supports structured broadcast
 if isdefined(LinearAlgebra, :fzero)
