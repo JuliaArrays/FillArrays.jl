@@ -1243,6 +1243,8 @@ end
     @testset "early binding" begin
         A = ones(2) .+ (x -> rand()).(Fill(2,2))
         @test all(==(A[1]), A)
+        A = ones(1,5) .+ (ones(1) .+ (_ -> rand()).(Fill("vec", 2)))
+        @test all(==(A[1]), A)
     end
 end
 
