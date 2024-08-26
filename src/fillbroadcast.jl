@@ -118,7 +118,18 @@ _isfill(f::Number) = true
 _isfill(f::Ref) = true
 _isfill(::Any) = false
 
-function Base.copy(bc::Broadcast.Broadcasted{<:AbstractFillStyle{N}}) where {N}
+_broadcast_maybecopy(bc::Broadcast.Broadcasted{<:AbstractFillStyle}) = copy(bc)
+_broadcast_maybecopy(x) = x
+
+function _fallback_copy(bc)
+    # treat the fill components
+    bc2 = Base.broadcasted(bc.f, map(_broadcast_maybecopy, bc.args)...)
+    # fallback style
+    S = Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{ndims(bc)}}
+    copy(convert(S, bc2))
+end
+
+function Base.copy(bc::Broadcast.Broadcasted{<:AbstractFillStyle})
     if _iszeros(bc)
         return Zeros(typeof(_getindex_value(bc)), axes(bc))
     elseif _isones(bc)
@@ -126,15 +137,12 @@ function Base.copy(bc::Broadcast.Broadcasted{<:AbstractFillStyle{N}}) where {N}
     elseif _isfill(bc)
         return Fill(_getindex_value(bc), axes(bc))
     else
-        # fallback style
-        S = Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{N}}
-        copy(convert(S, bc))
+        _fallback_copy(bc)
     end
 end
 # make the zero-dimensional case consistent with Base
 function Base.copy(bc::Broadcast.Broadcasted{<:AbstractFillStyle{0}})
-    S = Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{0}}
-    copy(convert(S, bc))
+    _fallback_copy(bc)
 end
 
 # some cases that preserve 0d
