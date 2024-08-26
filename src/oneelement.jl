@@ -17,28 +17,87 @@ const OneElementVector{T,I,A} = OneElement{T,1,I,A}
 const OneElementMatrix{T,I,A} = OneElement{T,2,I,A}
 const OneElementVecOrMat{T,I,A} = Union{OneElementVector{T,I,A}, OneElementMatrix{T,I,A}}
 
+"""
+    OneElement(val, inds::NTuple{N,Int}, sz::NTuple{N,Integer})
+
+Create an array with size `sz` where the index `ind` is set to `val`, and all other entries are zero.
+
+# Examples
+```jldoctest
+julia> OneElement(3, (1,2), (2,2))
+2×2 OneElement{Int64, 2, Tuple{Int64, Int64}, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}:
+ ⋅  3
+ ⋅  ⋅
+```
+"""
 OneElement(val, inds::NTuple{N,Int}, sz::NTuple{N,Integer}) where N = OneElement(val, inds, oneto.(sz))
+
 """
     OneElement(val, ind::Int, n::Int)
 
-Creates a length `n` vector where the `ind` entry is equal to `val`, and all other entries are zero.
+Create a length-`n` vector where the index `ind` is set to `val`, and all other entries are zero.
+
+# Examples
+```jldoctest
+julia> OneElement(5, 2, 3)
+3-element OneElement{Int64, 1, Tuple{Int64}, Tuple{Base.OneTo{Int64}}}:
+ ⋅
+ 5
+ ⋅
+```
 """
 OneElement(val, ind::Int, len::Int) = OneElement(val, (ind,), (len,))
-"""
-    OneElement(ind::Int, n::Int)
-
-Creates a length `n` vector where the `ind` entry is equal to `1`, and all other entries are zero.
-"""
-OneElement(inds::Int, sz::Int) = OneElement(1, inds, sz)
-OneElement{T}(val, inds::NTuple{N,Int}, sz::NTuple{N,Integer}) where {T,N} = OneElement(convert(T,val), inds, oneto.(sz))
-OneElement{T}(val, inds::Int, sz::Int) where T = OneElement{T}(val, (inds,), (sz,))
 
 """
-    OneElement{T}(val, ind::Int, n::Int)
+    OneElement(ind::Int, n::Int = ind)
+    OneElement{T}(ind::Int, n::Int = ind)
 
-Creates a length `n` vector where the `ind` entry is equal to `one(T)`, and all other entries are zero.
+Create a length-`n` vector where the index `ind` is set to `1` (or `oneunit(T)` in the second form),
+and all other entries are zero. If `n` is unspecified, it is assumed to be equal to `ind`.
+
+# Examples
+```jldoctest
+julia> OneElement(2, 3)
+3-element OneElement{Int64, 1, Tuple{Int64}, Tuple{Base.OneTo{Int64}}}:
+ ⋅
+ 1
+ ⋅
+
+julia> OneElement{Int8}(2)
+2-element OneElement{Int8, 1, Tuple{Int64}, Tuple{Base.OneTo{Int64}}}:
+ ⋅
+ 1
+```
 """
-OneElement{T}(inds::Int, sz::Int) where T = OneElement(one(T), inds, sz)
+OneElement(ind::Int, sz::Int = ind) = OneElement(1, ind, sz)
+OneElement{T}(ind::Int, sz::Int = ind) where {T} = OneElement(oneunit(T), ind, sz)
+OneElement{T}(val, ind::Int, sz::Int) where {T} = OneElement(convert(T,val), ind, sz)
+
+"""
+    OneElement(inds::NTuple{N,Int}, sz::NTuple{N,Integer} = inds)
+    OneElement{T}(inds::NTuple{N,Int}, sz::NTuple{N,Integer} = inds)
+
+Create an array with size `sz`, where the index `inds` is set to `1`
+(or `oneunit(T)` in the second form), and all other entries are zero.
+If `sz` is unspecified, it is assumed to be equal to `inds`.
+
+# Examples
+```jldoctest
+julia> OneElement((1,2), (2,3))
+2×3 OneElement{Int64, 2, Tuple{Int64, Int64}, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}:
+ ⋅  1  ⋅
+ ⋅  ⋅  ⋅
+
+julia> OneElement{Int8}((2,2))
+2×2 OneElement{Int8, 2, Tuple{Int64, Int64}, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}:
+ ⋅  ⋅
+ ⋅  1
+```
+"""
+OneElement(inds::NTuple{N,Int}, sz::NTuple{N,Integer} = inds) where {N} = OneElement(1, inds, sz)
+OneElement{T}(inds::NTuple{N,Int}, sz::NTuple{N,Integer} = inds) where {T,N} = OneElement(oneunit(T), inds, sz)
+OneElement{T}(val, inds::NTuple{N,Int}, sz::NTuple{N,Integer}) where {T,N} = OneElement(convert(T,val), inds, sz)
+
 
 Base.size(A::OneElement) = map(length, A.axes)
 Base.axes(A::OneElement) = A.axes
@@ -435,6 +494,23 @@ permutedims(o::OneElement, dims) = OneElement(o.val, _permute(o.ind, dims), _per
 # show
 _maybesize(t::Tuple{Base.OneTo{Int}, Vararg{Base.OneTo{Int}}}) = size.(t,1)
 _maybesize(t) = t
-Base.show(io::IO, A::OneElement) = print(io, OneElement, "(", A.val, ", ", A.ind, ", ", _maybesize(axes(A)), ")")
-Base.show(io::IO, A::OneElement{<:Any,1,Tuple{Int},Tuple{Base.OneTo{Int}}}) =
-    print(io, OneElement, "(", A.val, ", ", A.ind[1], ", ", size(A,1), ")")
+function Base.show(io::IO, @nospecialize(A::OneElement))
+    # We always print the inds and axes (or size, for Base.OneTo axes)
+    # We print the value only if it isn't 1
+    # this way, we have at least two arguments displayed that are unambiguous
+    print(io, OneElement)
+    isvector = ndims(A) == 1
+    sz = _maybesize(axes(A))
+    hasstandardaxes = sz isa Tuple{Vararg{Integer}}
+    isstandardvector = isvector & hasstandardaxes
+    if hasstandardaxes && eltype(A) != Int && isone(A.val)
+        print(io, "{", eltype(A), "}")
+    end
+    print(io, "(")
+    if !(hasstandardaxes && isone(A.val))
+        print(io, A.val, ", ")
+    end
+    print(io, isstandardvector ? A.ind[1] : A.ind, ", ")
+    print(io, isstandardvector ? sz[1] : sz)
+    print(io,  ")")
+end
