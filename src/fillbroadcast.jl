@@ -209,14 +209,6 @@ broadcasted(::typeof(*), a::AbstractZeros, b::AbstractZeros) = _broadcasted_zero
 broadcasted(::typeof(/), a::AbstractZeros, b::AbstractZeros) = _broadcasted_nan(/, a, b)
 broadcasted(::typeof(\), a::AbstractZeros, b::AbstractZeros) = _broadcasted_nan(\, a, b)
 
-# for op in (:*, :/, :\)
-#     @eval broadcasted(::typeof($op), a::AbstractOnes, b::AbstractOnes) = _broadcasted_ones($op, a, b)
-# end
-
-# for op in (:/, :\)
-#     @eval broadcasted(::DefaultArrayStyle, ::typeof($op), a::AbstractZeros{<:Number}, b::AbstractZeros{<:Number}) = _broadcasted_nan($op, a, b)
-# end
-
 # special case due to missing converts for ranges
 _range_convert(::Type{AbstractVector{T}}, a::AbstractRange{T}) where T = a
 _range_convert(::Type{AbstractVector{T}}, a::AbstractUnitRange) where T = convert(T,first(a)):convert(T,last(a))
