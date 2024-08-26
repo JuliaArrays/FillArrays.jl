@@ -145,6 +145,12 @@ function broadcast_preserving_0d(f, As...)
 end
 for f in (:real, :imag, :conj)
     @eval ($f)(A::AbstractFill) = broadcast_preserving_0d($f, A)
+    @eval ($f)(A::AbstractZeros) = A
+end
+for T in (:AbstractOnes, :(AbstractFill{<:Real}))
+    @eval real(A::$T) = A
+    @eval imag(A::$T) = Zeros{eltype(A)}(axes(A))
+    @eval conj(A::$T) = A
 end
 
 ### Binary broadcasting

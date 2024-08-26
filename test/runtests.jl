@@ -1199,9 +1199,25 @@ end
     end
 
     @testset "preserve 0d" begin
-        @test real(Fill(4 + 5im)) == real(fill(4 + 5im))
-        @test imag(Fill(4 + 5im)) == imag(fill(4 + 5im))
-        @test conj(Fill(4 + 5im)) == conj(fill(4 + 5im))
+        for f in (real, imag, conj),
+            (F, A) in ((Fill(4 + 5im), fill(4 + 5im)),
+                            (Zeros{ComplexF64}(), zeros(ComplexF64)),
+                            (Zeros(), zeros()),
+                            (Ones(), ones()),
+                            (Ones{ComplexF64}(), ones(ComplexF64)),
+                            )
+            x = f(F)
+            y = f(A)
+            @test x == y
+            @test x isa FillArrays.AbstractFill
+            if F[] isa Real
+                if f === imag
+                    @test x isa Zeros
+                else
+                    @test x isa typeof(F)
+                end
+            end
+        end
     end
 end
 
