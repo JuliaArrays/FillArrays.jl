@@ -608,7 +608,7 @@ end
 end
 
 @testset "ishermitian" begin
-    for el in (2, 3+0im, 4+5im), size in [(3,3), (3,4)]
+    @testset for el in (2, 3+0im, 4+5im, [1 2; 3 4], fill(2, 2, 2)), size in [(3,3), (3,4), (0,0), (0,1)]
         @test issymmetric(Fill(el, size...)) == issymmetric(fill(el, size...))
         @test ishermitian(Fill(el, size...)) == ishermitian(fill(el, size...))
     end
@@ -2171,6 +2171,7 @@ end
     @test FillArrays.nzind(e₁) == CartesianIndex(2)
     @test e₁[2] === e₁[2,1] === e₁[2,1,1] === 1
     @test_throws BoundsError e₁[6]
+    @test -e₁ === OneElement(-1, 2, 5)
 
     f₁ = AbstractArray{Float64}(e₁)
     @test f₁ isa OneElement{Float64,1}
@@ -2190,6 +2191,7 @@ end
     V = OneElement(2, (2,3), (3,4))
     @test V == [0 0 0 0; 0 0 2 0; 0 0 0 0]
     @test FillArrays.nzind(V) == CartesianIndex(2,3)
+    @test -V == OneElement(-2, (2,3), (3,4))
 
     Vf = AbstractArray{Float64}(V)
     @test Vf isa OneElement{Float64,2}
@@ -2326,6 +2328,10 @@ end
         end
         O = OneElement(2, (), ())
         @test reshape(O, ()) === O
+
+        O = OneElement(5, 3)
+        @test reshape(O, 1, 3) == reshape(Array(O), 1, 3)
+        @test reshape(reshape(O, 1, 3), 3) == O
     end
 
     @testset "isassigned" begin
@@ -2667,9 +2673,11 @@ end
     end
 
     @testset "broadcasting" begin
-        for v in (OneElement(2, 3, 4), OneElement(2im, (1,2), (3,4)))
+        for v in (OneElement(-2, 3, 4), OneElement(2im, (1,2), (3,4)))
             w = Array(v)
             n = 2
+            @test abs.(v) == abs.(w)
+            @test abs2.(v) == abs2.(w)
             @test real.(v) == real.(w)
             @test imag.(v) == imag.(w)
             @test conj.(v) == conj.(w)
@@ -2715,6 +2723,66 @@ end
                 O2 = OneElement(0, (2,1), (m,n))
                 @test unique(O2) == unique(Array(O2))
                 @test allunique(O2) == allunique(Array(O2))
+            end
+        end
+    end
+
+    @testset "sum" begin
+        @testset "OneElement($v, $ind, $sz)" for (v, ind, sz) in (
+                                    (Int8(2), 3, 4),
+                                    (3.0, 5, 4),
+                                    (3.0, 0, 0),
+                                    (SMatrix{2,2}(1:4), (4, 2), (12,6)),
+                                )
+            O = OneElement(v,ind,sz)
+            A = Array(O)
+            if VERSION >= v"1.10"
+                @test @inferred(sum(O)) === sum(A)
+            else
+                @test @inferred(sum(O)) == sum(A)
+            end
+            @test @inferred(sum(O, init=zero(eltype(O)))) === sum(A, init=zero(eltype(O)))
+            @test @inferred(sum(x->1, O, init=0)) === sum(Fill(1, axes(O)), init=0)
+        end
+
+        @testset for O in (OneElement(Int8(2), (1,2), (2,4)),
+                    OneElement(3, (1,2,3), (2,4,4)),
+                    OneElement(2.0, (3,2,5), (2,3,2)),
+                    OneElement(SMatrix{2,2}(1:4), (1,2), (2,4)),
+                )
+            A = Array(O)
+            init = sum((zero(FillArrays.getindex_value(O)),))
+            for i in 1:3
+                @test @inferred(sum(O, dims=i)) == sum(A, dims=i)
+                @test @inferred(sum(O, dims=i, init=init)) == sum(A, dims=i, init=init)
+                @test @inferred(sum(x->1, O, dims=i, init=0)) == sum(Fill(1, axes(O)), dims=i, init=0)
+            end
+            @test @inferred(sum(O, dims=1:1)) == sum(A, dims=1:1)
+            @test @inferred(sum(O, dims=1:2)) == sum(A, dims=1:2)
+            @test @inferred(sum(O, dims=1:3)) == sum(A, dims=1:3)
+            @test @inferred(sum(O, dims=(1,))) == sum(A, dims=(1,))
+            @test @inferred(sum(O, dims=(1,2))) == sum(A, dims=(1,2))
+            @test @inferred(sum(O, dims=(1,3))) == sum(A, dims=(1,3))
+            @test @inferred(sum(O, dims=(2,3))) == sum(A, dims=(2,3))
+            @test @inferred(sum(O, dims=(1,2,3))) == sum(A, dims=(1,2,3))
+            @test @inferred(sum(O, dims=1:1, init=init)) == sum(A, dims=1:1, init=init)
+            @test @inferred(sum(O, dims=1:2, init=init)) == sum(A, dims=1:2, init=init)
+            @test @inferred(sum(O, dims=1:3, init=init)) == sum(A, dims=1:3, init=init)
+            @test @inferred(sum(O, dims=(1,), init=init)) == sum(A, dims=(1,), init=init)
+            @test @inferred(sum(O, dims=(1,2), init=init)) == sum(A, dims=(1,2), init=init)
+            @test @inferred(sum(O, dims=(1,3), init=init)) == sum(A, dims=(1,3), init=init)
+            @test @inferred(sum(O, dims=(2,3), init=init)) == sum(A, dims=(2,3), init=init)
+            @test @inferred(sum(O, dims=(1,2,3), init=init)) == sum(A, dims=(1,2,3), init=init)
+            @test @inferred(sum(x->1, O, dims=(1,2,3), init=0)) == sum(Fill(1, axes(O)), dims=(1,2,3), init=0)
+        end
+    end
+
+    @testset "diag" begin
+        @testset for sz in [(0,0), (0,1), (1,0), (1,1), (4,4), (4,6), (6,3)], ind in CartesianIndices(sz)
+            O = OneElement(4, Tuple(ind), sz)
+            @testset for k in -maximum(sz):maximum(sz)
+                @test diag(O, k) == diag(Array(O), k)
+                @test diag(O, k) isa OneElement{Int,1}
             end
         end
     end
