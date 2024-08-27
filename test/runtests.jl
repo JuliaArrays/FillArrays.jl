@@ -2669,9 +2669,11 @@ end
     end
 
     @testset "broadcasting" begin
-        for v in (OneElement(2, 3, 4), OneElement(2im, (1,2), (3,4)))
+        for v in (OneElement(-2, 3, 4), OneElement(2im, (1,2), (3,4)))
             w = Array(v)
             n = 2
+            @test abs.(v) == abs.(w)
+            @test abs2.(v) == abs2.(w)
             @test real.(v) == real.(w)
             @test imag.(v) == imag.(w)
             @test conj.(v) == conj.(w)
