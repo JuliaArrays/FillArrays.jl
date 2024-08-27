@@ -608,7 +608,7 @@ end
 end
 
 @testset "ishermitian" begin
-    for el in (2, 3+0im, 4+5im), size in [(3,3), (3,4)]
+    @testset for el in (2, 3+0im, 4+5im, [1 2; 3 4], fill(2, 2, 2)), size in [(3,3), (3,4), (0,0), (0,1)]
         @test issymmetric(Fill(el, size...)) == issymmetric(fill(el, size...))
         @test ishermitian(Fill(el, size...)) == ishermitian(fill(el, size...))
     end
