@@ -34,7 +34,7 @@ OneElement{T}(val, inds::NTuple{N,Int}, sz::NTuple{N,Integer}) where {T,N} = One
 OneElement{T}(val, inds::Int, sz::Int) where T = OneElement{T}(val, (inds,), (sz,))
 
 """
-    OneElement{T}(val, ind::Int, n::Int)
+    OneElement{T}(ind::Int, n::Int)
 
 Creates a length `n` vector where the `ind` entry is equal to `one(T)`, and all other entries are zero.
 """
@@ -140,6 +140,8 @@ function isone(A::OneElementMatrix)
     lenA > 1 && return false
     isone(getindex_value(A))
 end
+
+-(O::OneElement) = OneElement(-O.val, O.ind, O.axes)
 
 *(x::OneElement, b::Number) = OneElement(x.val * b, x.ind, x.axes)
 *(b::Number, x::OneElement) = OneElement(b * x.val, x.ind, x.axes)
@@ -383,6 +385,14 @@ end
 function triu(A::OneElementMatrix, k::Integer=0)
     nzband = A.ind[2] - A.ind[1]
     OneElement(nzband < k ? zero(A.val) : A.val, A.ind, axes(A))
+end
+
+# diag
+function diag(O::OneElementMatrix, k::Integer=0)
+    Base.require_one_based_indexing(O)
+    len = length(diagind(O, k))
+    ind = O.ind[2] - O.ind[1] == k ? (k >= 0 ? O.ind[2] - k : O.ind[1] + k) : len + 1
+    OneElement(getindex_value(O), ind, len)
 end
 
 # broadcast
