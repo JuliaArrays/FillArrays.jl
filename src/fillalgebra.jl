@@ -597,6 +597,6 @@ function eigvecs(A::AbstractFillMatrix{<:Union{Real, Complex}}; sortby = nothing
     return M
 end
 
-function eigen(A::AbstractFillMatrix{<:Number}; sortby = nothing)
+function eigen(A::AbstractFillMatrix{<:Union{Real, Complex}}; sortby = nothing)
     Eigen(eigvals(A; sortby), eigvecs(A; sortby))
 end
