@@ -34,7 +34,7 @@ OneElement{T}(val, inds::NTuple{N,Int}, sz::NTuple{N,Integer}) where {T,N} = One
 OneElement{T}(val, inds::Int, sz::Int) where T = OneElement{T}(val, (inds,), (sz,))
 
 """
-    OneElement{T}(val, ind::Int, n::Int)
+    OneElement{T}(ind::Int, n::Int)
 
 Creates a length `n` vector where the `ind` entry is equal to `one(T)`, and all other entries are zero.
 """
@@ -141,6 +141,8 @@ function isone(A::OneElementMatrix)
     isone(getindex_value(A))
 end
 
+-(O::OneElement) = OneElement(-O.val, O.ind, O.axes)
+
 *(x::OneElement, b::Number) = OneElement(x.val * b, x.ind, x.axes)
 *(b::Number, x::OneElement) = OneElement(b * x.val, x.ind, x.axes)
 /(x::OneElement, b::Number) = OneElement(x.val / b, x.ind, x.axes)
@@ -156,13 +158,6 @@ function *(A::OneElementMatrix, B::OneElementVecOrMat)
     val = valA * valB * (A.ind[2] == B.ind[1])
     OneElement(val, (A.ind[1], B.ind[2:end]...), (axes(A,1), axes(B)[2:end]...))
 end
-
-function *(A::AbstractFillMatrix, x::OneElementVector)
-    check_matmul_sizes(A, x)
-    val = getindex_value(A) * getindex_value(x)
-    Fill(val, (axes(A,1),))
-end
-*(A::AbstractZerosMatrix, x::OneElementVector) = mult_zeros(A, x)
 
 *(A::OneElementMatrix, x::AbstractZerosVector) = mult_zeros(A, x)
 
@@ -392,20 +387,25 @@ function triu(A::OneElementMatrix, k::Integer=0)
     OneElement(nzband < k ? zero(A.val) : A.val, A.ind, axes(A))
 end
 
+
 # issymmetric
 issymmetric(O::OneElement) = axes(O,1) == axes(O,2) && isdiag(O) && issymmetric(getindex_value(O))
 ishermitian(O::OneElement) = axes(O,1) == axes(O,2) && isdiag(O) && ishermitian(getindex_value(O))
 
+# diag
+function diag(O::OneElementMatrix, k::Integer=0)
+    Base.require_one_based_indexing(O)
+    len = length(diagind(O, k))
+    ind = O.ind[2] - O.ind[1] == k ? (k >= 0 ? O.ind[2] - k : O.ind[1] + k) : len + 1
+    OneElement(getindex_value(O), ind, len)
+end
+
 # broadcast
 
-function broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::OneElement{<:Any,N}) where {N}
-    OneElement(conj(r.val), r.ind, axes(r))
-end
-function broadcasted(::DefaultArrayStyle{N}, ::typeof(real), r::OneElement{<:Any,N}) where {N}
-    OneElement(real(r.val), r.ind, axes(r))
-end
-function broadcasted(::DefaultArrayStyle{N}, ::typeof(imag), r::OneElement{<:Any,N}) where {N}
-    OneElement(imag(r.val), r.ind, axes(r))
+for f in (:abs, :abs2, :conj, :real, :imag)
+    @eval function broadcasted(::DefaultArrayStyle{N}, ::typeof($f), r::OneElement{<:Any,N}) where {N}
+        OneElement($f(r.val), r.ind, axes(r))
+    end
 end
 function broadcasted(::DefaultArrayStyle{N}, ::typeof(^), r::OneElement{<:Any,N}, x::Number) where {N}
     OneElement(r.val^x, r.ind, axes(r))
@@ -442,3 +442,13 @@ _maybesize(t) = t
 Base.show(io::IO, A::OneElement) = print(io, OneElement, "(", A.val, ", ", A.ind, ", ", _maybesize(axes(A)), ")")
 Base.show(io::IO, A::OneElement{<:Any,1,Tuple{Int},Tuple{Base.OneTo{Int}}}) =
     print(io, OneElement, "(", A.val, ", ", A.ind[1], ", ", size(A,1), ")")
+
+# mapreduce
+Base.sum(O::OneElement; dims=:, kw...) = _sum(O, dims; kw...)
+_sum(O::OneElement, ::Colon; kw...) = sum((getindex_value(O),); kw...)
+function _sum(O::OneElement, dims; kw...)
+    v = _sum(O, :; kw...)
+    ax = Base.reduced_indices(axes(O), dims)
+    ind = ntuple(x -> x in dims ? first(ax[x]) + (O.ind[x] in axes(O)[x]) - 1 : O.ind[x], ndims(O))
+    OneElement(v, ind, ax)
+end
