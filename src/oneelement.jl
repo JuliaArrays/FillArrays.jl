@@ -159,13 +159,6 @@ function *(A::OneElementMatrix, B::OneElementVecOrMat)
     OneElement(val, (A.ind[1], B.ind[2:end]...), (axes(A,1), axes(B)[2:end]...))
 end
 
-function *(A::AbstractFillMatrix, x::OneElementVector)
-    check_matmul_sizes(A, x)
-    val = getindex_value(A) * getindex_value(x)
-    Fill(val, (axes(A,1),))
-end
-*(A::AbstractZerosMatrix, x::OneElementVector) = mult_zeros(A, x)
-
 *(A::OneElementMatrix, x::AbstractZerosVector) = mult_zeros(A, x)
 
 function *(A::OneElementMatrix, B::AbstractFillVector)
@@ -448,3 +441,13 @@ _maybesize(t) = t
 Base.show(io::IO, A::OneElement) = print(io, OneElement, "(", A.val, ", ", A.ind, ", ", _maybesize(axes(A)), ")")
 Base.show(io::IO, A::OneElement{<:Any,1,Tuple{Int},Tuple{Base.OneTo{Int}}}) =
     print(io, OneElement, "(", A.val, ", ", A.ind[1], ", ", size(A,1), ")")
+
+# mapreduce
+Base.sum(O::OneElement; dims=:, kw...) = _sum(O, dims; kw...)
+_sum(O::OneElement, ::Colon; kw...) = sum((getindex_value(O),); kw...)
+function _sum(O::OneElement, dims; kw...)
+    v = _sum(O, :; kw...)
+    ax = Base.reduced_indices(axes(O), dims)
+    ind = ntuple(x -> x in dims ? first(ax[x]) + (O.ind[x] in axes(O)[x]) - 1 : O.ind[x], ndims(O))
+    OneElement(v, ind, ax)
+end
