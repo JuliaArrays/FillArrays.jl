@@ -2884,7 +2884,9 @@ end
     @test sqrt(F)^2 ≈ F
     F = Fill(-4, 4, 4)
     A = Array(F)
-    @test cbrt(F) ≈ cbrt(A) rtol=1e-5
+    if VERSION >= v"1.11.0-rc3"
+        @test cbrt(F) ≈ cbrt(A) rtol=1e-5
+    end
     @test cbrt(F)^3 ≈ F
 
     # avoid overflow
