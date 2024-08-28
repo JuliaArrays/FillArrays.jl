@@ -1245,7 +1245,7 @@ end
 @testset "unique" begin
     @test unique(Fill(12, 20)) == unique(fill(12, 20))
     @test unique(Fill(1, 0)) == []
-    @test unique(Zeros(0)) isa Vector{Float64}
+    @test unique(Zeros(0)) == Zeros(0)
     @test !allunique(Fill("a", 2))
     @test allunique(Ones(0))
 end
@@ -2706,6 +2706,25 @@ end
         @test repr(B) == "OneElement(2, 1, 3)"
         B = OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))
         @test repr(B) == "OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))"
+    end
+
+    @testset "unique" begin
+        @testset for n in 1:3
+            O = OneElement(5, 2, n)
+            @test unique(O) == unique(Array(O))
+            @test allunique(O) == allunique(Array(O))
+            O = OneElement(0, 2, n)
+            @test unique(O) == unique(Array(O))
+            @test allunique(O) == allunique(Array(O))
+            @testset for m in 1:4
+                O2 = OneElement(2, (2,1), (m,n))
+                @test unique(O2) == unique(Array(O2))
+                @test allunique(O2) == allunique(Array(O2))
+                O2 = OneElement(0, (2,1), (m,n))
+                @test unique(O2) == unique(Array(O2))
+                @test allunique(O2) == allunique(Array(O2))
+            end
+        end
     end
 
     @testset "sum" begin

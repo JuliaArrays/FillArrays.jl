@@ -436,6 +436,14 @@ permutedims(o::OneElementMatrix) = OneElement(o.val, reverse(o.ind), reverse(o.a
 permutedims(o::OneElementVector) = reshape(o, (1, length(o)))
 permutedims(o::OneElement, dims) = OneElement(o.val, _permute(o.ind, dims), _permute(o.axes, dims))
 
+# unique
+function unique(O::OneElement)
+    v = getindex_value(O)
+    len = iszero(v) ? 1 : min(2, length(O))
+    OneElement(getindex_value(O), len, len)
+end
+allunique(O::OneElement) = length(O) <= 1 || (length(O) < 3 && !iszero(getindex_value(O)))
+
 # show
 _maybesize(t::Tuple{Base.OneTo{Int}, Vararg{Base.OneTo{Int}}}) = size.(t,1)
 _maybesize(t) = t
