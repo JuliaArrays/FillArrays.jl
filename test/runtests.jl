@@ -2961,7 +2961,7 @@ end
 end
 
 
-@testset "Diagonal conversion" begin
+@testset "Diagonal conversion (#389)" begin
     @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) isa Diagonal{Int,Vector{Int}}
     @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) == zeros(5,5)
 end
