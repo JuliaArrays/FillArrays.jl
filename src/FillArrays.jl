@@ -532,7 +532,7 @@ end
 Diagonal{T}(A::AbstractFillMatrix) where T = Diagonal{T}(diag(A))
 function convert(::Type{T}, A::AbstractFillMatrix) where T<:Diagonal
     checksquare(A)
-    isdiag(A) ? T(A) : throw(InexactError(:convert, T, A))
+    isdiag(A) ? T(diag(A)) : throw(InexactError(:convert, T, A))
 end
 
 Base.StepRangeLen(F::AbstractFillVector{T}) where T = StepRangeLen(getindex_value(F), zero(T), length(F))

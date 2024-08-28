@@ -2959,3 +2959,9 @@ end
     @test triu(Z, 2) === Z
     @test tril(Z, 2) === Z
 end
+
+
+@testset "Diagonal conversion" begin
+    @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) isa Diagonal{Int,Vector{Int}}
+    @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) == zeros(5,5)
+end
