@@ -2708,6 +2708,23 @@ end
         @test repr(B) == "OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))"
     end
 
+    @testset "issymmetric/ishermitian" begin
+        for el in (2, 3+0im, 4+5im, SMatrix{2,2}(1:4), SMatrix{2,3}(1:6)), size in [(3,3), (3,4)]
+            O = OneElement(el, (2,2), size)
+            A = Array(O)
+            @test issymmetric(O) == issymmetric(A)
+            @test ishermitian(O) == ishermitian(A)
+            O = OneElement(el, (1,2), size)
+            A = Array(O)
+            @test issymmetric(O) == issymmetric(A)
+            @test ishermitian(O) == ishermitian(A)
+            O = OneElement(el, (5,5), size)
+            A = Array(O)
+            @test issymmetric(O) == issymmetric(A)
+            @test ishermitian(O) == ishermitian(A)
+        end
+    end
+
     @testset "unique" begin
         @testset for n in 1:3
             O = OneElement(5, 2, n)

@@ -387,6 +387,11 @@ function triu(A::OneElementMatrix, k::Integer=0)
     OneElement(nzband < k ? zero(A.val) : A.val, A.ind, axes(A))
 end
 
+
+# issymmetric
+issymmetric(O::OneElement) = axes(O,1) == axes(O,2) && isdiag(O) && issymmetric(getindex_value(O))
+ishermitian(O::OneElement) = axes(O,1) == axes(O,2) && isdiag(O) && ishermitian(getindex_value(O))
+
 # diag
 function diag(O::OneElementMatrix, k::Integer=0)
     Base.require_one_based_indexing(O)
