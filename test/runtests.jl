@@ -2960,8 +2960,36 @@ end
     @test tril(Z, 2) === Z
 end
 
-
 @testset "Diagonal conversion (#389)" begin
     @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) isa Diagonal{Int,Vector{Int}}
     @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) == zeros(5,5)
+end
+
+@testset "sqrt/cbrt" begin
+    F = Fill(4, 4, 4)
+    A = Array(F)
+    @test sqrt(F) ≈ sqrt(A) rtol=3e-8
+    @test sqrt(F)^2 ≈ F
+    F = Fill(4+4im, 4, 4)
+    A = Array(F)
+    @test sqrt(F) ≈ sqrt(A) rtol=1e-8
+    @test sqrt(F)^2 ≈ F
+    F = Fill(-4, 4, 4)
+    A = Array(F)
+    if VERSION >= v"1.11.0-rc3"
+        @test cbrt(F) ≈ cbrt(A) rtol=1e-5
+    end
+    @test cbrt(F)^3 ≈ F
+
+    # avoid overflow
+    F = Fill(4, typemax(Int), typemax(Int))
+    @test sqrt(F)^2 ≈ F
+    @test cbrt(F)^3 ≈ F
+
+    # zeros
+    F = Zeros(4, 4)
+    A = Array(F)
+    @test sqrt(F) ≈ sqrt(A) atol=1e-14
+    @test sqrt(F)^2 == F
+    @test cbrt(F)^3 == F
 end
