@@ -2963,6 +2963,8 @@ end
 @testset "Diagonal conversion (#389)" begin
     @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) isa Diagonal{Int,Vector{Int}}
     @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) == zeros(5,5)
+    @test Diagonal{Int}(Zeros(5,5)) ≡ Diagonal(Zeros{Int}(5))
+    @test Diagonal{Int}(Ones(5,5)) ≡ Diagonal(Ones{Int}(5))
 end
 
 @testset "sqrt/cbrt" begin

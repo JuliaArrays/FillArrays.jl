@@ -554,11 +554,13 @@ for (Typ, funcs, func) in ((:AbstractZeros, :zeros, :zero), (:AbstractOnes, :one
     end
 end
 
-# temporary patch. should be a PR(#48895) to LinearAlgebra
-Diagonal{T}(A::AbstractFillMatrix) where T = Diagonal{T}(diag(A))
-function convert(::Type{T}, A::AbstractFillMatrix) where T<:Diagonal
-    checksquare(A)
-    isdiag(A) ? T(diag(A)) : throw(InexactError(:convert, T, A))
+if VERSION < v"1.11-"
+    # temporary patch. should be a PR(#48895) to LinearAlgebra
+    Diagonal{T}(A::AbstractFillMatrix) where T = Diagonal{T}(diag(A))
+    function convert(::Type{T}, A::AbstractFillMatrix) where T<:Diagonal
+        checksquare(A)
+        isdiag(A) ? T(diag(A)) : throw(InexactError(:convert, T, A))
+    end
 end
 
 Base.StepRangeLen(F::AbstractFillVector{T}) where T = StepRangeLen(getindex_value(F), zero(T), length(F))
