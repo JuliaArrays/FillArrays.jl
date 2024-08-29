@@ -608,7 +608,7 @@ end
 end
 
 @testset "ishermitian" begin
-    for el in (2, 3+0im, 4+5im), size in [(3,3), (3,4)]
+    @testset for el in (2, 3+0im, 4+5im, [1 2; 3 4], fill(2, 2, 2)), size in [(3,3), (3,4), (0,0), (0,1)]
         @test issymmetric(Fill(el, size...)) == issymmetric(fill(el, size...))
         @test ishermitian(Fill(el, size...)) == ishermitian(fill(el, size...))
     end
@@ -1245,7 +1245,7 @@ end
 @testset "unique" begin
     @test unique(Fill(12, 20)) == unique(fill(12, 20))
     @test unique(Fill(1, 0)) == []
-    @test unique(Zeros(0)) isa Vector{Float64}
+    @test unique(Zeros(0)) == Zeros(0)
     @test !allunique(Fill("a", 2))
     @test allunique(Ones(0))
 end
@@ -2328,6 +2328,10 @@ end
         end
         O = OneElement(2, (), ())
         @test reshape(O, ()) === O
+
+        O = OneElement(5, 3)
+        @test reshape(O, 1, 3) == reshape(Array(O), 1, 3)
+        @test reshape(reshape(O, 1, 3), 3) == O
     end
 
     @testset "isassigned" begin
@@ -2704,7 +2708,6 @@ end
         @test repr(B) == "OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))"
     end
 
-
     @testset "issymmetric/ishermitian" begin
         for el in (2, 3+0im, 4+5im, SMatrix{2,2}(1:4), SMatrix{2,3}(1:6)), size in [(3,3), (3,4)]
             O = OneElement(el, (2,2), size)
@@ -2721,6 +2724,26 @@ end
             @test ishermitian(O) == ishermitian(A)
         end
     end
+
+    @testset "unique" begin
+        @testset for n in 1:3
+            O = OneElement(5, 2, n)
+            @test unique(O) == unique(Array(O))
+            @test allunique(O) == allunique(Array(O))
+            O = OneElement(0, 2, n)
+            @test unique(O) == unique(Array(O))
+            @test allunique(O) == allunique(Array(O))
+            @testset for m in 1:4
+                O2 = OneElement(2, (2,1), (m,n))
+                @test unique(O2) == unique(Array(O2))
+                @test allunique(O2) == allunique(Array(O2))
+                O2 = OneElement(0, (2,1), (m,n))
+                @test unique(O2) == unique(Array(O2))
+                @test allunique(O2) == allunique(Array(O2))
+            end
+        end
+    end
+
     @testset "sum" begin
         @testset "OneElement($v, $ind, $sz)" for (v, ind, sz) in (
                                     (Int8(2), 3, 4),

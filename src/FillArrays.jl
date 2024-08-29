@@ -66,8 +66,8 @@ end
 rank(F::AbstractFill) = iszero(getindex_value(F)) ? 0 : 1
 IndexStyle(::Type{<:AbstractFill{<:Any,N,<:NTuple{N,Base.OneTo{Int}}}}) where N = IndexLinear()
 
-issymmetric(F::AbstractFillMatrix) = axes(F,1) == axes(F,2)
-ishermitian(F::AbstractFillMatrix) = issymmetric(F) && iszero(imag(getindex_value(F)))
+issymmetric(F::AbstractFillMatrix) = axes(F,1) == axes(F,2) && (isempty(F) || issymmetric(getindex_value(F)))
+ishermitian(F::AbstractFillMatrix) = axes(F,1) == axes(F,2) && (isempty(F) || ishermitian(getindex_value(F)))
 
 Base.IteratorSize(::Type{<:AbstractFill{T,N,Axes}}) where {T,N,Axes} = _IteratorSize(Axes)
 _IteratorSize(::Type{Tuple{}}) = Base.HasShape{0}()
@@ -607,7 +607,7 @@ diff(x::AbstractFillVector{T}) where T = Zeros{T}(length(x)-1)
 # unique
 #########
 
-unique(x::AbstractFill{T}) where T = isempty(x) ? T[] : T[getindex_value(x)]
+unique(x::AbstractFill) = fillsimilar(x, Int(!isempty(x)))
 allunique(x::AbstractFill) = length(x) < 2
 
 #########
