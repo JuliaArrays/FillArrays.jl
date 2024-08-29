@@ -5,6 +5,9 @@ using SparseArrays: SparseVectorUnion
 import Base: convert, kron
 using FillArrays
 using FillArrays: RectDiagonalFill, RectOrDiagonalFill, ZerosVector, ZerosMatrix, getindex_value, AbstractFillVector, _fill_dot
+# Specifying the full namespace is necessary because of https://github.com/JuliaLang/julia/issues/48533
+# See https://github.com/JuliaStats/LogExpFunctions.jl/pull/63
+using FillArrays.LinearAlgebra
 import LinearAlgebra: dot, kron, I
 
 ##################

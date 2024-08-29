@@ -19,7 +19,7 @@ for OP in (:transpose, :adjoint)
 end
 
 permutedims(a::AbstractFillVector) = fillsimilar(a, (1, length(a)))
-permutedims(a::AbstractFillMatrix) = fillsimilar(a, reverse(a.axes))
+permutedims(a::AbstractFillMatrix) = fillsimilar(a, reverse(axes(a)))
 
 function permutedims(B::AbstractFill, perm)
     dimsB = size(B)
@@ -102,10 +102,17 @@ for MT in (:(AbstractMatrix{T}), :(Transpose{<:Any, <:AbstractMatrix{T}}), :(Adj
             :(AbstractTriangular{T}))
     @eval *(a::$MT, b::AbstractZerosVector) where {T} = mult_zeros(a, b)
 end
-for MT in (:(Transpose{<:Any, <:AbstractVector}), :(Adjoint{<:Any, <:AbstractVector}))
-    @eval *(a::$MT, b::AbstractZerosMatrix) = mult_zeros(a, b)
+for T in (:AbstractZerosMatrix, :AbstractFillMatrix)
+    @eval begin
+        *(a::Transpose{<:Any, <:AbstractVector}, b::$T) = transpose(transpose(b) * parent(a))
+        *(a::Adjoint{<:Any, <:AbstractVector}, b::$T) = adjoint(adjoint(b) * parent(a))
+    end
 end
 *(a::AbstractZerosMatrix, b::AbstractVector) = mult_zeros(a, b)
+function *(F::AbstractFillMatrix, v::AbstractVector)
+    check_matmul_sizes(F, v)
+    Fill(getindex_value(F) * sum(v), (axes(F,1),))
+end
 
 function lmul_diag(a::Diagonal, b)
     size(a,2) == size(b,1) || throw(DimensionMismatch("A has dimensions $(size(a)) but B has dimensions $(size(b))"))
@@ -212,7 +219,8 @@ for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
     end
 end
 
-function mul!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
+# unnecessary indirection, added for ambiguity resolution
+function _mulfill!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, alpha, beta)
     check_matmul_sizes(C, A, B)
     ABα = getindex_value(A) * getindex_value(B) * alpha * size(B,1)
     if iszero(beta)
@@ -220,7 +228,12 @@ function mul!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, a
     else
         C .= ABα .+ C .* beta
     end
-    C
+    return C
+end
+
+function mul!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
+    _mulfill!(C, A, B, alpha, beta)
+    return C
 end
 
 function copyfirstcol!(C)
@@ -229,50 +242,72 @@ function copyfirstcol!(C)
     end
     return C
 end
-function copyfirstcol!(C::Union{Adjoint, Transpose})
-    # in this case, we copy the first row of the parent to others
-    Cp = parent(C)
-    for colind in axes(Cp, 2)
-        Cp[2:end, colind] .= Cp[1, colind]
+
+_firstcol(C::AbstractMatrix) = first(eachcol(C))
+
+function copyfirstrow!(C)
+    # C[begin+1:end, ind] .= permutedims(_firstrow(C))
+    # we loop here as the aliasing check isn't smart enough to
+    # detect that the two sides don't alias, and ends up materializing the RHS
+    for (ind, v) in pairs(_firstrow(C))
+        C[begin+1:end, ind] .= Ref(v)
+    end
+    return C
+end
+_firstrow(C::AbstractMatrix) = first(eachrow(C))
+
+function _mulfill!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractFillMatrix, alpha, beta)
+    check_matmul_sizes(C, A, B)
+    iszero(size(B,2)) && return C # no columns in B and C, empty matrix
+    if iszero(beta)
+        # the mat-vec product sums along the rows of A
+        mul!(_firstcol(C), A, _firstcol(B), alpha, beta)
+        copyfirstcol!(C)
+    else
+        # the mat-vec product sums along the rows of A, which produces the first column of ABα
+        # allocate a temporary column vector to store the result
+        v = A * (_firstcol(B) * alpha)
+        C .= v .+ C .* beta
+    end
+    return C
+end
+function _mulfill!(C::AbstractMatrix, A::AbstractFillMatrix, B::AbstractMatrix, alpha, beta)
+    check_matmul_sizes(C, A, B)
+    iszero(size(A,1)) && return C # no rows in A and C, empty matrix
+    Aval = getindex_value(A)
+    if iszero(beta)
+        Crow = _firstrow(C)
+        # sum along the columns of B
+        Crow .= Ref(Aval) .* sum.(eachcol(B)) .* alpha
+        copyfirstrow!(C)
+    else
+        # sum along the columns of B, and allocate the result.
+        # This is the first row of ABα
+        ABα_row = Ref(Aval) .* sum.(eachcol(B)) .* alpha
+        C .= permutedims(ABα_row) .+ C .* beta
     end
     return C
 end
 
-_firstcol(C::AbstractMatrix) = view(C, :, 1)
-_firstcol(C::Union{Adjoint, Transpose}) = view(parent(C), 1, :)
-
-function _mulfill!(C, A, B::AbstractFillMatrix, alpha, beta)
-    check_matmul_sizes(C, A, B)
-    if iszero(size(B,2))
-        return rmul!(C, beta)
-    end
-    mul!(_firstcol(C), A, view(B, :, 1), alpha, beta)
-    copyfirstcol!(C)
-    C
-end
-
 function mul!(C::StridedMatrix, A::StridedMatrix, B::AbstractFillMatrix, alpha::Number, beta::Number)
     _mulfill!(C, A, B, alpha, beta)
+    return C
+end
+function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::StridedMatrix, alpha::Number, beta::Number)
+    _mulfill!(C, A, B, alpha, beta)
+    return C
 end
 
 for T in (:Adjoint, :Transpose)
-    @eval function mul!(C::StridedMatrix, A::$T{<:Any, <:StridedMatrix}, B::AbstractFillMatrix, alpha::Number, beta::Number)
-        _mulfill!(C, A, B, alpha, beta)
-    end
-end
-
-function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::StridedMatrix, alpha::Number, beta::Number)
-    check_matmul_sizes(C, A, B)
-    for (colC, colB) in zip(eachcol(C), eachcol(B))
-        mul!(colC, A, colB, alpha, beta)
-    end
-    C
-end
-
-for (T, f) in ((:Adjoint, :adjoint), (:Transpose, :transpose))
-    @eval function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::$T{<:Any, <:StridedMatrix}, alpha::Number, beta::Number)
-        _mulfill!($f(C), $f(B), $f(A), alpha, beta)
-        C
+    @eval begin
+        function mul!(C::StridedMatrix, A::$T{<:Any, <:StridedMatrix}, B::AbstractFillMatrix, alpha::Number, beta::Number)
+            _mulfill!(C, A, B, alpha, beta)
+            return C
+        end
+        function mul!(C::StridedMatrix, A::AbstractFillMatrix, B::$T{<:Any, <:StridedMatrix}, alpha::Number, beta::Number)
+            _mulfill!(C, A, B, alpha, beta)
+            return C
+        end
     end
 end
 
@@ -295,7 +330,7 @@ function _adjvec_mul_zeros(a, b)
     return a1 * b[1]
 end
 
-for MT in (:AbstractMatrix, :AbstractTriangular, :(Adjoint{<:Any,<:TransposeAbsVec}))
+for MT in (:AbstractMatrix, :AbstractTriangular, :(Adjoint{<:Any,<:TransposeAbsVec}), :AbstractFillMatrix)
     @eval *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::$MT) = (b' * a')'
 end
 # ambiguity
@@ -305,7 +340,7 @@ function *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::TransposeAbsVec{<:A
     a * b2
 end
 *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractZerosMatrix) = (b' * a')'
-for MT in (:AbstractMatrix, :AbstractTriangular, :(Transpose{<:Any,<:AdjointAbsVec}))
+for MT in (:AbstractMatrix, :AbstractTriangular, :(Transpose{<:Any,<:AdjointAbsVec}), :AbstractFillMatrix)
     @eval *(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, b::$MT) = transpose(transpose(b) * transpose(a))
 end
 *(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractZerosMatrix) = transpose(transpose(b) * transpose(a))
@@ -436,7 +471,7 @@ end
 
 @inline function fill_add(a::AbstractArray, b::AbstractFill)
     promote_shape(a, b)
-    a .+ [getindex_value(b)]
+    a .+ (getindex_value(b),)
 end
 @inline function fill_add(a::AbstractArray{<:Number}, b::AbstractFill)
     promote_shape(a, b)
@@ -524,3 +559,6 @@ end
 function LinearAlgebra.istril(A::AbstractFillMatrix, k::Integer = 0)
     iszero(A) || k >= size(A,2)-1
 end
+
+triu(A::AbstractZerosMatrix, k::Integer=0) = A
+tril(A::AbstractZerosMatrix, k::Integer=0) = A
