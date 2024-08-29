@@ -374,6 +374,32 @@ fillsimilar(a::Ones{T}, axes...) where T = Ones{T}(axes...)
 fillsimilar(a::Zeros{T}, axes...) where T = Zeros{T}(axes...)
 fillsimilar(a::AbstractFill, axes...) = Fill(getindex_value(a), axes...)
 
+# functions
+function Base.sqrt(a::AbstractFillMatrix{<:Union{Real, Complex}})
+    Base.require_one_based_indexing(a)
+    size(a,1) == size(a,2) || throw(DimensionMismatch("matrix is not square: dimensions are $(size(a))"))
+    _sqrt(a)
+end
+_sqrt(a::AbstractZerosMatrix) = float(a)
+function _sqrt(a::AbstractFillMatrix)
+    n = size(a,1)
+    n == 0 && return float(a)
+    v = getindex_value(a)
+    Fill(√(v/n), axes(a))
+end
+function Base.cbrt(a::AbstractFillMatrix{<:Real})
+    Base.require_one_based_indexing(a)
+    size(a,1) == size(a,2) || throw(DimensionMismatch("matrix is not square: dimensions are $(size(a))"))
+    _cbrt(a)
+end
+_cbrt(a::AbstractZerosMatrix) = float(a)
+function _cbrt(a::AbstractFillMatrix)
+    n = size(a,1)
+    n == 0 && return float(a)
+    v = getindex_value(a)
+    Fill(cbrt(v)/cbrt(n)^2, axes(a))
+end
+
 struct RectDiagonal{T,V<:AbstractVector{T},Axes<:Tuple{Vararg{AbstractUnitRange,2}}} <: AbstractMatrix{T}
     diag::V
     axes::Axes
