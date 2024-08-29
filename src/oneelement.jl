@@ -387,6 +387,11 @@ function triu(A::OneElementMatrix, k::Integer=0)
     OneElement(nzband < k ? zero(A.val) : A.val, A.ind, axes(A))
 end
 
+
+# issymmetric
+issymmetric(O::OneElement) = axes(O,1) == axes(O,2) && isdiag(O) && issymmetric(getindex_value(O))
+ishermitian(O::OneElement) = axes(O,1) == axes(O,2) && isdiag(O) && ishermitian(getindex_value(O))
+
 # diag
 function diag(O::OneElementMatrix, k::Integer=0)
     Base.require_one_based_indexing(O)
@@ -435,6 +440,14 @@ _permute(x, p) = ntuple(i -> x[p[i]], length(x))
 permutedims(o::OneElementMatrix) = OneElement(o.val, reverse(o.ind), reverse(o.axes))
 permutedims(o::OneElementVector) = reshape(o, (1, length(o)))
 permutedims(o::OneElement, dims) = OneElement(o.val, _permute(o.ind, dims), _permute(o.axes, dims))
+
+# unique
+function unique(O::OneElement)
+    v = getindex_value(O)
+    len = iszero(v) ? 1 : min(2, length(O))
+    OneElement(getindex_value(O), len, len)
+end
+allunique(O::OneElement) = length(O) <= 1 || (length(O) < 3 && !iszero(getindex_value(O)))
 
 # show
 _maybesize(t::Tuple{Base.OneTo{Int}, Vararg{Base.OneTo{Int}}}) = size.(t,1)

@@ -375,6 +375,32 @@ fillsimilar(a::Ones{T}, axes...) where T = Ones{T}(axes...)
 fillsimilar(a::Zeros{T}, axes...) where T = Zeros{T}(axes...)
 fillsimilar(a::AbstractFill, axes...) = Fill(getindex_value(a), axes...)
 
+# functions
+function Base.sqrt(a::AbstractFillMatrix{<:Union{Real, Complex}})
+    Base.require_one_based_indexing(a)
+    size(a,1) == size(a,2) || throw(DimensionMismatch("matrix is not square: dimensions are $(size(a))"))
+    _sqrt(a)
+end
+_sqrt(a::AbstractZerosMatrix) = float(a)
+function _sqrt(a::AbstractFillMatrix)
+    n = size(a,1)
+    n == 0 && return float(a)
+    v = getindex_value(a)
+    Fill(√(v/n), axes(a))
+end
+function Base.cbrt(a::AbstractFillMatrix{<:Real})
+    Base.require_one_based_indexing(a)
+    size(a,1) == size(a,2) || throw(DimensionMismatch("matrix is not square: dimensions are $(size(a))"))
+    _cbrt(a)
+end
+_cbrt(a::AbstractZerosMatrix) = float(a)
+function _cbrt(a::AbstractFillMatrix)
+    n = size(a,1)
+    n == 0 && return float(a)
+    v = getindex_value(a)
+    Fill(cbrt(v)/cbrt(n)^2, axes(a))
+end
+
 struct RectDiagonal{T,V<:AbstractVector{T},Axes<:Tuple{Vararg{AbstractUnitRange,2}}} <: AbstractMatrix{T}
     diag::V
     axes::Axes
@@ -529,11 +555,13 @@ for (Typ, funcs, func) in ((:AbstractZeros, :zeros, :zero), (:AbstractOnes, :one
     end
 end
 
-# temporary patch. should be a PR(#48895) to LinearAlgebra
-Diagonal{T}(A::AbstractFillMatrix) where T = Diagonal{T}(diag(A))
-function convert(::Type{T}, A::AbstractFillMatrix) where T<:Diagonal
-    checksquare(A)
-    isdiag(A) ? T(A) : throw(InexactError(:convert, T, A))
+if VERSION < v"1.11-"
+    # temporary patch. should be a PR(#48895) to LinearAlgebra
+    Diagonal{T}(A::AbstractFillMatrix) where T = Diagonal{T}(diag(A))
+    function convert(::Type{T}, A::AbstractFillMatrix) where T<:Diagonal
+        checksquare(A)
+        isdiag(A) ? T(diag(A)) : throw(InexactError(:convert, T, A))
+    end
 end
 
 Base.StepRangeLen(F::AbstractFillVector{T}) where T = StepRangeLen(getindex_value(F), zero(T), length(F))
@@ -608,7 +636,7 @@ diff(x::AbstractFillVector{T}) where T = Zeros{T}(length(x)-1)
 # unique
 #########
 
-unique(x::AbstractFill{T}) where T = isempty(x) ? T[] : T[getindex_value(x)]
+unique(x::AbstractFill) = fillsimilar(x, Int(!isempty(x)))
 allunique(x::AbstractFill) = length(x) < 2
 
 #########

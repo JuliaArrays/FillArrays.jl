@@ -1245,7 +1245,7 @@ end
 @testset "unique" begin
     @test unique(Fill(12, 20)) == unique(fill(12, 20))
     @test unique(Fill(1, 0)) == []
-    @test unique(Zeros(0)) isa Vector{Float64}
+    @test unique(Zeros(0)) == Zeros(0)
     @test !allunique(Fill("a", 2))
     @test allunique(Ones(0))
 end
@@ -1438,9 +1438,14 @@ end
     @test axes(E .+ E) === axes(E)
 end
 
-@testset "Issue #31" begin
-    @test convert(SparseMatrixCSC{Float64,Int64}, Zeros{Float64}(3, 3)) == spzeros(3, 3)
-    @test sparse(Zeros(4, 2)) == spzeros(4, 2)
+@testset "Issues" begin
+    @testset "#31" begin
+        @test convert(SparseMatrixCSC{Float64,Int64}, Zeros{Float64}(3, 3)) == spzeros(3, 3)
+        @test sparse(Zeros(4, 2)) == spzeros(4, 2)
+    end
+    @testset "#178" begin
+        @test Zeros(10)'*spzeros(10) == 0
+    end
 end
 
 @testset "Adjoint/Transpose/permutedims" begin
@@ -1942,6 +1947,8 @@ end
     let N = 2^big(1000) # fast dot for fast sum
         @test dot(Fill(2,N),1:N) == dot(Fill(2,N),1:N) == dot(1:N,Fill(2,N)) == 2*sum(1:N)
     end
+
+    @test dot(1:4, Eye(4), 1:4) === dot(1:4, oneunit(eltype(Eye(4))) * I(4), 1:4)
 
     @test_throws DimensionMismatch dot(u[1:end-1], D, v)
     @test_throws DimensionMismatch dot(u[1:end-1], D, v[1:end-1])
@@ -2708,6 +2715,42 @@ end
         @test repr(B) == "OneElement(2, (1, 2), (Base.IdentityUnitRange(1:1), Base.IdentityUnitRange(2:2)))"
     end
 
+    @testset "issymmetric/ishermitian" begin
+        for el in (2, 3+0im, 4+5im, SMatrix{2,2}(1:4), SMatrix{2,3}(1:6)), size in [(3,3), (3,4)]
+            O = OneElement(el, (2,2), size)
+            A = Array(O)
+            @test issymmetric(O) == issymmetric(A)
+            @test ishermitian(O) == ishermitian(A)
+            O = OneElement(el, (1,2), size)
+            A = Array(O)
+            @test issymmetric(O) == issymmetric(A)
+            @test ishermitian(O) == ishermitian(A)
+            O = OneElement(el, (5,5), size)
+            A = Array(O)
+            @test issymmetric(O) == issymmetric(A)
+            @test ishermitian(O) == ishermitian(A)
+        end
+    end
+
+    @testset "unique" begin
+        @testset for n in 1:3
+            O = OneElement(5, 2, n)
+            @test unique(O) == unique(Array(O))
+            @test allunique(O) == allunique(Array(O))
+            O = OneElement(0, 2, n)
+            @test unique(O) == unique(Array(O))
+            @test allunique(O) == allunique(Array(O))
+            @testset for m in 1:4
+                O2 = OneElement(2, (2,1), (m,n))
+                @test unique(O2) == unique(Array(O2))
+                @test allunique(O2) == allunique(Array(O2))
+                O2 = OneElement(0, (2,1), (m,n))
+                @test unique(O2) == unique(Array(O2))
+                @test allunique(O2) == allunique(Array(O2))
+            end
+        end
+    end
+
     @testset "sum" begin
         @testset "OneElement($v, $ind, $sz)" for (v, ind, sz) in (
                                     (Int8(2), 3, 4),
@@ -2965,4 +3008,40 @@ end
             @test F * V ≈ V * Diagonal(λ)
         end
     end
+end
+
+@testset "Diagonal conversion (#389)" begin
+    @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) isa Diagonal{Int,Vector{Int}}
+    @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) == zeros(5,5)
+    @test Diagonal{Int}(Zeros(5,5)) ≡ Diagonal(Zeros{Int}(5))
+    @test Diagonal{Int}(Ones(5,5)) ≡ Diagonal(Ones{Int}(5))
+end
+
+@testset "sqrt/cbrt" begin
+    F = Fill(4, 4, 4)
+    A = Array(F)
+    @test sqrt(F) ≈ sqrt(A) rtol=3e-8
+    @test sqrt(F)^2 ≈ F
+    F = Fill(4+4im, 4, 4)
+    A = Array(F)
+    @test sqrt(F) ≈ sqrt(A) rtol=1e-8
+    @test sqrt(F)^2 ≈ F
+    F = Fill(-4, 4, 4)
+    A = Array(F)
+    if VERSION >= v"1.11.0-rc3"
+        @test cbrt(F) ≈ cbrt(A) rtol=1e-5
+    end
+    @test cbrt(F)^3 ≈ F
+
+    # avoid overflow
+    F = Fill(4, typemax(Int), typemax(Int))
+    @test sqrt(F)^2 ≈ F
+    @test cbrt(F)^3 ≈ F
+
+    # zeros
+    F = Zeros(4, 4)
+    A = Array(F)
+    @test sqrt(F) ≈ sqrt(A) atol=1e-14
+    @test sqrt(F)^2 == F
+    @test cbrt(F)^3 == F
 end
