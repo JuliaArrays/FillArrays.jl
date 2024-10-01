@@ -919,6 +919,18 @@ end
         @test a === 1.0
         @test b === Ones(11)
     end
+    @testset "Iterators.drop/take" begin
+        @test Iterators.drop(Fill(4, 10), 3) === Fill(4, 7)
+        @test Iterators.take(Fill(4, 10), 3) === Fill(4, 3)
+        @test Iterators.drop(Fill(4, 10), 0) === Fill(4, 10)
+        @test Iterators.take(Fill(4, 10), 0) === Fill(4, 0)
+        @test Iterators.drop(Fill(4, 10), 11) === Fill(4, 0)
+        @test Iterators.take(Fill(4, 10), 11) === Fill(4, 10)
+        @test_throws ArgumentError Iterators.drop(Fill(4, 10), -11)
+        @test_throws ArgumentError Iterators.take(Fill(4, 10), -11)
+        @test Iterators.drop(Ones(4, 10), 3) === Ones(37)
+        @test Iterators.take(Ones(4, 10), 3) === Ones(3)
+    end
 end
 
 @testset "Broadcast" begin
