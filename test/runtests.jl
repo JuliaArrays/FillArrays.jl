@@ -904,6 +904,23 @@ end
     end
 end
 
+@testset "iterators" begin
+    @testset "invalid state" begin
+        @test isnothing(iterate(Ones(4), (1,-3)))
+        @test isempty(Iterators.rest(Ones(4), (1,-3)))
+    end
+    @testset "Iterators.rest" begin
+        @test Iterators.rest(Fill(4, 10), (4, 3)) === Fill(4, 7)
+        # Base.rest
+        a, b... = Fill(3, 4)
+        @test a === 3
+        @test b === Fill(3, 3)
+        a, b... = Ones(3, 4)
+        @test a === 1.0
+        @test b === Ones(11)
+    end
+end
+
 @testset "Broadcast" begin
     x = Fill(5,5)
     @test (.+)(x) ≡ x
