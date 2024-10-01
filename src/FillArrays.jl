@@ -240,7 +240,7 @@ function Iterators.drop(F::AbstractFill, n::Integer)
     fillsimilar(F, max(length(F)-n, 0))
 end
 function Iterators.take(F::AbstractFill, n::Integer)
-    n >= 0 || throw(ArgumentError("Drop length must be nonnegative"))
+    n >= 0 || throw(ArgumentError("Take length must be nonnegative"))
     fillsimilar(F, min(n, length(F)))
 end
 Base.rest(F::AbstractFill, s) = Iterators.rest(F, s)
