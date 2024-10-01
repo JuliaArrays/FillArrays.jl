@@ -827,6 +827,9 @@ end
     @test_throws MethodError issorted(Fill(im, 2))
     @test_throws MethodError sort(Fill(im, 2))
     @test_throws MethodError sort!(Fill(im, 2))
+
+    @test_throws ArgumentError maximum(Fill(3, 0))
+    @test_throws ArgumentError minimum(Fill(3, 0))
 end
 
 @testset "Cumsum, accumulate and diff" begin
