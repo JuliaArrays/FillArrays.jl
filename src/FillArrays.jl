@@ -584,7 +584,11 @@ end
 #########
 
 for op in (:maximum, :minimum)
-    @eval $op(x::AbstractFill) = getindex_value(x)
+    @eval function $op(x::AbstractFill)
+        length(x) == 0 && throw(ArgumentError(
+            "reducing over an empty collection is not allowed; consider supplying `init` to the reducer"))
+        getindex_value(x)
+    end
 end
 
 
