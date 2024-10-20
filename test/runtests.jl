@@ -904,6 +904,35 @@ end
     end
 end
 
+@testset "iterators" begin
+    @testset "invalid state" begin
+        @test isnothing(iterate(Ones(4), (1,-3)))
+        @test isempty(Iterators.rest(Ones(4), (1,-3)))
+    end
+    @testset "Iterators.rest" begin
+        @test Iterators.rest(Fill(4, 10), (4, 3)) === Fill(4, 7)
+        # Base.rest
+        a, b... = Fill(3, 4)
+        @test a === 3
+        @test b === Fill(3, 3)
+        a, b... = Ones(3, 4)
+        @test a === 1.0
+        @test b === Ones(11)
+    end
+    @testset "Iterators.drop/take" begin
+        @test Iterators.drop(Fill(4, 10), 3) === Fill(4, 7)
+        @test Iterators.take(Fill(4, 10), 3) === Fill(4, 3)
+        @test Iterators.drop(Fill(4, 10), 0) === Fill(4, 10)
+        @test Iterators.take(Fill(4, 10), 0) === Fill(4, 0)
+        @test Iterators.drop(Fill(4, 10), 11) === Fill(4, 0)
+        @test Iterators.take(Fill(4, 10), 11) === Fill(4, 10)
+        @test_throws ArgumentError Iterators.drop(Fill(4, 10), -11)
+        @test_throws ArgumentError Iterators.take(Fill(4, 10), -11)
+        @test Iterators.drop(Ones(4, 10), 3) === Ones(37)
+        @test Iterators.take(Ones(4, 10), 3) === Ones(3)
+    end
+end
+
 @testset "Broadcast" begin
     x = Fill(5,5)
     @test (.+)(x) ≡ x
