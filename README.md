@@ -6,7 +6,8 @@
 [![codecov](https://codecov.io/gh/JuliaArrays/FillArrays.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaArrays/FillArrays.jl)
 [![deps](https://juliahub.com/docs/FillArrays/deps.svg)](https://juliahub.com/ui/Packages/FillArrays/2Dg1l?t=2)
 [![version](https://juliahub.com/docs/FillArrays/version.svg)](https://juliahub.com/ui/Packages/FillArrays/2Dg1l)
-[![pkgeval](https://juliahub.com/docs/FillArrays/pkgeval.svg)](https://juliahub.com/ui/Packages/FillArrays/2Dg1l)
+[![pkgeval](https://juliahub.com/docs/FillArrays/pkgeval.svg)](https://juliaci.github.io/NanosoldierReports/pkgeval_badges/report.html)
+[![Aqua](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 Julia package to lazily represent matrices filled with a single entry,
 as well as identity matrices.  This package exports the following types:

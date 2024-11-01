@@ -3,6 +3,10 @@ on:
   push:
     branches: [master]
     tags: [v*]
+    paths-ignore:
+      - 'LICENSE'
+      - 'README.md'
+      - '.github/workflows/TagBot.yml'
   pull_request:
     paths-ignore:
       - 'LICENSE'
@@ -29,7 +33,7 @@ jobs:
     name: ${{ matrix.package.group }}/${{ matrix.package.repo }}/${{ matrix.julia-version }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         julia-version: ['1']
         os: [ubuntu-latest]
@@ -37,6 +41,7 @@ jobs:
           - {repo: Distributions.jl, group: JuliaStats}
           - {repo: BlockArrays.jl, group: JuliaArrays}
           - {repo: LazyArrays.jl, group: JuliaArrays}
+          - {repo: InfiniteArrays.jl, group: JuliaArrays}
           - {repo: ArrayLayouts.jl, group: JuliaLinearAlgebra}
           - {repo: LazyBandedMatrices.jl, group: JuliaLinearAlgebra}
           - {repo: BandedMatrices.jl, group: JuliaLinearAlgebra}
@@ -46,7 +51,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.julia-version }}
           arch: x64
@@ -74,6 +79,7 @@ jobs:
             exit(0)  # Exit immediately, as a success
           end
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
