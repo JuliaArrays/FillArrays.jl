@@ -19,26 +19,26 @@ const OneElementVecOrMat{T,I,A} = Union{OneElementVector{T,I,A}, OneElementMatri
 
 OneElement(val, inds::NTuple{N,Int}, sz::NTuple{N,Integer}) where N = OneElement(val, inds, oneto.(sz))
 """
-    OneElement(val, ind::Int, n::Int)
+    OneElement(val, ind::Int, n::Integer)
 
 Creates a length `n` vector where the `ind` entry is equal to `val`, and all other entries are zero.
 """
-OneElement(val, ind::Int, len::Int) = OneElement(val, (ind,), (len,))
+OneElement(val, ind::Int, len::Integer) = OneElement(val, (ind,), (len,))
 """
-    OneElement(ind::Int, n::Int)
+    OneElement(ind::Int, n::Integer)
 
 Creates a length `n` vector where the `ind` entry is equal to `1`, and all other entries are zero.
 """
-OneElement(inds::Int, sz::Int) = OneElement(1, inds, sz)
+OneElement(inds::Int, sz::Integer) = OneElement(1, inds, sz)
 OneElement{T}(val, inds::NTuple{N,Int}, sz::NTuple{N,Integer}) where {T,N} = OneElement(convert(T,val), inds, oneto.(sz))
-OneElement{T}(val, inds::Int, sz::Int) where T = OneElement{T}(val, (inds,), (sz,))
+OneElement{T}(val, inds::Int, sz::Integer) where T = OneElement{T}(val, (inds,), (sz,))
 
 """
     OneElement{T}(ind::Int, n::Int)
 
 Creates a length `n` vector where the `ind` entry is equal to `one(T)`, and all other entries are zero.
 """
-OneElement{T}(inds::Int, sz::Int) where T = OneElement(one(T), inds, sz)
+OneElement{T}(inds::Int, sz::Integer) where T = OneElement(one(T), inds, sz)
 
 Base.size(A::OneElement) = map(length, A.axes)
 Base.axes(A::OneElement) = A.axes
