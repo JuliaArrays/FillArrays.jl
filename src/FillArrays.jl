@@ -15,7 +15,7 @@ import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose,
 
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape, BroadcastStyle, Broadcasted
-import EltypeExtensions: elconvert
+import EltypeExtensions: convert_eltype
 
 export Zeros, Ones, Fill, Eye, Trues, Falses, OneElement
 
