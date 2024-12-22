@@ -434,14 +434,14 @@ Base.reduce_first(::typeof(+), x::AbstractOnes) = Fill(Base.reduce_first(+, geti
 
 function +(a::AbstractZeros{T}, b::AbstractZeros{V}) where {T, V} # for disambiguity
     promote_shape(a,b)
-    return elconvert(promote_op(+,T,V),a)
+    return convert_eltype(promote_op(+,T,V),a)
 end
 # no AbstractArray. Otherwise incompatible with StaticArrays.jl
 # AbstractFill for disambiguity
 for TYPE in (:Array, :AbstractFill, :AbstractRange, :Diagonal)
     @eval function +(a::$TYPE{T}, b::AbstractZeros{V}) where {T, V}
         promote_shape(a,b)
-        return elconvert(promote_op(+,T,V),a)
+        return convert_eltype(promote_op(+,T,V),a)
     end
     @eval +(a::AbstractZeros, b::$TYPE) = b + a
 end
