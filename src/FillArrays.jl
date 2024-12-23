@@ -15,7 +15,7 @@ import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose,
 
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape, BroadcastStyle, Broadcasted
-import EltypeExtensions: convert_eltype
+import EltypeExtensions: convert_eltype, _to_eltype
 
 export Zeros, Ones, Fill, Eye, Trues, Falses, OneElement
 
@@ -137,6 +137,8 @@ Fill{T,0}(x, ::Tuple{}) where T = Fill{T,0,Tuple{}}(convert(T, x)::T, ()) # ambi
 @inline Fill(x::T, sz::Vararg{Integer,N}) where {T, N}  = Fill{T, N}(x, sz)
 """ `Fill(x, dims)` construct lazy version of `fill(x, dims)` """
 @inline Fill(x::T, sz::Tuple{Vararg{Any,N}}) where {T, N}  = Fill{T, N}(x, sz)
+
+_to_eltype(::Type{T}, ::Type{Fill{V,N,Axes}}) where {T,V,N,Axes} = Fill{T,N,Axes}
 
 # We restrict to  when T is specified to avoid ambiguity with a Fill of a Fill
 @inline Fill{T}(F::Fill{T}) where T = F
@@ -341,6 +343,7 @@ for (AbsTyp, Typ, funcs, func) in ((:AbstractZeros, :Zeros, :zeros, :zero), (:Ab
         getindex(F::$AbsTyp{T,0}) where T = getindex_value(F)
 
         promote_rule(::Type{$Typ{T, N, Axes}}, ::Type{$Typ{V, N, Axes}}) where {T,V,N,Axes} = $Typ{promote_type(T,V),N,Axes}
+        _to_eltype(::Type{T}, ::Type{$Typ{V,N,Axes}}) where {T,V,N,Axes} = $Typ{T,N,Axes}
         function convert(::Type{Typ}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes,Typ<:$AbsTyp{T,N,Axes}}
             convert(T, getindex_value(A)) # checks that the types are convertible
             Typ(axes(A))

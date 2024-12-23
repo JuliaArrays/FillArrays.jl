@@ -441,7 +441,9 @@ end
 for TYPE in (:Array, :AbstractFill, :AbstractRange, :Diagonal)
     @eval function +(a::$TYPE{T}, b::AbstractZeros{V}) where {T, V}
         promote_shape(a,b)
-        return convert_eltype(promote_op(+,T,V),a)
+        ret = convert_eltype(promote_op(+,T,V), a)
+        ret ≡ a ? copy(ret) : ret # must return a copy
+        # (_to_eltype(promote_op(+,T,V), typeof(a)))(a) doesn't work for types not supporting such constructors. E.g. https://github.com/JuliaLang/LinearAlgebra.jl/pull/1158
     end
     @eval +(a::AbstractZeros, b::$TYPE) = b + a
 end
