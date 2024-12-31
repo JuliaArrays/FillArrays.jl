@@ -1246,6 +1246,12 @@ end
         A = ones(1,5) .+ (ones(1) .+ (_ -> rand()).(Fill("vec", 2)))
         @test all(==(A[1]), A)
     end
+
+    @testset "wrappers" begin
+        f = Fill(3, 4)
+        @test f * f' === Fill(9,4,4)
+        @test f * transpose(f) === Fill(9,4,4)
+    end
 end
 
 @testset "map" begin

@@ -87,39 +87,48 @@ Broadcast.BroadcastStyle(S::LinearAlgebra.StructuredMatrixStyle, ::ZerosStyle{2}
 Broadcast.BroadcastStyle(S::LinearAlgebra.StructuredMatrixStyle, ::ZerosStyle{1}) = S
 Broadcast.BroadcastStyle(S::LinearAlgebra.StructuredMatrixStyle, ::ZerosStyle{0}) = S
 
-_getindex_value(f::AbstractFill) = getindex_value(f)
-_getindex_value(x::Number) = x
-_getindex_value(x::Ref) = x[]
-function _getindex_value(bc::Broadcast.Broadcasted)
-    bc.f(map(_getindex_value, bc.args)...)
+# Obtain the fill value of a broadcasted object by recursively evaluating the fill components
+broadcast_getindex_value(f::AbstractFill) = getindex_value(f)
+broadcast_getindex_value(f::Transpose{<:Any,<:AbstractFill}) = getindex_value(parent(f))
+broadcast_getindex_value(f::Adjoint{<:Any,<:AbstractFill}) = getindex_value(parent(f))
+broadcast_getindex_value(x::Number) = x
+broadcast_getindex_value(x::Ref) = x[]
+function broadcast_getindex_value(bc::Broadcast.Broadcasted)
+    bc.f(map(broadcast_getindex_value, bc.args)...)
 end
 
 has_static_value(x) = false
 has_static_value(x::Union{AbstractZeros, AbstractOnes}) = true
 has_static_value(x::Broadcast.Broadcasted) = all(has_static_value, x.args)
 
+# _iszeros and _isones are conservative checks for zeros and ones,
+# which are used to determine if a broadcasted object is a Fill, Zeros or Ones.
 function _iszeros(bc::Broadcast.Broadcasted)
-    all(has_static_value, bc.args) && _iszero(_getindex_value(bc))
+    all(has_static_value, bc.args) && _iszero(broadcast_getindex_value(bc))
 end
 # conservative check for zeros. In most cases, there isn't a zero element to compare with
 _iszero(x::Union{Number, AbstractArray}) = iszero(x)
 _iszero(_) = false
 
 function _isones(bc::Broadcast.Broadcasted)
-    all(has_static_value, bc.args) && _isone(_getindex_value(bc))
+    all(has_static_value, bc.args) && _isone(broadcast_getindex_value(bc))
 end
 # conservative check for ones. In most cases, there isn't a unit element to compare with
 _isone(x::Union{Number, AbstractArray}) = isone(x)
 _isone(_) = false
 
-_isfill(bc::Broadcast.Broadcasted) = all(_isfill, bc.args)
-_isfill(f::AbstractFill) = true
-_isfill(f::Number) = true
-_isfill(f::Ref) = true
-_isfill(::Any) = false
+# wrappers that are equivalent to an `AbstractFill` may opt in to the broadcasting behavior
+# of `AbstractFill` by specializing `isfill` and `broadcast_getindex_value`
+isfill(bc::Broadcast.Broadcasted) = all(isfill, bc.args)
+isfill(f::AbstractFill) = true
+isfill(f::Transpose) = isfill(parent(f))
+isfill(f::Adjoint) = isfill(parent(f))
+isfill(f::Number) = true
+isfill(f::Ref) = true
+isfill(::Any) = false
 
 function _copy_fill(bc)
-    v = _getindex_value(bc)
+    v = broadcast_getindex_value(bc)
     if _iszeros(bc)
         return Zeros(typeof(v), axes(bc))
     elseif _isones(bc)
@@ -130,7 +139,7 @@ end
 
 # recursively copy the purely fill components
 function _preprocess_fill(bc::Broadcast.Broadcasted{<:AbstractFillStyle})
-    _isfill(bc) ? _copy_fill(bc) : Broadcast.broadcasted(bc.f, map(_preprocess_fill, bc.args)...)
+    isfill(bc) ? _copy_fill(bc) : Broadcast.broadcasted(bc.f, map(_preprocess_fill, bc.args)...)
 end
 _preprocess_fill(bc::Broadcast.Broadcasted) = Broadcast.broadcasted(bc.f, map(_preprocess_fill, bc.args)...)
 _preprocess_fill(x) = x
@@ -144,7 +153,7 @@ function _fallback_copy(bc)
 end
 
 function Base.copy(bc::Broadcast.Broadcasted{<:AbstractFillStyle})
-    _isfill(bc) ? _copy_fill(bc) : _fallback_copy(bc)
+    isfill(bc) ? _copy_fill(bc) : _fallback_copy(bc)
 end
 # make the zero-dimensional case consistent with Base
 Base.copy(bc::Broadcast.Broadcasted{<:AbstractFillStyle{0}}) = _fallback_copy(bc)
