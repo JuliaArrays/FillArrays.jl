@@ -386,6 +386,32 @@ end
     @test stringmime("text/plain", D) == "3×2 RectDiagonal{Float64, Vector{Float64}, Tuple{Base.OneTo{$Int}, Base.OneTo{$Int}}}:\n 1.0   ⋅ \n  ⋅   2.0\n  ⋅    ⋅ "
 end
 
+@testset "RectDiagonal Multiplication" begin
+    diag = Diagonal(rand(3))
+    diagfill = Diagonal(Fill(1., 3))
+    rectdiag = RectDiagonal(rand(3), 3, 3)
+    rectdiagfill = RectDiagonal(Fill(1., 3))
+    mat = rand(3,3)
+    vec = rand(3)
+    arr_diagfill = Array(diagfill)
+    arr_rectdiag = Array(rectdiag)
+    arr_rectdiagfill = Array(rectdiagfill)
+    for a in (diag, diagfill, rectdiag, rectdiagfill, mat, vec)
+        arr_a = Array(a)
+        @test diagfill * a isa typeof(a)
+        @test diagfill * a == arr_diagfill * arr_a
+        @test rectdiag * a == arr_rectdiag * arr_a
+        @test rectdiagfill * a == arr_rectdiagfill * arr_a
+    end
+    for a in (diag, diagfill, rectdiag, rectdiagfill, mat)
+        arr_a = Array(a)
+        @test a * diagfill isa typeof(a)
+        @test a * diagfill == arr_a * arr_diagfill
+        @test a * rectdiag == arr_a * arr_rectdiag
+        @test a * rectdiagfill == arr_a * arr_rectdiagfill
+    end
+end
+
 # Check that all pair-wise combinations of + / - elements of As and Bs yield the correct
 # type, and produce numerically correct results.
 as_array(x::AbstractArray) = Array(x)

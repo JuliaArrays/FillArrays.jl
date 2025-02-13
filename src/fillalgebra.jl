@@ -485,6 +485,74 @@ end
 @inline elconvert(::Type{T}, A::AbstractUnitRange) where T<:Integer = AbstractUnitRange{T}(A)
 @inline elconvert(::Type{T}, A::AbstractArray) where T = AbstractArray{T}(A)
 
+# RectDiagonal Multiplication
+function *(A::RectDiagonal, B::Diagonal)
+    check_matmul_sizes(A, B)
+    len = minimum(size(A))
+    RectDiagonal(view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len)), (size(A, 1), size(B, 2)))
+end
+function *(A::Diagonal, B::RectDiagonal)
+    check_matmul_sizes(A, B)
+    len = minimum(size(B))
+    RectDiagonal(view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len)), (size(A, 1), size(B, 2)))
+end
+
+function *(A::RectDiagonal, B::AbstractMatrix)
+    check_matmul_sizes(A, B)
+    TS = Base.promote_op(LinearAlgebra.matprod, eltype(A), eltype(B))
+    diag = A.diag
+    out = fill!(similar(diag, TS, axes(A,1), axes(B,2)), 0)
+    out[axes(diag, 1), :] = diag .* view(B, axes(diag,1), :)
+    out
+end
+function *(A::RectDiagonal, x::AbstractVector)
+    check_matmul_sizes(A, x)
+    TS = Base.promote_op(LinearAlgebra.matprod, eltype(A), eltype(x))
+    diag = A.diag
+    out = fill!(similar(diag, TS, axes(A,1)), 0)
+    out[axes(diag, 1)] = diag .* view(x, axes(diag,1))
+    out
+end
+function *(A::AbstractMatrix, B::RectDiagonal)
+    check_matmul_sizes(A, B)
+    TS = Base.promote_op(LinearAlgebra.matprod, eltype(A), eltype(B))
+    out = fill!(similar(A, TS, axes(A,1), axes(B, 2)), 0)
+    diag = B.diag
+    out[:, axes(diag, 1)] = view(A, :, axes(diag,1)) .* diag'
+    out
+end
+function *(A::RectDiagonal, B::RectDiagonal)
+    check_matmul_sizes(A, B)
+    TS = Base.promote_op(LinearAlgebra.matprod, eltype(A), eltype(B))
+    out = fill!(similar(A.diag, TS, min(size(A, 1), size(B, 2))), 0)
+    len = min(minimum(size(A)), minimum(size(B)))
+    out[Base.OneTo(len)] .= view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len))
+    RectDiagonal(out, (size(A,1), size(B,2)))
+end
+
+# RectDiagonalFill Multiplication
+*(a::RectDiagonalFill, b::Number) = RectDiagonal(a.diag * b, a.axes)
+*(a::Number, b::RectDiagonalFill) = RectDiagonal(a * b.diag, b.axes)
+
+# DiagonalFill Multiplication
+for type in (AbstractMatrix, Diagonal, RectDiagonal, AbstractVector)
+    @eval begin
+        function *(A::DiagonalFill, B::$type)
+            check_matmul_sizes(A, B)
+            getindex_value(A.diag) * B
+        end
+    end
+end
+
+for type in (AbstractMatrix, Diagonal, RectDiagonal, DiagonalFill)
+    @eval begin
+        function *(A::$type, B::DiagonalFill)
+            check_matmul_sizes(A, B)
+            getindex_value(B.diag) * A
+        end
+    end
+end
+
 ####
 # norm
 ####
