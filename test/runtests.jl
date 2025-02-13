@@ -2990,6 +2990,11 @@ end
         @test a.dim == length(diag)
         @test a.value == first(diag)
     end
+    a = ScalMat(4, 1.)
+    for zero in (Zeros(4), Zeros(4,4))
+        @test a * zero === zero
+    end
+    @test Zeros(4,4) * a === Zeros(4,4)
 end
 
 @testset "isbanded/isdiag" begin
