@@ -502,7 +502,7 @@ function *(A::RectDiagonal, B::AbstractMatrix)
     TS = Base.promote_op(LinearAlgebra.matprod, eltype(A), eltype(B))
     diag = A.diag
     out = fill!(similar(diag, TS, axes(A,1), axes(B,2)), 0)
-    out[axes(diag, 1), :] = diag .* view(B, axes(diag,1), :)
+    out[axes(diag, 1), :] .= diag .* view(B, axes(diag,1), :)
     out
 end
 function *(A::RectDiagonal, x::AbstractVector)
@@ -510,7 +510,7 @@ function *(A::RectDiagonal, x::AbstractVector)
     TS = Base.promote_op(LinearAlgebra.matprod, eltype(A), eltype(x))
     diag = A.diag
     out = fill!(similar(diag, TS, axes(A,1)), 0)
-    out[axes(diag, 1)] = diag .* view(x, axes(diag,1))
+    out[axes(diag, 1)] .= diag .* view(x, axes(diag,1))
     out
 end
 function *(A::AbstractMatrix, B::RectDiagonal)
@@ -518,7 +518,7 @@ function *(A::AbstractMatrix, B::RectDiagonal)
     TS = Base.promote_op(LinearAlgebra.matprod, eltype(A), eltype(B))
     out = fill!(similar(A, TS, axes(A,1), axes(B, 2)), 0)
     diag = B.diag
-    out[:, axes(diag, 1)] = view(A, :, axes(diag,1)) .* diag'
+    out[:, axes(diag, 1)] .= view(A, :, axes(diag,1)) .* diag'
     out
 end
 function *(A::RectDiagonal, B::RectDiagonal)
@@ -544,13 +544,30 @@ for type in (AbstractMatrix, Diagonal, RectDiagonal, AbstractZerosMatrix, Abstra
     end
 end
 
-for type in (AbstractMatrix, Diagonal, RectDiagonal, AbstractZerosMatrix, AbstractFillMatrix, AdjointAbsVec, TransposeAbsVec, DiagonalFill)
+for type in (AbstractMatrix, Diagonal, RectDiagonal, AbstractZerosMatrix, AbstractFillMatrix, AdjointAbsVec, TransposeAbsVec)
     @eval begin
         function *(A::$type, B::DiagonalFill)
             check_matmul_sizes(A, B)
             getindex_value(B.diag) * A
         end
     end
+end
+
+function *(A::DiagonalFill, B::DiagonalFill)
+    check_matmul_sizes(A, B)
+    Diagonal(A.diag .* B.diag)
+end
+
+function *(A::DiagonalFill, B::RectDiagonalFill)
+    check_matmul_sizes(A, B)
+    len = minimum(size(B))
+    RectDiagonal(view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len)), B.axes)
+end
+
+function *(A::RectDiagonalFill, B::DiagonalFill)
+    check_matmul_sizes(A, B)
+    len = minimum(size(A))
+    RectDiagonal(view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len)), A.axes)
 end
 
 ####
