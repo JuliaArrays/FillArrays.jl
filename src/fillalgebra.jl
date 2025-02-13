@@ -535,7 +535,7 @@ end
 *(a::Number, b::RectDiagonalFill) = RectDiagonal(a * b.diag, b.axes)
 
 # DiagonalFill Multiplication
-for type in (AbstractMatrix, Diagonal, RectDiagonal, AbstractZerosMatrix, AbstractFillMatrix, AbstractVector, AbstractZerosVector)
+for type in (AbstractMatrix, Diagonal, RectDiagonal, AbstractZerosMatrix, AbstractFillMatrix, AdjointAbsVec, TransposeAbsVec, AbstractVector, AbstractZerosVector)
     @eval begin
         function *(A::DiagonalFill, B::$type)
             check_matmul_sizes(A, B)
@@ -544,7 +544,7 @@ for type in (AbstractMatrix, Diagonal, RectDiagonal, AbstractZerosMatrix, Abstra
     end
 end
 
-for type in (AbstractMatrix, Diagonal, RectDiagonal, AbstractZerosMatrix, AbstractFillMatrix, DiagonalFill)
+for type in (AbstractMatrix, Diagonal, RectDiagonal, AbstractZerosMatrix, AbstractFillMatrix, AdjointAbsVec, TransposeAbsVec, DiagonalFill)
     @eval begin
         function *(A::$type, B::DiagonalFill)
             check_matmul_sizes(A, B)
