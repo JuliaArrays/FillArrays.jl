@@ -648,7 +648,6 @@ for type in tuple(AbstractVector, AbstractZerosVector, linearalgebra_types...)
     end
 end
 
-# TODO: add dim check to all abstract ones multiplication
 for type in linearalgebra_types
     @eval begin
         function *(A::$type, B::DiagonalFill)
@@ -702,12 +701,18 @@ end
 
 for type in (AdjointAbsVec{<:Any,<:AbstractOnesVector}, TransposeAbsVec{<:Any,<:AbstractOnesVector}, AbstractOnesMatrix, AbstractOnesVector)
     @eval begin
-        *(A::DiagonalOnes, B::$type) = Ones{promote_type(eltype(A),eltype(B))}(size(B))
+        function *(A::DiagonalOnes, B::$type)
+            check_matmul_sizes(A, B)
+            Ones{promote_type(eltype(A),eltype(B))}(size(B))
+        end
     end
 end
 for type in (AdjointAbsVec{<:Any,<:AbstractOnesVector}, TransposeAbsVec{<:Any,<:AbstractOnesVector}, AbstractOnesMatrix)
     @eval begin
-        *(A::$type, B::DiagonalOnes) = Ones{promote_type(eltype(A),eltype(B))}(size(A))
+        function *(A::$type, B::DiagonalOnes)
+            check_matmul_sizes(A, B)
+            Ones{promote_type(eltype(A),eltype(B))}(size(A))
+        end
     end
 end
 
@@ -715,14 +720,14 @@ for type in (DiagonalFill, DiagonalOnes)
     @eval begin
         function *(A::$type, B::RectDiagonalFill)
             check_matmul_sizes(A, B)
-            len = minimum(size(B))
-            RectDiagonal(view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len)), size(B))
+            len = Base.OneTo(minimum(size(B)))
+            RectDiagonal(view(A.diag, len) .* view(B.diag, len), size(B))
         end
 
         function *(A::RectDiagonalFill, B::$type)
             check_matmul_sizes(A, B)
-            len = minimum(size(A))
-            RectDiagonal(view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len)), size(A))
+            len = Base.OneTo(minimum(size(A)))
+            RectDiagonal(view(A.diag, len) .* view(B.diag, len), size(A))
         end
     end
 end
@@ -730,25 +735,51 @@ end
 for type1 in (AbstractMatrix, Diagonal)
     for type2 in (Diagonal, DiagonalOnes, DiagonalFill)
         @eval begin
-            *(Da::DiagonalZeros, A::$type1, Db::$type2) = Zeros(Da) * A
-            *(Da::$type2, A::$type1, Db::DiagonalZeros) = A * Zeros(Db)
+            function *(Da::DiagonalZeros, A::$type1, Db::$type2)
+                check_matmul_sizes(A, Db)
+                Zeros(Da) * A
+            end
+            function *(Da::$type2, A::$type1, Db::DiagonalZeros)
+                check_matmul_sizes(Da, A)
+                A * Zeros(Db)
+            end
         end
     end
 
     for type2 in (Diagonal, DiagonalFill)
         @eval begin
-            *(Da::DiagonalOnes, A::$type1, Db::$type2) = A * Db
-            *(Da::$type2, A::$type1, Db::DiagonalOnes) = Da * A
+            function *(Da::DiagonalOnes, A::$type1, Db::$type2)
+                check_matmul_sizes(Da, A)
+                ones(eltype(Da)) * A * Db
+            end
+            function *(Da::$type2, A::$type1, Db::DiagonalOnes)
+                check_matmul_sizes(A, Db)
+                Da * A * ones(eltype(Db))
+            end
         end
     end
 
     @eval begin
         *(Da::DiagonalZeros, A::$type1, Db::DiagonalZeros) = Zeros(Da) * A * Zeros(Db)
-        *(Da::DiagonalOnes, A::$type1, Db::DiagonalOnes) = A
+        function *(Da::DiagonalOnes, A::$type1, Db::DiagonalOnes)
+            check_matmul_sizes(Da, A)
+            check_matmul_sizes(A, Db)
+            (one(eltype(Da)) * one(eltype(Db))) * A
+        end
 
-        *(Da::DiagonalFill, A::$type1, Db::Diagonal) = getindex_value(Da.diag) * A * Db
-        *(Da::Diagonal, A::$type1, Db::DiagonalFill) = Da * A * getindex_value(Db.diag)
-        *(Da::DiagonalFill, A::$type1, Db::DiagonalFill) = getindex_value(Da.diag) * getindex_value(Db.diag) * A
+        function *(Da::DiagonalFill, A::$type1, Db::Diagonal)
+            check_matmul_sizes(Da, A)
+            getindex_value(Da.diag) * A * Db
+        end
+        function *(Da::Diagonal, A::$type1, Db::DiagonalFill)
+            check_matmul_sizes(A, Db)
+            Da * A * getindex_value(Db.diag)
+        end
+        function *(Da::DiagonalFill, A::$type1, Db::DiagonalFill)
+            check_matmul_sizes(Da, A)
+            check_matmul_sizes(A, Db)
+            (getindex_value(Da.diag) * getindex_value(Db.diag)) * A
+        end
     end
 end
 
