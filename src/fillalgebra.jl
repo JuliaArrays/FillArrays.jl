@@ -81,13 +81,44 @@ mult_ones(a, b) = mult_ones(a, b, mult_axes(a, b))
 
 *(a::AbstractFillMatrix, b::AbstractFillMatrix) = mult_fill(a,b)
 *(a::AbstractFillMatrix, b::AbstractFillVector) = mult_fill(a,b)
+for type in (AdjointAbsVec{<:Any,<:AbstractFillVector}, TransposeAbsVec{<:Any,<:AbstractFillVector})
+    @eval begin
+        function *(A::AbstractFillVector, B::$type)
+                size(A,2) == size(B,1) ||
+            throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match first dimension of B, $(size(B,1))"))
+            Fill(getindex_value(A) * getindex_value(B), size(A, 1), size(B, 2))
+        end
+    end
+end
 
 # this treats a size (n,) vector as a nx1 matrix, so b needs to have 1 row
 # special cased, as OnesMatrix * OnesMatrix isn't a Ones
 *(a::AbstractOnesVector, b::AbstractOnesMatrix) = mult_ones(a, b)
 for type in (AdjointAbsVec{<:Any,<:AbstractOnesVector}, TransposeAbsVec{<:Any,<:AbstractOnesVector})
     @eval begin
-        *(A::AbstractOnesVector, B::$type) = Ones{promote_type(eltype(A),eltype(B))}(size(A,1), size(B,2))
+        *(A::AbstractOnesVector, B::$type) = mult_ones(A, B)
+    end
+end
+
+for type2 in (AdjointAbsVec{<:Any,<:AbstractZerosVector}, TransposeAbsVec{<:Any,<:AbstractZerosVector})
+    for type1 in (AbstractFillVector, AbstractZerosVector, AbstractOnesVector)
+        @eval begin
+            function *(A::$type1, B::$type2)
+                    size(A,2) == size(B,1) ||
+                throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match first dimension of B, $(size(B,1))"))
+                Zeros{promote_type(eltype(A), eltype(B))}(size(A, 1), size(B, 2))
+            end
+        end
+    end
+end
+
+for type in (AdjointAbsVec{<:Any,<:AbstractOnesVector}, TransposeAbsVec{<:Any,<:AbstractOnesVector}, AdjointAbsVec{<:Any,<:AbstractFillVector}, TransposeAbsVec{<:Any,<:AbstractFillVector}, )
+    @eval begin
+        function *(A::AbstractZerosVector, B::$type)
+                size(A,2) == size(B,1) ||
+            throw(DimensionMismatch("second dimension of A, $(size(A,2)) does not match first dimension of B, $(size(B,1))"))
+            Zeros{promote_type(eltype(A), eltype(B))}(size(A, 1), size(B, 2))
+        end
     end
 end
 

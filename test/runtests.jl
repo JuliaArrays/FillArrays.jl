@@ -386,7 +386,7 @@ end
     @test stringmime("text/plain", D) == "3×2 RectDiagonal{Float64, Vector{Float64}, Tuple{Base.OneTo{$Int}, Base.OneTo{$Int}}}:\n 1.0   ⋅ \n  ⋅   2.0\n  ⋅    ⋅ "
 end
 
-@testset "RectDiagonal Multiplication" begin
+@testset "RectDiagonal multiplication" begin
     using FillArrays: RectDiagonalFill, RectDiagonalZeros, RectDiagonalOnes, DiagonalFill, DiagonalOnes, DiagonalZeros
     m = 3
     n = 3
@@ -644,6 +644,30 @@ end
             :OnesVec           => Vector,
             :FillVec           => Vector
         ),
+        :Vec => Dict(
+            :TransVec           => Array,
+            :TransZerosVec      => Zeros,
+            :TransOnesVec       => Array,
+            :TransFillVec       => Array,
+        ),
+        :ZerosVec => Dict(
+            :TransVec           => Zeros,
+            :TransZerosVec      => Zeros,
+            :TransOnesVec       => Zeros,
+            :TransFillVec       => Zeros,
+        ),
+        :OnesVec => Dict(
+            :TransVec           => Array,
+            :TransZerosVec      => Zeros,
+            :TransOnesVec       => Ones,
+            :TransFillVec       => Fill,
+        ),
+        :FillVec => Dict(
+            :TransVec           => Array,
+            :TransZerosVec      => Zeros,
+            :TransOnesVec       => Fill,
+            :TransFillVec       => Fill,
+        ),
         :TransZerosVec => Dict(
             :RectDiagonal      => Zeros,
             :RectDiagonalFill  => Zeros,
@@ -714,22 +738,22 @@ end
                 for op1 in (adjoint, transpose)
                     result = op1(A) * op2(B)
                     @test typeof(result) <: expected[k1][k2] || typeof(result.parent) <: expected[k1][k2]
-                    if !(typeof(result) <: expected[k1][k2]) && !(typeof(result.parent) <: expected[k1][k2])
-                        @show op1 op2 typeof(op1(A)) typeof(op2(B)) typeof(result) expected[k1][k2]
-                    end
                 end
             end
         end
     end
 
-    for (k1, A) in instances
-        for (k2, B) in vec_instances
+    for (k2, B) in vec_instances
+        for (k1, A) in instances
             for op1 in (adjoint, transpose, identity)
                 @test typeof(op1(A) * B) <: expected[k1][k2]
             end
 
-            if !(typeof(A*B) <: expected[k1][k2])
-                @show k1 k2 expected[k1][k2]
+        end
+        for (k1, A) in mat_instances
+            for op1 in (adjoint, transpose)
+                @test typeof(op1(A)*B) <: Number
+                @test typeof(B*op1(A)) <: expected[k2][k1]
             end
         end
     end
