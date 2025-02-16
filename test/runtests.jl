@@ -387,28 +387,351 @@ end
 end
 
 @testset "RectDiagonal Multiplication" begin
-    diag = Diagonal(rand(3))
-    diagfill = Diagonal(Fill(1., 3))
-    rectdiag = RectDiagonal(rand(3), 3, 3)
-    rectdiagfill = RectDiagonal(Fill(1., 3))
-    mat = rand(3,3)
-    vec = rand(3)
-    arr_diagfill = Array(diagfill)
-    arr_rectdiag = Array(rectdiag)
-    arr_rectdiagfill = Array(rectdiagfill)
-    for a in (diag, diagfill, rectdiag, rectdiagfill, mat, vec)
-        arr_a = Array(a)
-        @test diagfill * a isa typeof(a)
-        @test diagfill * a == arr_diagfill * arr_a
-        @test rectdiag * a == arr_rectdiag * arr_a
-        @test rectdiagfill * a == arr_rectdiagfill * arr_a
+    using FillArrays: RectDiagonalFill, RectDiagonalZeros, RectDiagonalOnes, DiagonalFill, DiagonalOnes, DiagonalZeros
+    m = 3
+    n = 3
+    val = 2.0
+
+    # Create the instances as given.
+    instances = Dict(
+        :RectDiagonal      => RectDiagonal(rand(m), m, n),
+        :RectDiagonalFill  => RectDiagonal(Fill(val, min(m, n)), m, n),
+        :RectDiagonalZeros => RectDiagonal(Zeros(min(m, n)), m, n),
+        :RectDiagonalOnes  => RectDiagonal(Ones(min(m, n)), m, n),
+        :Diagonal          => Diagonal(rand(m)),
+        :DiagonalFill      => Diagonal(Fill(val, m)),
+        :DiagonalZeros     => Diagonal(Zeros(m)),
+        :DiagonalOnes      => Diagonal(Ones(m)),
+        :Zeros             => Zeros(m, n),
+        :Ones              => Ones(m, n),
+        :Fill              => Fill(val, m, n),
+        :Mat               => rand(m, n),
+    )
+
+    mat_instances = Dict(
+        :TransZerosVec     => Zeros(n),
+        :TransOnesVec      => Ones(n),
+        :TransFillVec      => Fill(1., n),
+        :TransVec          => rand(n),
+    )
+
+    vec_instances = Dict(
+        :Vec               => rand(n),
+        :ZerosVec          => Zeros(n),
+        :OnesVec           => Ones(n),
+        :FillVec           => Fill(1., n)
+    )
+
+    # Expected outcome table.
+    # The header (in order) corresponds to the following instance symbols:
+    #   :RectDiagonal, :RectDiagonalFill, :RectDiagonalZeros, :RectDiagonalOnes,
+    #   :Diagonal, :DiagonalFill, :DiagonalZeros, :DiagonalOnes, :Zeros, :Ones, :Fill, :Mat
+    # Each row gives the expected resultant type when doing multiplication,
+    expected = Dict(
+        :RectDiagonal => Dict(
+            :RectDiagonal      => RectDiagonal,
+            :RectDiagonalFill  => RectDiagonal,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => RectDiagonal,
+            :Diagonal          => RectDiagonal,
+            :DiagonalFill      => RectDiagonal,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => RectDiagonal,
+            :Zeros             => Zeros,
+            :Ones              => Array,
+            :Fill              => Array,
+            :Mat               => Array,
+            :Vec               => Vector,
+            :ZerosVec          => Zeros,
+            :OnesVec           => Vector,
+            :FillVec           => Vector
+        ),
+        :RectDiagonalFill => Dict(
+            :RectDiagonal      => RectDiagonal,
+            :RectDiagonalFill  => RectDiagonal,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => RectDiagonal,
+            :Diagonal          => RectDiagonal,
+            :DiagonalFill      => RectDiagonalFill,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => RectDiagonalFill,
+            :Zeros             => Zeros,
+            :Ones              => Array,
+            :Fill              => Array,
+            :Mat               => Array,
+            :Vec               => Vector,
+            :ZerosVec          => Zeros,
+            :OnesVec           => Vector,
+            :FillVec           => Vector
+        ),
+        :RectDiagonalZeros => Dict(
+            :RectDiagonal      => Zeros,
+            :RectDiagonalFill  => Zeros,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => Zeros,
+            :Diagonal          => Zeros,
+            :DiagonalFill      => Zeros,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => Zeros,
+            :Zeros             => Zeros,
+            :Ones              => Zeros,
+            :Fill              => Zeros,
+            :Mat               => Zeros,
+            :Vec               => Zeros,
+            :ZerosVec          => Zeros,
+            :OnesVec           => Zeros,
+            :FillVec           => Zeros
+        ),
+        :RectDiagonalOnes => Dict(
+            :RectDiagonal      => RectDiagonal,
+            :RectDiagonalFill  => RectDiagonal,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => RectDiagonal,
+            :Diagonal          => RectDiagonal,
+            :DiagonalFill      => RectDiagonalFill,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => RectDiagonalOnes,
+            :Zeros             => Zeros,
+            :Ones              => Array,
+            :Fill              => Array,
+            :Mat               => Array,
+            :Vec               => Vector,
+            :ZerosVec          => Zeros,
+            :OnesVec           => Vector,
+            :FillVec           => Vector
+        ),
+        :Diagonal => Dict(
+            :RectDiagonal      => RectDiagonal,
+            :RectDiagonalFill  => RectDiagonal,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => RectDiagonal,
+            :Diagonal          => Diagonal,
+            :DiagonalFill      => Diagonal,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => Diagonal,
+            :Zeros             => Zeros,
+            :Ones              => Array,
+            :Fill              => Array,
+            :Mat               => Array,
+            :Vec               => Vector,
+            :ZerosVec          => Zeros,
+            :OnesVec           => Vector,
+            :FillVec           => Vector
+        ),
+        :DiagonalFill => Dict(
+            :RectDiagonal      => RectDiagonal,
+            :RectDiagonalFill  => RectDiagonalFill,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => RectDiagonalFill,
+            :Diagonal          => Diagonal,
+            :DiagonalFill      => DiagonalFill,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => DiagonalFill,
+            :Zeros             => Zeros,
+            :Ones              => Fill,
+            :Fill              => Fill,
+            :Mat               => Array,
+            :Vec               => Vector,
+            :ZerosVec          => Zeros,
+            :OnesVec           => Fill,
+            :FillVec           => Fill
+        ),
+        :DiagonalZeros => Dict(
+            :RectDiagonal      => Zeros,
+            :RectDiagonalFill  => Zeros,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => Zeros,
+            :Diagonal          => Zeros,
+            :DiagonalFill      => Zeros,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => Zeros,
+            :Zeros             => Zeros,
+            :Ones              => Zeros,
+            :Fill              => Zeros,
+            :Mat               => Zeros,
+            :Vec               => Zeros,
+            :ZerosVec          => Zeros,
+            :OnesVec           => Zeros,
+            :FillVec           => Zeros
+        ),
+        :DiagonalOnes => Dict(
+            :RectDiagonal      => RectDiagonal,
+            :RectDiagonalFill  => RectDiagonalFill,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => RectDiagonalOnes,
+            :Diagonal          => Diagonal,
+            :DiagonalFill      => DiagonalFill,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => DiagonalOnes,
+            :Zeros             => Zeros,
+            :Ones              => Ones,
+            :Fill              => Fill,
+            :Mat               => Array,
+            :Vec               => Vector,
+            :ZerosVec          => Zeros,
+            :OnesVec           => Ones,
+            :FillVec           => Fill
+        ),
+        :Zeros => Dict(
+            :RectDiagonal      => Zeros,
+            :RectDiagonalFill  => Zeros,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => Zeros,
+            :Diagonal          => Zeros,
+            :DiagonalFill      => Zeros,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => Zeros,
+            :Zeros             => Zeros,
+            :Ones              => Zeros,
+            :Fill              => Zeros,
+            :Mat               => Zeros,
+            :Vec               => Zeros,
+            :ZerosVec          => Zeros,
+            :OnesVec           => Zeros,
+            :FillVec           => Zeros
+        ),
+        :Ones => Dict(
+            :RectDiagonal      => Array,
+            :RectDiagonalFill  => Array,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => Array,
+            :Diagonal          => Array,
+            :DiagonalFill      => Fill,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => Ones,
+            :Zeros             => Zeros,
+            :Ones              => Fill,
+            :Fill              => Fill,
+            :Mat               => Array,
+            :Vec               => Fill,
+            :ZerosVec          => Zeros,
+            :OnesVec           => Fill,
+            :FillVec           => Fill
+        ),
+        :Fill => Dict(
+            :RectDiagonal      => Array,
+            :RectDiagonalFill  => Array,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => Array,
+            :Diagonal          => Array,
+            :DiagonalFill      => Fill,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => Fill,
+            :Zeros             => Zeros,
+            :Ones              => Fill,
+            :Fill              => Fill,
+            :Mat               => Array,
+            :Vec               => Fill,
+            :ZerosVec          => Zeros,
+            :OnesVec           => Fill,
+            :FillVec           => Fill
+        ),
+        :Mat => Dict(
+            :RectDiagonal      => Array,
+            :RectDiagonalFill  => Array,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => Array,
+            :Diagonal          => Array,
+            :DiagonalFill      => Array,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => Array,
+            :Zeros             => Zeros,
+            :Ones              => Array,
+            :Fill              => Array,
+            :Mat               => Array,
+            :Vec               => Vector,
+            :ZerosVec          => Zeros,
+            :OnesVec           => Vector,
+            :FillVec           => Vector
+        ),
+        :TransZerosVec => Dict(
+            :RectDiagonal      => Zeros,
+            :RectDiagonalFill  => Zeros,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => Zeros,
+            :Diagonal          => Zeros,
+            :DiagonalFill      => Zeros,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => Zeros,
+            :Zeros             => Zeros,
+            :Ones              => Zeros,
+            :Fill              => Zeros,
+            :Mat               => Zeros,
+        ),
+        :TransOnesVec => Dict(
+            :RectDiagonal      => Array,
+            :RectDiagonalFill  => Array,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => Array,
+            :Diagonal          => Array,
+            :DiagonalFill      => Fill,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => Ones,
+            :Zeros             => Zeros,
+            :Ones              => Fill,
+            :Fill              => Fill,
+            :Mat               => Array,
+        ),
+        :TransFillVec => Dict(
+            :RectDiagonal      => Array,
+            :RectDiagonalFill  => Array,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => Array,
+            :Diagonal          => Array,
+            :DiagonalFill      => Fill,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => Fill,
+            :Zeros             => Zeros,
+            :Ones              => Fill,
+            :Fill              => Fill,
+            :Mat               => Array,
+        ),
+        :TransVec => Dict(
+            :RectDiagonal      => Array,
+            :RectDiagonalFill  => Array,
+            :RectDiagonalZeros => Zeros,
+            :RectDiagonalOnes  => Array,
+            :Diagonal          => Array,
+            :DiagonalFill      => Array,
+            :DiagonalZeros     => Zeros,
+            :DiagonalOnes      => Array,
+            :Zeros             => Zeros,
+            :Ones              => Fill,
+            :Fill              => Fill,
+            :Mat               => Array,
+        ),
+    )
+
+    for (k2, B) in instances
+        for op2 in (adjoint, transpose, identity)
+            for (k1, A) in instances
+                for op1 in (adjoint, transpose, identity)
+                    @test typeof(op1(A) * op2(B)) <: expected[k1][k2]
+                end
+            end
+
+            for (k1, A) in mat_instances
+                for op1 in (adjoint, transpose)
+                    result = op1(A) * op2(B)
+                    @test typeof(result) <: expected[k1][k2] || typeof(result.parent) <: expected[k1][k2]
+                    if !(typeof(result) <: expected[k1][k2]) && !(typeof(result.parent) <: expected[k1][k2])
+                        @show op1 op2 typeof(op1(A)) typeof(op2(B)) typeof(result) expected[k1][k2]
+                    end
+                end
+            end
+        end
     end
-    for a in (diag, diagfill, rectdiag, rectdiagfill, mat)
-        arr_a = Array(a)
-        @test a * diagfill isa typeof(a)
-        @test a * diagfill == arr_a * arr_diagfill
-        @test a * rectdiag == arr_a * arr_rectdiag
-        @test a * rectdiagfill == arr_a * arr_rectdiagfill
+
+    for (k1, A) in instances
+        for (k2, B) in vec_instances
+            for op1 in (adjoint, transpose, identity)
+                @test typeof(op1(A) * B) <: expected[k1][k2]
+            end
+
+            if !(typeof(A*B) <: expected[k1][k2])
+                @show k1 k2 expected[k1][k2]
+            end
+        end
     end
 end
 

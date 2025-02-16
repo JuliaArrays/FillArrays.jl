@@ -15,6 +15,7 @@ for OP in (:transpose, :adjoint)
         end
         $OP(a::AbstractOnesMatrix) = fillsimilar(a, reverse(axes(a)))
         $OP(a::FillMatrix) = Fill($OP(a.value), reverse(a.axes))
+        $OP(a::RectDiagonal) = RectDiagonal(vec($OP(a.diag)), reverse(a.axes))
     end
 end
 
@@ -84,6 +85,11 @@ mult_ones(a, b) = mult_ones(a, b, mult_axes(a, b))
 # this treats a size (n,) vector as a nx1 matrix, so b needs to have 1 row
 # special cased, as OnesMatrix * OnesMatrix isn't a Ones
 *(a::AbstractOnesVector, b::AbstractOnesMatrix) = mult_ones(a, b)
+for type in (AdjointAbsVec{<:Any,<:AbstractOnesVector}, TransposeAbsVec{<:Any,<:AbstractOnesVector})
+    @eval begin
+        *(A::AbstractOnesVector, B::$type) = Ones{promote_type(eltype(A),eltype(B))}(size(A,1), size(B,2))
+    end
+end
 
 *(a::AbstractZerosMatrix, b::AbstractZerosMatrix) = mult_zeros(a, b)
 *(a::AbstractZerosMatrix, b::AbstractZerosVector) = mult_zeros(a, b)
@@ -486,6 +492,9 @@ end
 @inline elconvert(::Type{T}, A::AbstractArray) where T = AbstractArray{T}(A)
 
 # RectDiagonal Multiplication
+const RectDiagonalZeros{T,V<:AbstractZerosVector{T}} = RectDiagonal{T,V}
+const RectDiagonalOnes{T,V<:AbstractOnesVector{T}} = RectDiagonal{T,V}
+
 function *(A::RectDiagonal, B::Diagonal)
     check_matmul_sizes(A, B)
     len = minimum(size(A))
@@ -497,77 +506,219 @@ function *(A::Diagonal, B::RectDiagonal)
     RectDiagonal(view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len)), (size(A, 1), size(B, 2)))
 end
 
-function *(A::RectDiagonal, B::AbstractMatrix)
-    check_matmul_sizes(A, B)
-    TS = Base.promote_op(LinearAlgebra.matprod, eltype(A), eltype(B))
-    diag = A.diag
-    out = fill!(similar(diag, TS, axes(A,1), axes(B,2)), 0)
-    out[axes(diag, 1), :] .= diag .* view(B, axes(diag,1), :)
-    out
+for type in (AbstractMatrix, AdjointAbsVec, TransposeAbsVec, AdjOrTransAbsVec{<:Any,<:AbstractZerosVector})
+    @eval begin
+        function *(A::RectDiagonal, B::$type)
+            check_matmul_sizes(A, B)
+            TS = Base.promote_op(LinearAlgebra.matprod, eltype(A), eltype(B))
+            diag = A.diag
+            out = fill!(similar(diag, TS, axes(A,1), axes(B,2)), 0)
+            len = Base.OneTo(minimum(size(A)))
+            out[len, :] .= view(diag, len) .* view(B, len, :)
+            out
+        end
+
+        function *(A::$type, B::RectDiagonal)
+            check_matmul_sizes(A, B)
+            TS = Base.promote_op(LinearAlgebra.matprod, eltype(A), eltype(B))
+            out = fill!(similar(A, TS, axes(A,1), axes(B, 2)), 0)
+            len = Base.OneTo(minimum(size(B)))
+            out[:, len] .= view(A, :, len) .* view(reshape(B.diag, 1, :), Base.OneTo(1), len)
+            out
+        end
+    end
 end
+
 function *(A::RectDiagonal, x::AbstractVector)
     check_matmul_sizes(A, x)
     TS = Base.promote_op(LinearAlgebra.matprod, eltype(A), eltype(x))
     diag = A.diag
     out = fill!(similar(diag, TS, axes(A,1)), 0)
-    out[axes(diag, 1)] .= diag .* view(x, axes(diag,1))
+    len = Base.OneTo(minimum(size(A)))
+    out[len] .= view(diag, len) .* view(x, len)
     out
 end
-function *(A::AbstractMatrix, B::RectDiagonal)
-    check_matmul_sizes(A, B)
-    TS = Base.promote_op(LinearAlgebra.matprod, eltype(A), eltype(B))
-    out = fill!(similar(A, TS, axes(A,1), axes(B, 2)), 0)
-    diag = B.diag
-    out[:, axes(diag, 1)] .= view(A, :, axes(diag,1)) .* diag'
-    out
-end
+
 function *(A::RectDiagonal, B::RectDiagonal)
     check_matmul_sizes(A, B)
     TS = Base.promote_op(LinearAlgebra.matprod, eltype(A), eltype(B))
     out = fill!(similar(A.diag, TS, min(size(A, 1), size(B, 2))), 0)
-    len = min(minimum(size(A)), minimum(size(B)))
-    out[Base.OneTo(len)] .= view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len))
+    len = Base.OneTo(min(minimum(size(A)), minimum(size(B))))
+    out[len] .= view(A.diag, len) .* view(B.diag, len)
     RectDiagonal(out, (size(A,1), size(B,2)))
 end
 
-# RectDiagonalFill Multiplication
+for type in (RectDiagonal, RectDiagonalZeros)
+    @eval begin
+        function *(A::$type, B::AbstractZerosMatrix)
+            check_matmul_sizes(A, B)
+            Zeros{promote_type(eltype(A),eltype(B))}(size(A, 1), size(B, 2))
+        end
+
+        function *(A::$type, B::AbstractZerosVector)
+            check_matmul_sizes(A, B)
+            Zeros{promote_type(eltype(A),eltype(B))}(size(A, 1))
+        end
+
+        function *(A::AbstractZerosMatrix, B::$type)
+            check_matmul_sizes(A, B)
+            Zeros{promote_type(eltype(A),eltype(B))}(size(A, 1), size(B, 2))
+        end
+
+        *(A::AdjointAbsVec{<:Any,<:AbstractZerosVector}, B::$type) = Zeros(A) * B
+        *(A::TransposeAbsVec{<:Any,<:AbstractZerosVector}, B::$type) = Zeros(A) * B
+        *(A::$type, B::AdjointAbsVec{<:Any,<:AbstractZerosVector}) = A * Zeros(B)
+        *(A::$type, B::TransposeAbsVec{<:Any,<:AbstractZerosVector}) = A * Zeros(B)
+    end
+end
+
+for type in (AbstractMatrix, RectDiagonal, Diagonal, AdjointAbsVec, TransposeAbsVec, AdjOrTransAbsVec{<:Any,<:AbstractZerosVector})
+    @eval begin
+        function *(A::$type, B::RectDiagonalZeros)
+            check_matmul_sizes(A, B)
+            Zeros{promote_type(eltype(A),eltype(B))}(size(A,1), size(B,2))
+        end
+        function *(A::RectDiagonalZeros, B::$type)
+            check_matmul_sizes(A, B)
+            Zeros{promote_type(eltype(A),eltype(B))}(size(A,1), size(B,2))
+        end
+    end
+end
+function *(A::RectDiagonalZeros, B::AbstractVector)
+    check_matmul_sizes(A, B)
+    Zeros{promote_type(eltype(A),eltype(B))}(size(A,1))
+end
+function *(A::RectDiagonalZeros, B::RectDiagonalZeros)
+    check_matmul_sizes(A, B)
+    Zeros{promote_type(eltype(A),eltype(B))}(size(A,1), size(B,2))
+end
+
 *(a::RectDiagonalFill, b::Number) = RectDiagonal(a.diag * b, a.axes)
 *(a::Number, b::RectDiagonalFill) = RectDiagonal(a * b.diag, b.axes)
 
 # DiagonalFill Multiplication
-for type in (AbstractMatrix, Diagonal, RectDiagonal, AbstractZerosMatrix, AbstractFillMatrix, AdjointAbsVec, TransposeAbsVec, AbstractVector, AbstractZerosVector)
+const DiagonalZeros{T,V<:AbstractZerosVector{T}} = Diagonal{T,V}
+const DiagonalOnes{T,V<:AbstractOnesVector{T}} = Diagonal{T,V}
+linearalgebra_types = (AbstractMatrix, Diagonal, RectDiagonal, AbstractZerosMatrix,
+                        AbstractFillMatrix, AdjointAbsVec, TransposeAbsVec, UnitUpperTriangular, UnitLowerTriangular,
+                        LowerTriangular, UpperTriangular, LinearAlgebra.AbstractTriangular, Symmetric, Hermitian,
+                        SymTridiagonal, UpperHessenberg, AdjOrTransAbsVec{<:Any,<:AbstractZerosVector})#, OneElement)
+for type in tuple(AbstractVector, AbstractZerosVector, linearalgebra_types...)
     @eval begin
         function *(A::DiagonalFill, B::$type)
             check_matmul_sizes(A, B)
             getindex_value(A.diag) * B
         end
+        *(A::DiagonalZeros, B::$type) = Zeros(A) * B
+        function *(A::DiagonalOnes, B::$type)
+            check_matmul_sizes(A, B)
+            one(eltype(A)) * B
+        end
     end
 end
 
-for type in (AbstractMatrix, Diagonal, RectDiagonal, AbstractZerosMatrix, AbstractFillMatrix, AdjointAbsVec, TransposeAbsVec)
+# TODO: add dim check to all abstract ones multiplication
+for type in linearalgebra_types
     @eval begin
         function *(A::$type, B::DiagonalFill)
             check_matmul_sizes(A, B)
             getindex_value(B.diag) * A
         end
+        *(A::$type, B::DiagonalZeros) = A * Zeros(B)
+        function *(A::$type, B::DiagonalOnes)
+            check_matmul_sizes(A, B)
+            one(eltype(B)) * A
+        end
     end
 end
 
-function *(A::DiagonalFill, B::DiagonalFill)
-    check_matmul_sizes(A, B)
-    Diagonal(A.diag .* B.diag)
+for type1 in (DiagonalFill, DiagonalOnes, DiagonalZeros)
+    for type2 in (AdjointAbsVec{<:Any,<:AbstractZerosVector}, TransposeAbsVec{<:Any,<:AbstractZerosVector}, RectDiagonalZeros)
+        @eval begin
+            *(A::$type2, B::$type1) = Zeros(A) * B
+            *(A::$type1, B::$type2) = A * Zeros(B)
+        end
+    end
 end
 
-function *(A::DiagonalFill, B::RectDiagonalFill)
+for type in (DiagonalFill, DiagonalOnes, RectDiagonalFill)
+    @eval begin
+        *(A::$type, B::DiagonalZeros) = A * Zeros(B)
+        *(A::DiagonalZeros, B::$type) = Zeros(A) * B
+    end
+end
+function *(A::DiagonalZeros, B::DiagonalZeros)
     check_matmul_sizes(A, B)
-    len = minimum(size(B))
-    RectDiagonal(view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len)), B.axes)
+    Zeros{promote_type(eltype(A),eltype(B))}(A)
 end
 
-function *(A::RectDiagonalFill, B::DiagonalFill)
+for type1 in (DiagonalFill, DiagonalOnes)
+    for type2 in (DiagonalFill, DiagonalOnes)
+        if type1 !== DiagonalOnes || type2 !== DiagonalOnes
+            @eval begin
+                function *(A::$type1, B::$type2)
+                    check_matmul_sizes(A, B)
+                    getindex_value(A.diag) * B
+                end
+            end
+        end
+    end
+end
+function *(A::DiagonalOnes, B::DiagonalOnes)
     check_matmul_sizes(A, B)
-    len = minimum(size(A))
-    RectDiagonal(view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len)), A.axes)
+    Diagonal(Ones{promote_type(eltype(A), eltype(B))}(size(A, 1)))
+end
+
+for type in (AdjointAbsVec{<:Any,<:AbstractOnesVector}, TransposeAbsVec{<:Any,<:AbstractOnesVector}, AbstractOnesMatrix, AbstractOnesVector)
+    @eval begin
+        *(A::DiagonalOnes, B::$type) = Ones{promote_type(eltype(A),eltype(B))}(size(B))
+    end
+end
+for type in (AdjointAbsVec{<:Any,<:AbstractOnesVector}, TransposeAbsVec{<:Any,<:AbstractOnesVector}, AbstractOnesMatrix)
+    @eval begin
+        *(A::$type, B::DiagonalOnes) = Ones{promote_type(eltype(A),eltype(B))}(size(A))
+    end
+end
+
+for type in (DiagonalFill, DiagonalOnes)
+    @eval begin
+        function *(A::$type, B::RectDiagonalFill)
+            check_matmul_sizes(A, B)
+            len = minimum(size(B))
+            RectDiagonal(view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len)), size(B))
+        end
+
+        function *(A::RectDiagonalFill, B::$type)
+            check_matmul_sizes(A, B)
+            len = minimum(size(A))
+            RectDiagonal(view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len)), size(A))
+        end
+    end
+end
+
+for type1 in (AbstractMatrix, Diagonal)
+    for type2 in (Diagonal, DiagonalOnes, DiagonalFill)
+        @eval begin
+            *(Da::DiagonalZeros, A::$type1, Db::$type2) = Zeros(Da) * A
+            *(Da::$type2, A::$type1, Db::DiagonalZeros) = A * Zeros(Db)
+        end
+    end
+
+    for type2 in (Diagonal, DiagonalFill)
+        @eval begin
+            *(Da::DiagonalOnes, A::$type1, Db::$type2) = A * Db
+            *(Da::$type2, A::$type1, Db::DiagonalOnes) = Da * A
+        end
+    end
+
+    @eval begin
+        *(Da::DiagonalZeros, A::$type1, Db::DiagonalZeros) = Zeros(Da) * A * Zeros(Db)
+        *(Da::DiagonalOnes, A::$type1, Db::DiagonalOnes) = A
+
+        *(Da::DiagonalFill, A::$type1, Db::Diagonal) = getindex_value(Da.diag) * A * Db
+        *(Da::Diagonal, A::$type1, Db::DiagonalFill) = Da * A * getindex_value(Db.diag)
+        *(Da::DiagonalFill, A::$type1, Db::DiagonalFill) = getindex_value(Da.diag) * getindex_value(Db.diag) * A
+    end
 end
 
 ####
