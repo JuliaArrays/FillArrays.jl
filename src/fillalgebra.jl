@@ -548,7 +548,7 @@ function *(A::Diagonal, B::RectDiagonal)
     RectDiagonal(view(A.diag, Base.OneTo(len)) .* view(B.diag, Base.OneTo(len)), (size(A, 1), size(B, 2)))
 end
 
-for type in (AbstractMatrix, AdjointAbsVec, TransposeAbsVec, AdjOrTransAbsVec{<:Any,<:AbstractZerosVector})
+for type in (AbstractMatrix, AbstractTriangular, AdjointAbsVec, TransposeAbsVec, AdjOrTransAbsVec{<:Any,<:AbstractZerosVector})
     @eval begin
         function *(A::RectDiagonal, B::$type)
             check_matmul_sizes(A, B)
@@ -614,7 +614,7 @@ for type in (RectDiagonal, RectDiagonalZeros)
     end
 end
 
-for type in (AbstractMatrix, RectDiagonal, Diagonal, AdjointAbsVec, TransposeAbsVec, AdjOrTransAbsVec{<:Any,<:AbstractZerosVector})
+for type in (AbstractMatrix, RectDiagonal, Diagonal, AdjointAbsVec, TransposeAbsVec, AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}, AbstractTriangular)
     @eval begin
         function *(A::$type, B::RectDiagonalZeros)
             check_matmul_sizes(A, B)
@@ -643,8 +643,8 @@ const DiagonalZeros{T,V<:AbstractZerosVector{T}} = Diagonal{T,V}
 const DiagonalOnes{T,V<:AbstractOnesVector{T}} = Diagonal{T,V}
 mat_types = (AbstractMatrix, RectDiagonal, AbstractZerosMatrix,
                         AbstractFillMatrix, AdjointAbsVec, TransposeAbsVec, UnitUpperTriangular, UnitLowerTriangular,
-                        LowerTriangular, UpperTriangular, LinearAlgebra.AbstractTriangular, Symmetric, Hermitian,
-                        SymTridiagonal, UpperHessenberg, AdjOrTransAbsVec{<:Any,<:AbstractZerosVector})#, OneElement)
+                        LowerTriangular, UpperTriangular, AbstractTriangular, Symmetric, Hermitian, LinearAlgebra.HermOrSym,
+                        SymTridiagonal, UpperHessenberg, LinearAlgebra.AdjOrTransAbsMat, AdjOrTransAbsVec{<:Any,<:AbstractZerosVector})#, OneElement)
 for type in tuple(AbstractVector, AbstractZerosVector, mat_types...)
     @eval begin
         function *(A::DiagonalFill, B::$type)
