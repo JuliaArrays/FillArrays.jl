@@ -738,12 +738,6 @@ include("fillalgebra.jl")
 include("fillbroadcast.jl")
 include("trues.jl")
 
-if !isdefined(Base, :get_extension)
-    include("../ext/FillArraysPDMatsExt.jl")
-    include("../ext/FillArraysSparseArraysExt.jl")
-    include("../ext/FillArraysStatisticsExt.jl")
-end
-
 ##
 # print
 ##
