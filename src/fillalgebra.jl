@@ -78,6 +78,13 @@ mult_zeros(a::AbstractArray{<:Number}, b::AbstractArray{<:Number}) = mult_zeros(
 mult_zeros(a, b) = mult_fill(a, b, mult_axes(a, b))
 mult_ones(a, b) = mult_ones(a, b, mult_axes(a, b))
 
+# scaling
+*(a::AbstractFill, b::Number) = Fill(getindex_value(a) * b, axes(a))
+*(a::Number, b::AbstractFill) = Fill(a * getindex_value(b), axes(b))
+*(a::AbstractZeros, b::Number) = Zeros(typeof(getindex_value(a) * b), axes(a))
+*(a::Number, b::AbstractZeros) = Zeros(typeof(a * getindex_value(b)), axes(b))
+
+# matmul
 *(a::AbstractFillMatrix, b::AbstractFillMatrix) = mult_fill(a,b)
 *(a::AbstractFillMatrix, b::AbstractFillVector) = mult_fill(a,b)
 
