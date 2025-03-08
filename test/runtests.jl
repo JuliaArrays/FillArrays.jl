@@ -591,6 +591,8 @@ end
             testsparsediag(E)
         end
     end
+
+    @test sparse(Fill(3, 4, 4)) == sparse(fill(3, 4, 4))
 end
 
 @testset "==" begin
