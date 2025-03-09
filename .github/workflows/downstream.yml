@@ -47,7 +47,7 @@ jobs:
           - {repo: BandedMatrices.jl, group: JuliaLinearAlgebra}
           - {repo: BlockBandedMatrices.jl, group: JuliaLinearAlgebra}
           - {repo: InfiniteLinearAlgebra.jl, group: JuliaLinearAlgebra}
-          - {repo: Optim.jl, group: JuliaNLSolvers}
+          # - {repo: Optim.jl, group: JuliaNLSolvers} # Enable when their CI is fixed
 
     steps:
       - uses: actions/checkout@v4
