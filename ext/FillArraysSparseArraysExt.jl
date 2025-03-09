@@ -5,7 +5,7 @@ using SparseArrays: SparseVectorUnion
 import Base: convert, kron
 using FillArrays
 using FillArrays: RectDiagonalFill, RectOrDiagonalFill, ZerosVector, ZerosMatrix, getindex_value, AbstractFillVector, _fill_dot
-using FillArrays: AbstractFill
+using FillArrays: AbstractFillMatrix
 # Specifying the full namespace is necessary because of https://github.com/JuliaLang/julia/issues/48533
 # See https://github.com/JuliaStats/LogExpFunctions.jl/pull/63
 using FillArrays.LinearAlgebra
@@ -14,16 +14,23 @@ import LinearAlgebra: dot, kron, I
 ##################
 ## Sparse arrays
 ##################
+function SparseVector{Tv,Ti}(F::AbstractFillVector) where {Tv,Ti}
+    SparseVector{Tv,Ti}(length(F),
+        convert(Vector{Ti}, axes(F,1)),
+        fill(convert(Tv, getindex_value(F)), length(F))
+        )
+end
+
 SparseVector{T}(Z::ZerosVector) where T = spzeros(T, length(Z))
 SparseVector{Tv,Ti}(Z::ZerosVector) where {Tv,Ti} = spzeros(Tv, Ti, length(Z))
 
 convert(::Type{AbstractSparseVector}, Z::ZerosVector{T}) where T = spzeros(T, length(Z))
 convert(::Type{AbstractSparseVector{T}}, Z::ZerosVector) where T= spzeros(T, length(Z))
 
-function SparseMatrixCSC{T,Ti}(F::AbstractFill) where {T, Ti<:Integer}
+function SparseMatrixCSC{T,Ti}(F::AbstractFillMatrix) where {T, Ti<:Integer}
     SparseMatrixCSC{T,Ti}(size(F)...,
-        Vector(StepRangeLen(1, size(F,1), size(F,2)+1)),
-        convert(Vector, reduce(vcat, fill(axes(F,1), size(F,2)))),
+        convert(Vector{Ti}, StepRangeLen(1, size(F,1), size(F,2)+1)),
+        convert(Vector{Ti}, reduce(vcat, fill(axes(F,1), size(F,2)))),
         fill(convert(T, getindex_value(F)), length(F)))
 end
 
