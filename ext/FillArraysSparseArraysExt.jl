@@ -29,8 +29,8 @@ convert(::Type{AbstractSparseVector{T}}, Z::ZerosVector) where T= spzeros(T, len
 
 function SparseMatrixCSC{T,Ti}(F::AbstractFillMatrix) where {T, Ti<:Integer}
     SparseMatrixCSC{T,Ti}(size(F)...,
-        convert(Vector{Ti}, StepRangeLen(1, size(F,1), size(F,2)+1)),
-        convert(Vector{Ti}, reduce(vcat, fill(axes(F,1), size(F,2)))),
+        convert(Vector{Ti}, StepRangeLen(oneunit(Ti), Ti(size(F,1)), size(F,2)+1)),
+        convert(Vector{Ti}, reduce(vcat, fill(map(Ti, axes(F,1)), size(F,2)))),
         fill(convert(T, getindex_value(F)), length(F)))
 end
 
