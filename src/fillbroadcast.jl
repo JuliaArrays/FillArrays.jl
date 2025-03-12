@@ -79,16 +79,16 @@ function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,
     return Fill(op(getindex_value(r)), axes(r))
 end
 
-broadcasted(::DefaultArrayStyle, ::typeof(+), r::AbstractZeros) = r
-broadcasted(::DefaultArrayStyle, ::typeof(-), r::AbstractZeros) = r
-broadcasted(::DefaultArrayStyle, ::typeof(+), r::AbstractOnes) = r
+broadcasted(::typeof(+), r::AbstractZeros) = r
+broadcasted(::typeof(-), r::AbstractZeros) = r
+broadcasted(::typeof(+), r::AbstractOnes) = r
 
-broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::AbstractZeros{T,N}) where {T,N} = r
-broadcasted(::DefaultArrayStyle{N}, ::typeof(conj), r::AbstractOnes{T,N}) where {T,N} = r
-broadcasted(::DefaultArrayStyle{N}, ::typeof(real), r::AbstractZeros{T,N}) where {T,N} = Zeros{real(T)}(axes(r))
-broadcasted(::DefaultArrayStyle{N}, ::typeof(real), r::AbstractOnes{T,N}) where {T,N} = Ones{real(T)}(axes(r))
-broadcasted(::DefaultArrayStyle{N}, ::typeof(imag), r::AbstractZeros{T,N}) where {T,N} = Zeros{real(T)}(axes(r))
-broadcasted(::DefaultArrayStyle{N}, ::typeof(imag), r::AbstractOnes{T,N}) where {T,N} = Zeros{real(T)}(axes(r))
+broadcasted(::typeof(conj), r::AbstractZeros{T,N}) where {T,N} = r
+broadcasted(::typeof(conj), r::AbstractOnes{T,N}) where {T,N} = r
+broadcasted(::typeof(real), r::AbstractZeros{T,N}) where {T,N} = Zeros{real(T)}(axes(r))
+broadcasted(::typeof(real), r::AbstractOnes{T,N}) where {T,N} = Ones{real(T)}(axes(r))
+broadcasted(::typeof(imag), r::AbstractZeros{T,N}) where {T,N} = Zeros{real(T)}(axes(r))
+broadcasted(::typeof(imag), r::AbstractOnes{T,N}) where {T,N} = Zeros{real(T)}(axes(r))
 
 ### Binary broadcasting
 
@@ -260,10 +260,10 @@ broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}, x::Ref) where {T,N
 broadcasted(::DefaultArrayStyle{N}, op, x::Ref, r::AbstractFill{T,N}) where {T,N} = broadcasted_fill(op, r, op(x[], getindex_value(r)), axes(r))
 
 # support AbstractFill .^ k
-broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractFill{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = broadcasted_fill(op, r, getindex_value(r)^k, axes(r))
-broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractOnes{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = broadcasted_ones(op, r, T, axes(r))
-broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractZeros{T,N}, ::Base.RefValue{Val{0}}) where {T,N} = broadcasted_ones(op, r, T, axes(r))
-broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValue{typeof(^)}, r::AbstractZeros{T,N}, ::Base.RefValue{Val{k}}) where {T,N,k} = broadcasted_zeros(op, r, T, axes(r))
+broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractFill{T,N}, ::Val{k}) where {T,N,k} = broadcasted_fill(op, r, getindex_value(r)^k, axes(r))
+broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractOnes{T,N}, ::Val{k}) where {T,N,k} = broadcasted_ones(op, r, T, axes(r))
+broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractZeros{T,N}, ::Val{0}) where {T,N} = broadcasted_ones(op, r, T, axes(r))
+broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractZeros{T,N}, ::Val{k}) where {T,N,k} = broadcasted_zeros(op, r, T, axes(r))
 
 # supports structured broadcast
 if isdefined(LinearAlgebra, :fzero)
