@@ -342,6 +342,27 @@ end
             @test StepRangeLen(z) ≡ convert(StepRangeLen, z) ≡ convert(StepRangeLen{Int}, z) ≡ convert(typeof(s), z) ≡ convert(AbstractRange, z) ≡ s
         end
     end
+    @testset "indexing with a Bool AbstractFill" begin
+        @testset for v in ([1, 2, 3], 1:3, rand(Int,3,1), Base.IdentityUnitRange(1:3))
+            n = length(v)
+            @test v[Trues(n)] == v[Fill(true, n)] == v[trues(n)] == vec(v)
+            @test v[Falses(n)] == v[Fill(false, n)] == v[falses(n)] == Int[]
+            @test v[Trues(n,1)] == v[Fill(true, n,1)] == v[trues(n,1)] == vec(v)
+            @test v[Falses(n,1)] == v[Fill(false, n,1)] == v[falses(n,1)] == Int[]
+        end
+
+        for f in (Fill(3, 4), Fill(3, 4, 1))
+            n = length(f)
+            @test f[Trues(n)] === f[Fill(true, n)] === vec(f)
+            @test f[Falses(n)] === f[Fill(false, n)] === Fill(3,0)
+            @test f[Trues(n)] == f[trues(n)]
+            @test f[Falses(n)] == f[falses(n)]
+            @test f[Trues(n,1)] === f[Fill(true, n,1)] === vec(f)
+            @test f[Falses(n,1)] === f[Fill(false, n,1)] === Fill(3,0)
+            @test f[Trues(n,1)] == f[trues(n,1)]
+            @test f[Falses(n,1)] == f[falses(n,1)]
+        end
+    end
 end
 
 @testset "RectDiagonal" begin
