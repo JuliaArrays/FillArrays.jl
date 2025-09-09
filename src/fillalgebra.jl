@@ -496,8 +496,14 @@ end
 normp(a::AbstractZeros, p) = norm(getindex_value(a))
 
 norm1(a::AbstractFill) = length(a)*norm(getindex_value(a))
-norm2(a::AbstractFill) = sqrt(length(a))*norm(getindex_value(a))
-normp(a::AbstractFill, p) = (length(a))^(1/p)*norm(getindex_value(a))
+function norm2(a::AbstractFill)
+    nrm1 = norm(getindex_value(a))
+    sqrt(oftype(nrm1, length(a)))*nrm1
+end
+function normp(a::AbstractFill, p)
+    nrm1 = norm(getindex_value(a))
+    (length(a))^(1/oftype(nrm1, p))*nrm1
+end
 normInf(a::AbstractFill) = norm(getindex_value(a))
 normMinusInf(a::AbstractFill) = norm(getindex_value(a))
 
