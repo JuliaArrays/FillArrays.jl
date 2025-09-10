@@ -1,12 +1,9 @@
 name = "FillArrays"
 uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
-version = "1.14.0"
+version = "1.15.0"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-PDMats = "90014a1f-27ba-587c-ab20-58faa44d9150"
-SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [weakdeps]
 PDMats = "90014a1f-27ba-587c-ab20-58faa44d9150"
@@ -22,16 +19,16 @@ FillArraysStatisticsExt = "Statistics"
 Aqua = "0.8"
 Documenter = "1"
 Infinities = "0.1"
-LinearAlgebra = "1.6"
+LinearAlgebra = "1"
 PDMats = "0.11.17"
 Quaternions = "0.7"
-Random = "1.6"
+Random = "1"
 ReverseDiff = "1"
-SparseArrays = "1.6"
+SparseArrays = "1"
 StaticArrays = "1"
-Statistics = "1.6"
-Test = "1.6"
-julia = "1.6"
+Statistics = "1"
+Test = "1"
+julia = "1.10"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
