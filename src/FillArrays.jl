@@ -885,6 +885,9 @@ function repeat(A::AbstractFill; inner=ntuple(x->1, ndims(A)), outer=ntuple(x->1
     _repeat(A, inner=inner, outer=outer)
 end
 
+Base.checkindex(::Type{Bool}, inds::AbstractUnitRange, I::AbstractFill) = Base.checkindex(Bool, inds, getindex_value(I))
+Base.checkindex(::Type{Bool}, inds::AbstractUnitRange, I::AbstractFill{Bool}) = axes(I,1) == inds
+
 include("oneelement.jl")
 
 end # module

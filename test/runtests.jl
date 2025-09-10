@@ -342,6 +342,13 @@ end
             @test StepRangeLen(z) ≡ convert(StepRangeLen, z) ≡ convert(StepRangeLen{Int}, z) ≡ convert(typeof(s), z) ≡ convert(AbstractRange, z) ≡ s
         end
     end
+
+    @testset "checkindex with an AbstractFill index" begin
+        @test Base.checkindex(Bool, 1:5, Fill(2, 3))
+        @test !Base.checkindex(Bool, 1:5, Fill(0, 3))
+        @test Base.checkindex(Bool, 1:5, Fill(true, 5))
+        @test !Base.checkindex(Bool, 1:5, Fill(true, 2))
+    end
 end
 
 @testset "RectDiagonal" begin
