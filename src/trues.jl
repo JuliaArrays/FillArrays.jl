@@ -34,3 +34,12 @@ function Base.to_indices(A::AbstractArray{T,N}, inds, I::Tuple{Trues{N}}) where 
     @boundscheck axes(A) == axes(I[1]) || Base.throw_boundserror(A, I[1])
     (vec(LinearIndices(A)),)
 end
+
+Base.@propagate_inbounds function getindex(v::AbstractArray, f::AbstractFill{Bool})
+    @boundscheck checkbounds(v, f)
+    v[range(begin, length = getindex_value(f) ? length(v) : 0)]
+end
+Base.@propagate_inbounds function getindex(v::AbstractFill, f::AbstractFill{Bool})
+    @boundscheck checkbounds(v, f)
+    fillsimilar(v, getindex_value(f) ? length(v) : 0)
+end
