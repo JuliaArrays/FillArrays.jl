@@ -24,7 +24,7 @@ function _maplinear(rs...) # tries to match Base's behaviour, could perhaps hook
         r1 = axes(first(rs))
         for r in rs
             axes(r) == r1 || throw(DimensionMismatch(
-            "dimensions must match: a has dims $r1, b has dims $(axes(r))"))
+            lazy"dimensions must match: a has dims $r1, b has dims $(axes(r))"))
         end
         return false
     end
@@ -206,13 +206,13 @@ _range_convert(::Type{AbstractVector{T}}, a::ZerosVector) where T = ZerosVector{
 # end
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractOnesVector, b::AbstractRange)
-    broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
+    broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError(lazy"Cannot broadcast $a and $b. Convert $b to a Vector first."))
     TT = typeof(zero(eltype(a)) * zero(eltype(b)))
     return _range_convert(AbstractVector{TT}, b)
 end
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractOnesVector)
-    broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
+    broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError(lazy"Cannot broadcast $a and $b. Convert $b to a Vector first."))
     TT = typeof(zero(eltype(a)) * zero(eltype(b)))
     return _range_convert(AbstractVector{TT}, a)
 end
@@ -220,13 +220,13 @@ end
 for op in (:+, :-)
     @eval begin
         function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractVector, b::AbstractZerosVector)
-            broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
+            broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError(lazy"Cannot broadcast $a and $b. Convert $b to a Vector first."))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
             # Use `TT ∘ (+)` to fix AD issues with `broadcasted(TT, x)`
             eltype(a) === TT ? a : broadcasted(TT ∘ (+), a)
         end
         function broadcasted(::DefaultArrayStyle{1}, ::typeof($op), a::AbstractZerosVector, b::AbstractVector)
-            broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $a to a Vector first."))
+            broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError(lazy"Cannot broadcast $a and $b. Convert $a to a Vector first."))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
             $op === (+) && eltype(b) === TT ? b : broadcasted(TT ∘ ($op), b)
         end
@@ -245,12 +245,12 @@ _broadcast_getindex_value(a::AbstractFill) = Ref(getindex_value(a))
 
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractFill, b::AbstractRange)
-    broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
+    broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError(lazy"Cannot broadcast $a and $b. Convert $b to a Vector first."))
     return broadcasted(*, _broadcast_getindex_value(a), b)
 end
 
 function broadcasted(::DefaultArrayStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractFill)
-    broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError("Cannot broadcast $a and $b. Convert $b to a Vector first."))
+    broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError(lazy"Cannot broadcast $a and $b. Convert $b to a Vector first."))
     return broadcasted(*, a, _broadcast_getindex_value(b))
 end
 
