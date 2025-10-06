@@ -257,7 +257,7 @@ svdvals!(a::AbstractFillMatrix) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(
 
 function fill_reshape(parent, dims::Integer...)
     n = length(parent)
-    prod(dims) == n || throw(DimensionMismatch(LazyString("parent has ", n, " elements, which is incompatible with ", str, " ", dims)))
+    prod(dims) == n || throw(DimensionMismatch(LazyString("parent has ", n, " elements, which is incompatible with size ", dims)))
     fillsimilar(parent, dims...)
 end
 
