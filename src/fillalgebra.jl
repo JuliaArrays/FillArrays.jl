@@ -65,7 +65,7 @@ end
 function mult_axes(a, b)
     Base.require_one_based_indexing(a, b)
     size(a, 2) ≠ size(b, 1) &&
-        throw(DimensionMismatch(lazy"A has dimensions $(size(a)) but B has dimensions $(size(b))"))
+        throw(DimensionMismatch(LazyString("A has dimensions ", size(a), " but B has dimensions ", size(b))))
     return (axes(a, 1), axes(b)[2:end]...)
 end
 
@@ -115,11 +115,11 @@ function *(F::AbstractFillMatrix, v::AbstractVector)
 end
 
 function lmul_diag(a::Diagonal, b)
-    size(a,2) == size(b,1) || throw(DimensionMismatch(lazy"A has dimensions $(size(a)) but B has dimensions $(size(b))"))
+    size(a,2) == size(b,1) || throw(DimensionMismatch(LazyString("A has dimensions ", size(a), " but B has dimensions ", size(b))))
     parent(a) .* b # use special broadcast
 end
 function rmul_diag(a, b::Diagonal)
-    size(a,2) == size(b,1) || throw(DimensionMismatch(lazy"A has dimensions $(size(a)) but B has dimensions $(size(b))"))
+    size(a,2) == size(b,1) || throw(DimensionMismatch(LazyString("A has dimensions ", size(a), " but B has dimensions ", size(b))))
     a .* permutedims(parent(b)) # use special broadcast
 end
 
@@ -132,26 +132,26 @@ end
 @noinline function check_matmul_sizes(A::AbstractMatrix, x::AbstractVector)
     Base.require_one_based_indexing(A, x)
     size(A,2) == size(x,1) ||
-        throw(DimensionMismatch(lazy"second dimension of A, $(size(A,2)) does not match length of x $(length(x))"))
+        throw(DimensionMismatch(LazyString("second dimension of A, ", size(A,2), ", does not match length of x, ", length(x))))
 end
 @noinline function check_matmul_sizes(A::AbstractMatrix, B::AbstractMatrix)
     Base.require_one_based_indexing(A, B)
     size(A,2) == size(B,1) ||
-        throw(DimensionMismatch(lazy"second dimension of A, $(size(A,2)) does not match first dimension of B, $(size(B,1))"))
+        throw(DimensionMismatch(LazyString("second dimension of A, ", size(A,2), ", does not match first dimension of B, ", size(B,1))))
 end
 @noinline function check_matmul_sizes(y::AbstractVector, A::AbstractMatrix, x::AbstractVector)
     Base.require_one_based_indexing(A, x, y)
     size(A,2) == size(x,1) ||
-        throw(DimensionMismatch(lazy"second dimension of A, $(size(A,2)) does not match length of x $(length(x))"))
+        throw(DimensionMismatch(LazyString("second dimension of A, ", size(A,2), ", does not match length of x, ", length(x))))
     size(y,1) == size(A,1) ||
-        throw(DimensionMismatch(lazy"first dimension of A, $(size(A,1)) does not match length of y $(length(y))"))
+        throw(DimensionMismatch(LazyString("first dimension of A, ", size(A,1), ", does not match length of y, ", length(y))))
 end
 @noinline function check_matmul_sizes(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix)
     Base.require_one_based_indexing(A, B, C)
     size(A,2) == size(B,1) ||
-        throw(DimensionMismatch(lazy"second dimension of A, $(size(A,2)) does not match first dimension of B, $(size(B,1))"))
+        throw(DimensionMismatch(LazyString("second dimension of A, ", size(A,2), ", does not match first dimension of B, ", size(B,1))))
     size(C,1) == size(A,1) && size(C,2) == size(B,2) ||
-        throw(DimensionMismatch(lazy"A has size $(size(A)), B has size $(size(B)), C has size $(size(C))"))
+        throw(DimensionMismatch(LazyString("A has size ", size(A), ", B has size ", size(B), ", C has size ", size(C))))
 end
 
 function mul!(y::AbstractVector, A::AbstractFillMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
@@ -314,7 +314,7 @@ end
 function _adjvec_mul_zeros(a, b)
     la, lb = length(a), length(b)
     if la ≠ lb
-        throw(DimensionMismatch(lazy"dot product arguments have lengths $la and $lb"))
+        throw(DimensionMismatch(LazyString("dot product arguments have lengths ", la, " and ", lb)))
     end
     # ensure that all the elements of `a` are of the same size,
     # so that ∑ᵢaᵢbᵢ = b₁∑ᵢaᵢ makes sense
@@ -324,7 +324,7 @@ function _adjvec_mul_zeros(a, b)
     end
     a1 = a[1]
     sza1 = size(a1)
-    all(x -> size(x) == sza1, a) || throw(DimensionMismatch(lazy"not all elements of A are of size $sza1"))
+    all(x -> size(x) == sza1, a) || throw(DimensionMismatch(LazyString("not all elements of A are of size ", sza1)))
     # we replace b₁∑ᵢaᵢ by b₁a₁, as we know that b₁ is zero.
     # Each term in the summation is zero, so the sum is equal to the first term
     return a1 * b[1]
@@ -365,7 +365,7 @@ end
 *(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, D::Diagonal) = transpose(D*transpose(a))
 function _triple_zeromul(x, D::Diagonal, y)
     if !(length(x) == length(D.diag) == length(y))
-        throw(DimensionMismatch(lazy"x has length $(length(x)), D has size $(size(D)), and y has $(length(y))"))
+        throw(DimensionMismatch(LazyString("x has length ", length(x), ", D has size ", size(D), ", and y has ", length(y))))
     end
     zero(promote_type(eltype(x), eltype(D), eltype(y)))
 end
@@ -381,7 +381,7 @@ end
 function *(a::Transpose{T, <:AbstractVector}, b::AbstractZerosVector{T}) where T<:Real
     la, lb = length(a), length(b)
     if la ≠ lb
-        throw(DimensionMismatch(lazy"dot product arguments have lengths $la and $lb"))
+        throw(DimensionMismatch(LazyString("dot product arguments have lengths ", la, " and ", lb)))
     end
     return zero(T)
 end
@@ -391,12 +391,12 @@ end
 # infinite cases should be supported in InfiniteArrays.jl
 # type issues of Bool dot are ignored at present.
 function _fill_dot(a::AbstractFillVector{T}, b::AbstractVector{V}) where {T,V}
-    axes(a) == axes(b) || throw(DimensionMismatch(lazy"dot product arguments have lengths $(length(a)) and $(length(b))"))
+    axes(a) == axes(b) || throw(DimensionMismatch(LazyString("dot product arguments have lengths ", length(a), " and ", length(b))))
     dot(getindex_value(a), sum(b))
 end
 
 function _fill_dot_rev(a::AbstractVector{T}, b::AbstractFillVector{V}) where {T,V}
-    axes(a) == axes(b) || throw(DimensionMismatch(lazy"dot product arguments have lengths $(length(a)) and $(length(b))"))
+    axes(a) == axes(b) || throw(DimensionMismatch(LazyString("dot product arguments have lengths ", length(a), " and ", length(b))))
     dot(sum(a), getindex_value(b))
 end
 
@@ -406,7 +406,7 @@ dot(a::AbstractVector, b::AbstractFillVector) = _fill_dot_rev(a, b)
 
 function dot(u::AbstractVector, E::Eye, v::AbstractVector)
     length(u) == size(E,1) && length(v) == size(E,2) ||
-        throw(DimensionMismatch(lazy"dot product arguments have dimensions $(length(u))×$(size(E))×$(length(v))"))
+        throw(DimensionMismatch(LazyString("dot product arguments have dimensions ", length(u), "×", size(E), "×", length(v))))
     d = dot(u,v)
     T = typeof(one(eltype(E)) * d)
     convert(T, d)
@@ -414,13 +414,13 @@ end
 
 function dot(u::AbstractVector, D::Diagonal{<:Any,<:Fill}, v::AbstractVector)
     length(u) == size(D,1) && length(v) == size(D,2) ||
-        throw(DimensionMismatch(lazy"dot product arguments have dimensions $(length(u))×$(size(D))×$(length(v))"))
+        throw(DimensionMismatch(LazyString("dot product arguments have dimensions ", length(u), "×", size(D), "×", length(v))))
     D.diag.value*dot(u, v)
 end
 
 function dot(u::AbstractVector{T}, D::Diagonal{U,<:Zeros}, v::AbstractVector{V}) where {T,U,V}
     length(u) == size(D,1) && length(v) == size(D,2) ||
-        throw(DimensionMismatch(lazy"dot product arguments have dimensions $(length(u))×$(size(D))×$(length(v))"))
+        throw(DimensionMismatch(LazyString("dot product arguments have dimensions ", length(u), "×", size(D), "×", length(v))))
     zero(promote_type(T,U,V))
 end
 
@@ -510,7 +510,7 @@ function lmul!(x::Number, z::AbstractFill)
     λ = getindex_value(z)
     # Following check ensures consistency w/ lmul!(x, Array(z))
     # for, e.g., lmul!(NaN, z)
-    x*λ == λ || throw(ArgumentError(lazy"Cannot scale by $x"))
+    x*λ == λ || throw(ArgumentError(LazyString("Cannot scale by ", x)))
     z
 end
 
@@ -518,13 +518,13 @@ function rmul!(z::AbstractFill, x::Number)
     λ = getindex_value(z)
     # Following check ensures consistency w/ lmul!(x, Array(z))
     # for, e.g., lmul!(NaN, z)
-    λ*x == λ || throw(ArgumentError(lazy"Cannot scale by $x"))
+    λ*x == λ || throw(ArgumentError(LazyString("Cannot scale by ", x)))
     z
 end
 
 fillzero(::Type{Fill{T,N,AXIS}}, n, m) where {T,N,AXIS} = Fill{T,N,AXIS}(zero(T), (n, m))
 fillzero(::Type{<:AbstractZeros{T,N,AXIS}}, n, m) where {T,N,AXIS} = Zeros{T,N,AXIS}((n, m))
-fillzero(::Type{F}, n, m) where F = throw(ArgumentError(lazy"Cannot create a zero array of type $F"))
+fillzero(::Type{F}, n, m) where F = throw(ArgumentError(LazyString("Cannot create a zero array of type ", F)))
 
 diagzero(D::Diagonal{F}, i, j) where F<:AbstractFill = fillzero(F, axes(D.diag[i], 1), axes(D.diag[j], 2))
 

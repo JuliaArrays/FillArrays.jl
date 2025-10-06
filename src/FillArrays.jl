@@ -48,18 +48,18 @@ Base.@propagate_inbounds getindex(F::AbstractFill{T, N}, kj::Vararg{Integer, N})
 
 @inline function setindex!(F::AbstractFill, v, k::Integer)
     @boundscheck checkbounds(F, k)
-    v == getindex_value(F) || throw(ArgumentError(lazy"Cannot setindex! to $v for an AbstractFill with value $(getindex_value(F))."))
+    v == getindex_value(F) || throw(ArgumentError(LazyString("Cannot setindex! to ", v, " for an AbstractFill with value ", getindex_value(F), ".")))
     F
 end
 
 @inline function setindex!(F::AbstractFill{T, N}, v, kj::Vararg{Integer, N}) where {T, N}
     @boundscheck checkbounds(F, kj...)
-    v == getindex_value(F) || throw(ArgumentError(lazy"Cannot setindex! to $v for an AbstractFill with value $(getindex_value(F))."))
+    v == getindex_value(F) || throw(ArgumentError(LazyString("Cannot setindex! to ", v, " for an AbstractFill with value ", getindex_value(F), ".")))
     F
 end
 
 @inline function fill!(F::AbstractFill, v)
-    v == getindex_value(F) || throw(ArgumentError(lazy"Cannot fill! with $v an AbstractFill with value $(getindex_value(F))."))
+    v == getindex_value(F) || throw(ArgumentError(LazyString("Cannot fill! with ", v, " an AbstractFill with value ", getindex_value(F), ".")))
     F
 end
 
@@ -182,7 +182,7 @@ function unique_value(arr::AbstractArray)
     val = first(arr)
     for x in arr
         if x !== val
-            error(lazy"Input array contains both $x and $val. Cannot convert to Fill")
+            error(LazyString("Input array contains both ", x, " and ", val, ". Cannot convert to Fill"))
         end
     end
     return val
@@ -257,7 +257,7 @@ svdvals!(a::AbstractFillMatrix) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(
 
 function fill_reshape(parent, dims::Integer...)
     n = length(parent)
-    prod(dims) == n || throw(DimensionMismatch(lazy"parent has $n elements, which is incompatible with $str $dims"))
+    prod(dims) == n || throw(DimensionMismatch(LazyString("parent has ", n, " elements, which is incompatible with ", str, " ", dims)))
     fillsimilar(parent, dims...)
 end
 
@@ -336,10 +336,10 @@ for (AbsTyp, Typ, funcs, func) in ((:AbstractZeros, :Zeros, :zeros, :zero), (:Ab
         convert(::Type{$Typ{T,N}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
         convert(::Type{$Typ{T}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
         function convert(::Type{Typ}, A::AbstractFill{V,N}) where {T,V,N,Axes,Typ<:$AbsTyp{T,N,Axes}}
-            axes(A) isa Axes || throw(ArgumentError(lazy"cannot convert, as axes of array are not $Axes"))
+            axes(A) isa Axes || throw(ArgumentError(LazyString("cannot convert, as axes of array are not ", Axes)))
             val = getindex_value(A)
             y = convert(T, val)
-            y == $func(T) || throw(ArgumentError(lazy"cannot convert an array containinig $val to $Typ"))
+            y == $func(T) || throw(ArgumentError(LazyString("cannot convert an array containinig ", val, " to ", Typ)))
             Typ(axes(A))
         end
         function convert(::Type{$Typ{T,N}}, A::AbstractFill{<:Any,N}) where {T,N}
@@ -378,7 +378,7 @@ fillsimilar(a::AbstractFill, axes...) = Fill(getindex_value(a), axes...)
 # functions
 function Base.sqrt(a::AbstractFillMatrix{<:Union{Real, Complex}})
     Base.require_one_based_indexing(a)
-    size(a,1) == size(a,2) || throw(DimensionMismatch(lazy"matrix is not square: dimensions are $(size(a))"))
+    size(a,1) == size(a,2) || throw(DimensionMismatch(LazyString("matrix is not square: dimensions are ", size(a))))
     _sqrt(a)
 end
 _sqrt(a::AbstractZerosMatrix) = float(a)
@@ -390,7 +390,7 @@ function _sqrt(a::AbstractFillMatrix)
 end
 function Base.cbrt(a::AbstractFillMatrix{<:Real})
     Base.require_one_based_indexing(a)
-    size(a,1) == size(a,2) || throw(DimensionMismatch(lazy"matrix is not square: dimensions are $(size(a))"))
+    size(a,1) == size(a,2) || throw(DimensionMismatch(LazyString("matrix is not square: dimensions are ", size(a))))
     _cbrt(a)
 end
 _cbrt(a::AbstractZerosMatrix) = float(a)
@@ -449,7 +449,7 @@ function setindex!(rd::RectDiagonal, v, i::Integer, j::Integer)
     if i == j
         @inbounds rd.diag[i] = v
     elseif !iszero(v)
-        throw(ArgumentError(lazy"cannot set off-diagonal entry ($i, $j) to a nonzero value ($v)"))
+        throw(ArgumentError(LazyString("cannot set off-diagonal entry (", i, ", ", j, ") to a nonzero value (", v, ")")))
     end
     return v
 end
@@ -848,9 +848,9 @@ end
 function _repeat(A; inner=ntuple(x->1, ndims(A)), outer=ntuple(x->1, ndims(A)))
     Base.require_one_based_indexing(A)
     length(inner) >= ndims(A) ||
-        throw(ArgumentError(lazy"number of inner repetitions $(length(inner)) cannot be less than number of dimensions of input array $(ndims(A))"))
+        throw(ArgumentError(LazyString("number of inner repetitions ", length(inner), " cannot be less than number of dimensions of input array ", ndims(A))))
     length(outer) >= ndims(A) ||
-        throw(ArgumentError(lazy"number of outer repetitions $(length(outer)) cannot be less than number of dimensions of input array $(ndims(A))"))
+        throw(ArgumentError(LazyString("number of outer repetitions ", length(outer), " cannot be less than number of dimensions of input array ", ndims(A))))
     sz = _repeat_size(size(A), Tuple(inner), Tuple(outer))
     fillsimilar(A, sz)
 end
