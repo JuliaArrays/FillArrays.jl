@@ -423,7 +423,7 @@ end
 # reshape
 
 function Base.reshape(A::OneElement, shape::Tuple{Vararg{Int}})
-    prod(shape) == length(A) || throw(DimensionMismatch("new dimension $shape must be consistent with array size $(length(A))"))
+    prod(shape) == length(A) || throw(DimensionMismatch(LazyString("new dimension ", shape, " must be consistent with array size ", length(A))))
     if all(in.(A.ind, axes(A)))
         # we use the fact that the linear index of the non-zero value is preserved
         oldlinind = LinearIndices(A)[A.ind...]
