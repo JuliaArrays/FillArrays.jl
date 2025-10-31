@@ -72,18 +72,10 @@ ishermitian(F::AbstractFillMatrix) = axes(F,1) == axes(F,2) && (isempty(F) || is
 Base.IteratorSize(::Type{<:AbstractFill{T,N,Axes}}) where {T,N,Axes} = _IteratorSize(Axes)
 _IteratorSize(::Type{Tuple{}}) = Base.HasShape{0}()
 _IteratorSize(::Type{Tuple{T}}) where {T} = Base.IteratorSize(T)
-# Julia Base has an optimized any for Tuples on versions >= v1.9
-# On lower versions, a recursive implementation helps with type-inference
-if VERSION >= v"1.9.0-beta3"
-    _any(f, t::Tuple) = any(f, t)
-else
-    _any(f, ::Tuple{}) = false
-    _any(f, t::Tuple) = f(t[1]) || _any(f, Base.tail(t))
-end
 function _IteratorSize(::Type{T}) where {T<:Tuple}
     N = fieldcount(T)
     s = ntuple(i-> Base.IteratorSize(fieldtype(T, i)), N)
-    _any(x -> x isa Base.IsInfinite, s) ? Base.IsInfinite() : Base.HasShape{N}()
+    any(x -> x isa Base.IsInfinite, s) ? Base.IsInfinite() : Base.HasShape{N}()
 end
 
 
@@ -738,12 +730,6 @@ include("fillalgebra.jl")
 include("fillbroadcast.jl")
 include("trues.jl")
 
-if !isdefined(Base, :get_extension)
-    include("../ext/FillArraysPDMatsExt.jl")
-    include("../ext/FillArraysSparseArraysExt.jl")
-    include("../ext/FillArraysStatisticsExt.jl")
-end
-
 ##
 # print
 ##
@@ -752,15 +738,9 @@ Base.replace_in_print_matrix(::AbstractZeros, ::Integer, ::Integer, s::AbstractS
 
 # following support blocked fill array printing via
 # BlockArrays.jl
-if VERSION < v"1.8-"
-    axes_print_matrix_row(lay, io, X, A, i, cols, sep) =
-        Base.invoke(Base.print_matrix_row, Tuple{IO,AbstractVecOrMat,Vector,Integer,AbstractVector,AbstractString},
-                    io, X, A, i, cols, sep)
-else
-    axes_print_matrix_row(lay, io, X, A, i, cols, sep, idxlast::Integer=last(axes(X, 2))) =
-        Base.invoke(Base.print_matrix_row, Tuple{IO,AbstractVecOrMat,Vector,Integer,AbstractVector,AbstractString,Integer},
+axes_print_matrix_row(lay, io, X, A, i, cols, sep, idxlast::Integer=last(axes(X, 2))) =
+    Base.invoke(Base.print_matrix_row, Tuple{IO,AbstractVecOrMat,Vector,Integer,AbstractVector,AbstractString,Integer},
                     io, X, A, i, cols, sep, idxlast)
-end
 
 Base.print_matrix_row(io::IO,
         X::Union{AbstractFillVector,

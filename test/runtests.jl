@@ -407,15 +407,12 @@ function test_addition_subtraction_dot(As, Bs, Tout::Type)
             @test @inferred(B - A) isa Tout{promote_type(eltype(B), eltype(A))}
             @test isapprox_or_undef(as_array(B - A), as_array(B) - as_array(A))
 
-            # Julia 1.6 doesn't support dot(UniformScaling)
-            if VERSION < v"1.6.0" || VERSION >= v"1.8.0"
-                d1 = dot(A, B)
-                d2 = dot(as_array(A), as_array(B))
-                d3 = dot(B, A)
-                d4 = dot(as_array(B), as_array(A))
-                @test d1 ≈ d2 || d1 ≡ d2
-                @test d3 ≈ d4 || d3 ≡ d4
-            end
+            d1 = dot(A, B)
+            d2 = dot(as_array(A), as_array(B))
+            d3 = dot(B, A)
+            d4 = dot(as_array(B), as_array(A))
+            @test d1 ≈ d2 || d1 ≡ d2
+            @test d3 ≈ d4 || d3 ≡ d4
         end
     end
 end
@@ -1931,9 +1928,7 @@ end
     E = Eye(2)
     K = kron(E, E)
     @test K isa Diagonal
-    if VERSION >= v"1.9"
-        @test K isa typeof(E)
-    end
+    @test K isa typeof(E)
     C = collect(E)
     @test K == kron(C, C)
 
@@ -2790,11 +2785,7 @@ end
                                 )
             O = OneElement(v,ind,sz)
             A = Array(O)
-            if VERSION >= v"1.10"
-                @test @inferred(sum(O)) === sum(A)
-            else
-                @test @inferred(sum(O)) == sum(A)
-            end
+            @test @inferred(sum(O)) === sum(A)
             @test @inferred(sum(O, init=zero(eltype(O)))) === sum(A, init=zero(eltype(O)))
             @test @inferred(sum(x->1, O, init=0)) === sum(Fill(1, axes(O)), init=0)
         end
@@ -2949,13 +2940,7 @@ end
 end
 
 @testset "structured matrix" begin
-    # strange bug on Julia v1.6, see
-    # https://discourse.julialang.org/t/strange-seemingly-out-of-bounds-access-bug-in-julia-v1-6/101041
-    bands = if VERSION >= v"1.9"
-        ((Fill(2,3), Fill(6,2)), (Zeros(3), Zeros(2)))
-    else
-        ((Fill(2,3), Fill(6,2)),)
-    end
+    bands = ((Fill(2,3), Fill(6,2)), (Zeros(3), Zeros(2)))
     @testset for (dv, ev) in bands
         for D in (Diagonal(dv), Bidiagonal(dv, ev, :U),
                     Tridiagonal(ev, dv, ev), SymTridiagonal(dv, ev))
