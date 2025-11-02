@@ -818,7 +818,7 @@ end
 @testset "maximum/minimum/svd/sort" begin
     @test maximum(Fill(1, 1_000_000_000)) == minimum(Fill(1, 1_000_000_000)) == 1
     @test svdvals(fill(2,5,6)) ≈ svdvals(Fill(2,5,6))
-    @test svdvals(Eye(5)) === Fill(1.0,5)
+    @test svdvals(Eye(5)) === Ones(5)
     @test sort(Ones(5)) == sort!(Ones(5))
 
     @test_throws MethodError issorted(Fill(im, 2))
@@ -954,21 +954,21 @@ end
 
     rng = MersenneTwister(123456)
     sizes = [(5, 4), (5, 1), (1, 4), (1, 1), (5,)]
-    for sx in sizes, sy in sizes
+    @testset for sx in sizes, sy in sizes
         x, y = Fill(randn(rng), sx), Fill(randn(rng), sy)
         x_one, y_one = Ones(sx), Ones(sy)
         x_zero, y_zero = Zeros(sx), Zeros(sy)
         x_dense, y_dense = randn(rng, sx), randn(rng, sy)
 
         for x in [x, x_one, x_zero, x_dense], y in [y, y_one, y_zero, y_dense]
-            @test x .+ y == collect(x) .+ collect(y)
+            @test x .+ y ≈ collect(x) .+ collect(y)
         end
         @test x_zero .+ y_zero isa Zeros
         @test x_zero .+ y_one isa Ones
         @test x_one .+ y_zero isa Ones
 
         for x in [x, x_one, x_zero, x_dense], y in [y, y_one, y_zero, y_dense]
-            @test x .* y == collect(x) .* collect(y)
+            @test x .* y ≈ collect(x) .* collect(y)
         end
         for x in [x, x_one, x_zero, x_dense]
             @test x .* y_zero isa Zeros
@@ -1088,7 +1088,7 @@ end
             @test_throws DimensionMismatch Zeros{Int}(2) .+ (1:5)
             @test_throws DimensionMismatch (1:5) .+ Zeros{Int}(2)
 
-            for v in (rand(Bool, 5), [1:5;], SVector{5}(1:5), SVector{5,ComplexF16}(1:5)), T in (Bool, Int, Float64)
+            @testset "$(typeof(v)) $T" for v in (rand(Bool, 5), [1:5;], SVector{5}(1:5), SVector{5,ComplexF16}(1:5)), T in (Bool, Int, Float64)
                 TT = eltype(v + zeros(T, 5))
                 S = v isa SVector ? SVector{5,TT} : Vector{TT}
 
@@ -1141,7 +1141,7 @@ end
 
     @testset "issue #208" begin
         TS = (Bool, Int, Float32, Float64)
-        for S in TS, T in TS
+        @testset for S in TS, T in TS
             u = rand(S, 2)
             v = Zeros(T, 2)
             if zero(S) + zero(T) isa S
@@ -1174,6 +1174,81 @@ end
             end
         end
     end
+
+    @testset "Zeros to Fill" begin
+        @test @inferred((f -> ((x -> (1,)).(f)))((Zeros(4)))) == Fill((1,), 4)
+        @test @inferred((f -> ((x -> Val(1)).(f)))((Zeros(4)))) == Fill(Val(1), 4)
+    end
+
+    @testset "multi-element broadcast" begin
+        x = Fill(2, 2)
+        y = @. 2 * x * 2
+        @test y === Fill(8, 2)
+    end
+
+    @testset "nested broadcast" begin
+        bc = Broadcast.broadcasted(*, Zeros(4), Ones(4), Broadcast.broadcasted(*, Zeros(4), Ones(4), Zeros(4)))
+        @test copy(bc) === Zeros(4)
+    end
+
+    @testset "0d" begin
+        @test real.(Fill(2)) == real.(fill(2))
+        @test (@. 2 * Fill(2) * 2) == (@. 2 * fill(2) * 2)
+        for (F, A) in ((Fill(2), fill(2)), (Zeros(), zeros()), (Ones(), ones()))
+            @test F * 2 == A * 2
+            @test 2 * F == 2 * A
+        end
+    end
+
+    @testset "preserve 0d" begin
+        @testset for f in (real, imag, conj), (F, A) in (
+                    (Fill(4), fill(4)),
+                    (Fill(4 + 5im), fill(4 + 5im)),
+                    (Fill(SMatrix{2,2,ComplexF64,4}(fill(4 + 5im, 4))), fill(SMatrix{2,2,ComplexF64,4}(fill(4 + 5im, 4)))),
+                    (Zeros{ComplexF64}(), zeros(ComplexF64)),
+                    (Zeros(), zeros()),
+                    (Ones(), ones()),
+                    (Ones{ComplexF64}(), ones(ComplexF64)),
+                    )
+            x = f(F)
+            y = f(A)
+            @test x == y
+            @test eltype(x) == eltype(y)
+            @test x isa FillArrays.AbstractFill
+            if F isa Ones
+                if f === imag
+                    @test x isa Zeros
+                else
+                    @test x isa Ones
+                end
+            end
+            if F[] isa Real
+                if f === imag
+                    @test x isa Zeros
+                end
+            end
+        end
+    end
+
+    @testset "issue #40" begin
+        f(x) = x
+        g(x, y) = x
+        F = Fill(1, 2)
+        @test g.(F, "a") === f.(F)
+    end
+
+    @testset "early binding" begin
+        A = ones(2) .+ (x -> rand()).(Fill(2,2))
+        @test all(==(A[1]), A)
+        A = ones(1,5) .+ (ones(1) .+ (_ -> rand()).(Fill("vec", 2)))
+        @test all(==(A[1]), A)
+    end
+
+    @testset "wrappers" begin
+        f = Fill(3, 4)
+        @test f * f' === Fill(9,4,4)
+        @test f * transpose(f) === Fill(9,4,4)
+    end
 end
 
 @testset "map" begin
@@ -1182,7 +1257,7 @@ end
     @test map(isone,x1) === Fill(true,5)
 
     x0 = Zeros(5)
-    @test map(exp,x0) === exp.(x0)
+    @test map(exp,x0) == exp.(x0)
 
     x2 = Fill(2,5,3)
     @test map(exp,x2) === Fill(exp(2),5,3)
@@ -2181,8 +2256,10 @@ end
     @test D - Zeros(5,5) isa Diagonal
     @test D .+ Zeros(5,5) isa Diagonal
     @test D .- Zeros(5,5) isa Diagonal
-    @test D .* Zeros(5,5) isa Diagonal
-    @test Zeros(5,5) .* D isa Diagonal
+    @test D .* Zeros(5,5) isa FillArrays.ZerosMatrix
+    @test ((x,y) -> x * y).(D, Zeros(5,5)) isa Diagonal
+    @test Zeros(5,5) .* D isa FillArrays.ZerosMatrix
+    @test ((x,y) -> x * y).(Zeros(5,5), D) isa Diagonal
     @test Zeros(5,5) - D isa Diagonal
     @test Zeros(5,5) + D isa Diagonal
     @test Zeros(5,5) .- D isa Diagonal
