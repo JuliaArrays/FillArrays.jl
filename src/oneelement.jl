@@ -158,11 +158,10 @@ function add_one_elem(a::OneElement, b::AbstractArray)
     try
         ret[a.ind...] += getindex_value(a)
     catch
-        print("Exception")
         # Fallback to materialising dense array if setindex!
         # goes wrong (e.g on a Diagonal)
         ret = Array(ret)
-        ret[a.ind...] += getindex_value(a)
+        checkbounds(Bool, ret, a.ind...) && (ret[a.ind...] += getindex_value(a))
     end
     return ret
 end
@@ -176,7 +175,7 @@ function sub_one_elem(a::AbstractArray, b::OneElement)
         # Fallback to materialising dense array if setindex!
         # goes wrong (e.g on a Diagonal)
         ret = Array(ret)
-        ret[b.ind...] -= getindex_value(b)
+        checkbounds(Bool, ret, b.ind...) && (ret[b.ind...] -= getindex_value(b))
     end
     return ret
 end
@@ -190,7 +189,7 @@ function sub_one_elem(a::OneElement, b::AbstractArray)
         # Fallback to materialising dense array if setindex!
         # goes wrong (e.g on a Diagonal)
         ret = Array(ret)
-        ret[a.ind...] += getindex_value(a)
+        checkbounds(Bool, ret, a.ind...) && (ret[a.ind...] += getindex_value(a))
     end
     return ret
 end

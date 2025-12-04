@@ -36,29 +36,6 @@ Base.@propagate_inbounds function reverse(A::AbstractFill, start::Integer, stop:
 end
 reverse(A::AbstractFill; dims=:) = A
 
-## addition/subtraction with Zeros
-# Zeros should function as an identity
-
-function add_zeros(z::AbstractZeros, v::AbstractArray)
-    axes(z) == axes(v) || throw(DimensionMismatch(LazyString("A has dimensions ", size(z), " but B has dimensions ", size(v))))
-    return v
-end
-
-function sub_zeros(v::AbstractArray, z::AbstractZeros)
-    axes(z) == axes(v) || throw(DimensionMismatch(LazyString("A has dimensions ", size(z), " but B has dimensions ", size(v))))
-    return v
-end
-
-function sub_zeros(z::AbstractZeros, v::AbstractArray)
-    axes(z) == axes(v) || throw(DimensionMismatch(LazyString("A has dimensions ", size(z), " but B has dimensions ", size(v))))
-    return -v
-end
-
-+(a::AbstractZeros, b::AbstractArray) = add_zeros(a, b)
-+(a::AbstractArray, b::AbstractZeros) = add_zeros(b, a)
--(a::AbstractArray, b::AbstractZeros) = sub_zeros(a, b)
--(a::AbstractZeros, b::AbstractArray) = sub_zeros(a, b)
-
 ## Algebraic identities
 
 # Default outputs, can overload to customize
@@ -459,14 +436,32 @@ function +(a::AbstractZeros{T}, b::AbstractZeros{V}) where {T, V} # for disambig
     promote_shape(a,b)
     return elconvert(promote_op(+,T,V),a)
 end
-# no AbstractArray. Otherwise incompatible with StaticArrays.jl
+# concrete Zeros used to stop a variety of ambiguity issues
 # AbstractFill for disambiguity
-for TYPE in (:Array, :AbstractFill, :AbstractRange, :Diagonal)
-    @eval function +(a::$TYPE{T}, b::AbstractZeros{V}) where {T, V}
+for TYPE in (:Array, :AbstractFill, :AbstractRange, :AbstractArray)
+    @eval function +(a::$TYPE{T}, b::Zeros{V}) where {T, V}
         promote_shape(a,b)
         return elconvert(promote_op(+,T,V),a)
     end
-    @eval +(a::AbstractZeros, b::$TYPE) = b + a
+    @eval function -(a::$TYPE{T}, b::Zeros{V}) where {T, V}
+        promote_shape(a,b)
+        return elconvert(promote_op(-,T,V),a)
+    end
+    @eval function -(a::Zeros{T}, b::$TYPE{V}) where {T, V}
+        promote_shape(a,b)
+        return elconvert(promote_op(-,T,V),-b)
+    end
+    @eval +(a::Zeros, b::$TYPE) = b + a
+end
+
+function +(a::Zeros, b::Zeros)
+    promote_shape(a,b)
+    return elconvert(promote_type(eltype(a), eltype(b)),a)
+end
+
+function -(a::Zeros, b::Zeros)
+    promote_shape(a,b)
+    return elconvert(promote_type(eltype(a), eltype(b)),-b)
 end
 
 # for VERSION other than 1.6, could use ZerosMatrix only
