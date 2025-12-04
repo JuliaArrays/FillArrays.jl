@@ -36,6 +36,29 @@ Base.@propagate_inbounds function reverse(A::AbstractFill, start::Integer, stop:
 end
 reverse(A::AbstractFill; dims=:) = A
 
+## addition/subtraction with Zeros
+# Zeros should function as an identity
+
+function add_zeros(z::AbstractZeros, v::AbstractArray)
+    axes(z) == axes(v) || throw(DimensionMismatch(LazyString("A has dimensions ", size(z), " but B has dimensions ", size(v))))
+    return v
+end
+
+function sub_zeros(v::AbstractArray, z::AbstractZeros)
+    axes(z) == axes(v) || throw(DimensionMismatch(LazyString("A has dimensions ", size(z), " but B has dimensions ", size(v))))
+    return v
+end
+
+function sub_zeros(z::AbstractZeros, v::AbstractArray)
+    axes(z) == axes(v) || throw(DimensionMismatch(LazyString("A has dimensions ", size(z), " but B has dimensions ", size(v))))
+    return -v
+end
+
++(a::AbstractZeros, b::AbstractArray) = add_zeros(a, b)
++(a::AbstractArray, b::AbstractZeros) = add_zeros(b, a)
+-(a::AbstractArray, b::AbstractZeros) = sub_zeros(a, b)
+-(a::AbstractZeros, b::AbstractArray) = sub_zeros(a, b)
+
 ## Algebraic identities
 
 # Default outputs, can overload to customize
