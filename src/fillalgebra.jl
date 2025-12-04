@@ -436,30 +436,25 @@ function +(a::AbstractZeros{T}, b::AbstractZeros{V}) where {T, V} # for disambig
     promote_shape(a,b)
     return elconvert(promote_op(+,T,V),a)
 end
-# concrete Zeros used to stop a variety of ambiguity issues
-# AbstractFill for disambiguity
+
+# AbstractFill and Array for disambiguity
 for TYPE in (:Array, :AbstractFill, :AbstractRange, :AbstractArray)
-    @eval function +(a::$TYPE{T}, b::Zeros{V}) where {T, V}
+    @eval function +(a::$TYPE{T}, b::AbstractZeros{V}) where {T, V}
         promote_shape(a,b)
         return elconvert(promote_op(+,T,V),a)
     end
-    @eval function -(a::$TYPE{T}, b::Zeros{V}) where {T, V}
+    @eval function -(a::$TYPE{T}, b::AbstractZeros{V}) where {T, V}
         promote_shape(a,b)
         return elconvert(promote_op(-,T,V),a)
     end
-    @eval function -(a::Zeros{T}, b::$TYPE{V}) where {T, V}
+    @eval function -(a::AbstractZeros{T}, b::$TYPE{V}) where {T, V}
         promote_shape(a,b)
         return elconvert(promote_op(-,T,V),-b)
     end
-    @eval +(a::Zeros, b::$TYPE) = b + a
+    @eval +(a::AbstractZeros, b::$TYPE) = b + a
 end
 
-function +(a::Zeros, b::Zeros)
-    promote_shape(a,b)
-    return elconvert(promote_type(eltype(a), eltype(b)),a)
-end
-
-function -(a::Zeros, b::Zeros)
+function -(a::AbstractZeros, b::AbstractZeros)
     promote_shape(a,b)
     return elconvert(promote_type(eltype(a), eltype(b)),-b)
 end
