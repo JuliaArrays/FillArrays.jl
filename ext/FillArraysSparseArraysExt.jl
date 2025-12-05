@@ -4,7 +4,7 @@ using SparseArrays
 using SparseArrays: SparseVectorUnion
 import Base: convert, kron
 using FillArrays
-using FillArrays: RectDiagonalFill, RectOrDiagonalFill, ZerosVector, ZerosMatrix, getindex_value, AbstractFillVector, _fill_dot, OneElementVector
+using FillArrays: RectDiagonalFill, RectOrDiagonalFill, ZerosVector, ZerosMatrix, getindex_value, AbstractFillVector, _fill_dot, OneElementVector, OneElementMatrix
 # Specifying the full namespace is necessary because of https://github.com/JuliaLang/julia/issues/48533
 # See https://github.com/JuliaStats/LogExpFunctions.jl/pull/63
 using FillArrays.LinearAlgebra
@@ -69,7 +69,7 @@ function FillArrays.oneelement_addsub(a::OneElementVector, b::OneElementVector, 
     return sparsevec([a.ind[1], b.ind[1]], [aval, bval], length(a))
 end
 
-function FillArrays.oneelement_addsub(a::OneElement, b::OneElement, aval, bval)
+function FillArrays.oneelement_addsub(a::OneElementMatrix, b::OneElementMatrix, aval, bval)
     nzval = [aval, bval]
     nzind = ntuple(i -> [a.ind[i], b.ind[i]], ndims(a))
     return sparse(nzind..., nzval, size(a)...)

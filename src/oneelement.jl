@@ -209,7 +209,7 @@ end
 # Adding/subtracting OneElements
 # (Without SparseArrays) materialise dense vector if indices are different
 
-# This is overridden by the SparseArrays extension to return sparse arrays
+# Sparse Arrays extension overrides this for OneElementVector and OneElementMatrix
 function oneelement_addsub(a::OneElement, b::OneElement, aval, bval)
     ret = similar(a)
     fill!(ret, zero(eltype(ret)))
