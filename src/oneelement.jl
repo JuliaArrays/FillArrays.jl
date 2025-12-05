@@ -199,8 +199,12 @@ end
 -(a::AbstractArray, b::OneElement) = sub_one_elem(a, b)
 -(a::OneElement, b::AbstractArray) = sub_one_elem(a, b)
 # disambiguity
-+(a::AbstractZeros, b::OneElement) = add_zeros(a, b)
-+(a::OneElement, b::AbstractZeros) = add_zeros(b, a)
+function +(a::AbstractZeros, b::OneElement)
+    promote_shape(a,b)
+    return elconvert(promote_op(+,eltype(a),eltype(b)),b)
+end
+
++(a::OneElement, b::AbstractZeros) = b + a
 
 # Adding/subtracting OneElements
 # (Without SparseArrays) materialise dense vector if indices are different
