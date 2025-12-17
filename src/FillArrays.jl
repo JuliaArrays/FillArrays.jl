@@ -534,8 +534,9 @@ end
 # Also, maybe this should reuse the broadcasting behavior of the parent,
 # once AbstractFill types implement their own BroadcastStyle
 BroadcastStyle(::Type{<:RectDiagonal}) = LinearAlgebra.StructuredMatrixStyle{RectDiagonal}()
-LinearAlgebra.structured_broadcast_alloc(bc, ::Type{<:RectDiagonal}, ::Type{ElType}, n) where {ElType} =
-    RectDiagonal(Array{ElType}(undef, n), axes(bc))
+function LinearAlgebra.structured_broadcast_alloc(bc, ::Type{<:RectDiagonal}, ::Type{ElType}, n) where {ElType}
+    RectDiagonal(Array{ElType}(undef, minimum(n)), axes(bc))
+end
 @inline LinearAlgebra.fzero(S::RectDiagonal{T}) where {T} = zero(T)
 
 #########
