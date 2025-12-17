@@ -267,13 +267,14 @@ reshape(parent::AbstractFill, dims::Union{Integer,Colon}...) = reshape(parent, d
 # resolve ambiguity with Base
 reshape(parent::AbstractFillVector, dims::Colon) = parent
 
-reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Integer,Colon}}}) =
+reshape(parent::AbstractFill, dims::Tuple{Union{Integer,Colon}, Vararg{Union{Integer,Colon}}}) =
     fill_reshape(parent, Base._reshape_uncolon(parent, dims)...)
-reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Int,Colon}}}) =
+reshape(parent::AbstractFill, dims::Tuple{Union{Int,Colon}, Vararg{Union{Int,Colon}}}) =
     fill_reshape(parent, Base._reshape_uncolon(parent, dims)...)
 reshape(parent::AbstractFill, shp::Tuple{Union{Integer,Base.OneTo}, Vararg{Union{Integer,Base.OneTo}}}) =
     reshape(parent, Base.to_shape(shp))
-reshape(parent::AbstractFill, dims::Dims) = fill_reshape(parent, dims...)
+reshape(parent::AbstractFill, dims::Tuple{Int, Vararg{Int}}) = fill_reshape(parent, dims...)
+reshape(parent::AbstractFill, dims::Tuple{}) = fill_reshape(parent, dims...)
 reshape(parent::AbstractFill, dims::Tuple{Integer, Vararg{Integer}}) = fill_reshape(parent, dims...)
 
 # resolve ambiguity with Base
