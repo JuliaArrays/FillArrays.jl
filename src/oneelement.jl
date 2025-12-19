@@ -148,6 +148,90 @@ end
 /(x::OneElement, b::Number) = OneElement(x.val / b, x.ind, x.axes)
 \(b::Number, x::OneElement) = OneElement(b \ x.val, x.ind, x.axes)
 
+# Addition
+
+# O(1) addition with arbitrary array types
+function add_one_elem(a::OneElement, b::AbstractArray)
+    axes(a) == axes(b) || throw(DimensionMismatch(LazyString("A has dimensions ", size(a), " but B has dimensions ", size(b))))
+
+    ret = copy(b)
+    try
+        ret[a.ind...] += getindex_value(a)
+    catch
+        # Fallback to materialising dense array if setindex!
+        # goes wrong (e.g on a Diagonal)
+        ret = Array(ret)
+        checkbounds(Bool, ret, a.ind...) && (ret[a.ind...] += getindex_value(a))
+    end
+    return ret
+end
+
+function sub_one_elem(a::AbstractArray, b::OneElement)
+    axes(a) == axes(b) || throw(DimensionMismatch(LazyString("A has dimensions ", size(a), " but B has dimensions ", size(b))))
+    ret = copy(a)
+    try
+        ret[b.ind...] -= getindex_value(b)
+    catch
+        # Fallback to materialising dense array if setindex!
+        # goes wrong (e.g on a Diagonal)
+        ret = Array(ret)
+        checkbounds(Bool, ret, b.ind...) && (ret[b.ind...] -= getindex_value(b))
+    end
+    return ret
+end
+
+function sub_one_elem(a::OneElement, b::AbstractArray)
+    axes(a) == axes(b) || throw(DimensionMismatch(LazyString("A has dimensions ", size(a), " but B has dimensions ", size(b))))
+    ret = copy(-b)
+    try
+        ret[a.ind...] += getindex_value(a)
+    catch
+        # Fallback to materialising dense array if setindex!
+        # goes wrong (e.g on a Diagonal)
+        ret = Array(ret)
+        checkbounds(Bool, ret, a.ind...) && (ret[a.ind...] += getindex_value(a))
+    end
+    return ret
+end
+
++(a::OneElement, b::AbstractArray) = add_one_elem(a, b)
++(a::AbstractArray, b::OneElement) = add_one_elem(b, a)
+-(a::AbstractArray, b::OneElement) = sub_one_elem(a, b)
+-(a::OneElement, b::AbstractArray) = sub_one_elem(a, b)
+# disambiguity
+function +(a::AbstractZeros, b::OneElement)
+    promote_shape(a,b)
+    return elconvert(promote_op(+,eltype(a),eltype(b)),b)
+end
+
++(a::OneElement, b::AbstractZeros) = b + a
+
+# Adding/subtracting OneElements
+# (Without SparseArrays) materialise dense vector if indices are different
+
+# Sparse Arrays extension overrides this for OneElementVector and OneElementMatrix
+function oneelement_addsub(a::OneElement, b::OneElement, aval, bval)
+    ret = similar(a)
+    fill!(ret, zero(eltype(ret)))
+    ret[a.ind...] = aval
+    ret[b.ind...] = bval
+    return ret
+end
+
+for (op, bop) in (:+ => :(getindex_value(b)),
+                  :- => :(-getindex_value(b)))
+    @eval begin
+        function $op(a::OneElement, b::OneElement)
+            axes(a) == axes(b) || throw(DimensionMismatch(LazyString("A has dimensions ", size(a), " but B has dimensions ", size(b))))
+            if a.ind == b.ind
+                return OneElement($op(getindex_value(a), getindex_value(b)), a.ind, axes(a))
+            else
+                return oneelement_addsub(a, b, getindex_value(a), $bop)
+            end
+        end
+    end
+end
+
 # matrix-vector and matrix-matrix multiplication
 
 # Fill and OneElement

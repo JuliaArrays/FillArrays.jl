@@ -505,6 +505,14 @@ end
         for A in As, Z in (TZ -> Zeros{TZ}(3)).((Int, Float64, Int8, ComplexF64))
             test_addition_and_subtraction_dim_mismatch(A, Z)
         end
+
+        # Zeros should be additive identity for matrices
+        D = Diagonal([1, 1])
+        Z = Zeros(2, 2)
+        @test D + Z isa Diagonal
+        @test D + Z == D
+        @test D - Z == D
+        @test Z - D == -D
     end
 end
 
@@ -588,6 +596,12 @@ end
             testsparsediag(E)
         end
     end
+
+    # Adding one elements with different indices should return a sparse array.
+    A = OneElement(2, 5)
+    B = OneElement(3, 5)
+    @test A + B isa SparseVector
+    @test A + B == [0, 1, 1, 0, 0]
 end
 
 @testset "==" begin
@@ -2372,6 +2386,19 @@ end
         @test isassigned(f, 2, 2)
         @test !isassigned(f, 10, 10)
         @test_throws ArgumentError isassigned(f, true)
+    end
+
+    @testset "Addition/Subtraction" begin
+        A = OneElement(2, 5)
+        B = OneElement(3, 5)
+
+        @test A + A isa OneElement
+        @test A + A == OneElement(2, 2, 5)
+        @test A + B == [0, 1, 1, 0, 0]
+
+        @test B - B isa OneElement
+        @test B - B == OneElement(0, 2, 5)
+        @test B - A == [0, -1, 1, 0, 0]
     end
 
     @testset "matmul" begin

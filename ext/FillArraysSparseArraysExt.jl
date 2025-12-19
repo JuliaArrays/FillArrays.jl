@@ -4,7 +4,7 @@ using SparseArrays
 using SparseArrays: SparseVectorUnion
 import Base: convert, kron
 using FillArrays
-using FillArrays: RectDiagonalFill, RectOrDiagonalFill, ZerosVector, ZerosMatrix, getindex_value, AbstractFillVector, _fill_dot
+using FillArrays: RectDiagonalFill, RectOrDiagonalFill, ZerosVector, ZerosMatrix, getindex_value, AbstractFillVector, _fill_dot, OneElementVector, OneElementMatrix
 # Specifying the full namespace is necessary because of https://github.com/JuliaLang/julia/issues/48533
 # See https://github.com/JuliaStats/LogExpFunctions.jl/pull/63
 using FillArrays.LinearAlgebra
@@ -62,5 +62,17 @@ end
 
 # Ambiguity. see #178
 dot(x::AbstractFillVector, y::SparseVectorUnion) = _fill_dot(x, y)
+
+# OneElements with different indices should return
+# SparseArrays under addition
+function FillArrays.oneelement_addsub(a::OneElementVector, b::OneElementVector, aval, bval)
+    return sparsevec([a.ind[1], b.ind[1]], [aval, bval], length(a))
+end
+
+function FillArrays.oneelement_addsub(a::OneElementMatrix, b::OneElementMatrix, aval, bval)
+    nzval = [aval, bval]
+    nzind = ntuple(i -> [a.ind[i], b.ind[i]], ndims(a))
+    return sparse(nzind..., nzval, size(a)...)
+end
 
 end # module
