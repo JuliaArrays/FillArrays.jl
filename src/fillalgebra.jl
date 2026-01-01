@@ -157,12 +157,19 @@ end
 function mul!(y::AbstractVector, A::AbstractFillMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, b)
 
-    Abα = Ref(getindex_value(A) * getindex_value(b) * alpha * length(b))
-
-    if iszero(beta)
-        y .= Abα
+    if iszero(alpha)
+        if iszero(beta)
+            y .= Ref(zero(eltype(y)))
+        else
+            y .*= beta
+        end
     else
-        y .= Abα .+ y .* beta
+        Abα = Ref(getindex_value(A) * getindex_value(b) * alpha * length(b))
+        if iszero(beta)
+            y .= Abα
+        else
+            y .= Abα .+ y .* beta
+        end
     end
     y
 end
@@ -170,15 +177,24 @@ end
 function mul!(y::StridedVector, A::StridedMatrix, b::AbstractFillVector, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, b)
 
-    bα = Ref(getindex_value(b) * alpha)
-
     if iszero(beta)
-        y .= Ref(zero(eltype(y)))
+        if iszero(alpha) || iszero(length(b))
+            y .= Ref(zero(eltype(y)))
+        else
+            bα = Ref(getindex_value(b) * alpha)
+            y .= zero.(view(A, :, 1) .* bα)
+        end
     else
-        rmul!(y, beta)
+        y .*= beta
     end
-    for Acol in eachcol(A)
-        @. y += Acol * bα
+    if iszero(alpha)
+        return y
+    end
+    bα = Ref(getindex_value(b) * alpha)
+    if !iszero(bα[])
+        for Acol in eachcol(A)
+            @. y += Acol * bα
+        end
     end
     y
 end
@@ -186,12 +202,20 @@ end
 function mul!(y::StridedVector, A::AbstractFillMatrix, b::StridedVector, alpha::Number, beta::Number)
     check_matmul_sizes(y, A, b)
 
-    Abα = Ref(getindex_value(A) * sum(b) * alpha)
-
-    if iszero(beta)
-        y .= Abα
+    if iszero(alpha)
+        if iszero(beta)
+            y .= Ref(zero(eltype(y)))
+        else
+            y .*= beta
+        end
     else
-        y .= Abα .+ y .* beta
+        Abα = Ref(getindex_value(A) * sum(b) * alpha)
+
+        if iszero(beta)
+            y .= Abα
+        else
+            y .= Abα .+ y .* beta
+        end
     end
     y
 end
