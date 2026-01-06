@@ -436,12 +436,25 @@ function +(a::AbstractZeros{T}, b::AbstractZeros{V}) where {T, V} # for disambig
     promote_shape(a,b)
     return elconvert(promote_op(+,T,V),a)
 end
-# no AbstractArray. Otherwise incompatible with StaticArrays.jl
-# AbstractFill for disambiguity
-for TYPE in (:Array, :AbstractFill, :AbstractRange, :Diagonal)
+
+function -(a::AbstractZeros{T}, b::AbstractZeros{V}) where {T, V} # for disambiguity
+    promote_shape(a,b)
+    return elconvert(promote_op(-,T,V),-b)
+end
+
+# AbstractFill and Array for disambiguity
+for TYPE in (:Array, :AbstractFill, :AbstractRange, :AbstractArray)
     @eval function +(a::$TYPE{T}, b::AbstractZeros{V}) where {T, V}
         promote_shape(a,b)
         return elconvert(promote_op(+,T,V),a)
+    end
+     @eval function -(a::$TYPE{T}, b::AbstractZeros{V}) where {T, V}
+        promote_shape(a,b)
+        return elconvert(promote_op(-,T,V),a)
+    end
+    @eval function -(a::AbstractZeros{T}, b::$TYPE{V}) where {T, V}
+        promote_shape(a,b)
+        return elconvert(promote_op(-,T,V),-b)
     end
     @eval +(a::AbstractZeros, b::$TYPE) = b + a
 end
