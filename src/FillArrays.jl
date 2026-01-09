@@ -7,7 +7,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     any, all, axes, isone, iszero, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, map, zero,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
-    parent, similar, issorted, add_sum, accumulate, OneTo, permutedims
+    parent, similar, issorted, add_sum, accumulate, OneTo, permutedims, mul_prod
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
@@ -583,21 +583,10 @@ end
 
 
 #########
-# maximum/minimum
-#########
-
-for op in (:maximum, :minimum)
-    @eval $op(x::AbstractFill) = getindex_value(x)
-end
-
-
-#########
 # Cumsum
 #########
 
 # These methods are necessary to deal with infinite arrays
-sum(x::AbstractFill) = getindex_value(x)*length(x)
-sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
 sum(x::AbstractZeros) = getindex_value(x)
 
 # needed to support infinite case
