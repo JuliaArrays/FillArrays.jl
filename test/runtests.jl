@@ -3017,6 +3017,32 @@ end
     @test tril(Z, 2) === Z
 end
 
+@testset "eigen" begin
+    sortby = x -> (real(x), imag(x))
+    @testset "AbstractFill" begin
+        sizes = VERSION >= v"1.10" ? (0, 1, 4) : (1, 4)
+        @testset for val in (2.0, -2, 3+2im, 4 - 5im, 2im), n in sizes
+            sortby_val = iszero(real(val)) ? imag : sortby
+            F = Fill(val, n, n)
+            M = Matrix(F)
+            @test eigvals(F; sortby = sortby_val) ≈ eigvals(M; sortby = sortby_val)
+            λ, V = eigen(F; sortby = sortby_val)
+            @test λ == eigvals(F; sortby = sortby_val)
+            @test V'V ≈ I
+            @test F * V ≈ V * Diagonal(λ)
+        end
+        @testset for MT in (Ones, Zeros), T in (Float64, Int, ComplexF64), n in sizes
+            F = MT{T}(n,n)
+            M = Matrix(F)
+            @test eigvals(F; sortby) ≈ eigvals(M; sortby)
+            λ, V = eigen(F; sortby)
+            @test λ == eigvals(F; sortby)
+            @test V'V ≈ I
+            @test F * V ≈ V * Diagonal(λ)
+        end
+    end
+end
+
 @testset "Diagonal conversion (#389)" begin
     @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) isa Diagonal{Int,Vector{Int}}
     @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) == zeros(5,5)
