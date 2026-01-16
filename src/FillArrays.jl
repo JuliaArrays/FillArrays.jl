@@ -319,7 +319,7 @@ for (AbsTyp, Typ, funcs, func) in ((:AbstractZeros, :Zeros, :zeros, :zero), (:Ab
         @inline $Typ(::Type{T}, m...) where T = $Typ{T}(m...)
 
         @inline axes(Z::$Typ) = Z.axes
-        @inline size(Z::$AbsTyp) = length.(axes(Z))
+        @inline size(Z::$AbsTyp) = map(length, axes(Z))
         @inline getindex_value(Z::$AbsTyp{T}) where T = $func(T)
 
         AbstractArray{T}(F::$AbsTyp) where T = $Typ{T}(axes(F))
