@@ -1498,17 +1498,17 @@ end
     @test Fill([1+im 2; 3 4; 5 6], 2,3)' == Fill([1+im 2; 3 4; 5 6]', 3,2)
     @test transpose(Fill([1+im 2; 3 4; 5 6], 2,3)) == Fill(transpose([1+im 2; 3 4; 5 6]), 3,2)
 
-    @test permutedims(Ones(10)) ≡ Ones(1,10)
-    @test permutedims(Zeros(10)) ≡ Zeros(1,10)
-    @test permutedims(Fill(2.0,10)) ≡ Fill(2.0,1,10)
-    @test permutedims(Ones(10,3)) ≡ Ones(3,10)
-    @test permutedims(Zeros(10,3)) ≡ Zeros(3,10)
-    @test permutedims(Fill(2.0,10,3)) ≡ Fill(2.0,3,10)
+    @test @inferred(permutedims(Ones(10))) ≡ Ones(1,10)
+    @test @inferred(permutedims(Zeros(10))) ≡ Zeros(1,10)
+    @test @inferred(permutedims(Fill(2.0,10))) ≡ Fill(2.0,1,10)
+    @test @inferred(permutedims(Ones(10,3))) ≡ Ones(3,10)
+    @test @inferred(permutedims(Zeros(10,3))) ≡ Zeros(3,10)
+    @test @inferred(permutedims(Fill(2.0,10,3))) ≡ Fill(2.0,3,10)
 
-    @test permutedims(Ones(2,4,5), [3,2,1]) == permutedims(Array(Ones(2,4,5)), [3,2,1])
-    @test permutedims(Ones(2,4,5), [3,2,1]) ≡ Ones(5,4,2)
-    @test permutedims(Zeros(2,4,5), [3,2,1]) ≡ Zeros(5,4,2)
-    @test permutedims(Fill(2.0,2,4,5), [3,2,1]) ≡ Fill(2.0,5,4,2)
+    @test @inferred(permutedims(Ones(2,4,5), [3,2,1])) == permutedims(Array(Ones(2,4,5)), [3,2,1])
+    @test @inferred(permutedims(Ones(2,4,5), [3,2,1])) ≡ Ones(5,4,2)
+    @test @inferred(permutedims(Zeros(2,4,5), [3,2,1])) ≡ Zeros(5,4,2)
+    @test @inferred(permutedims(Fill(2.0,2,4,5), [3,2,1])) ≡ Fill(2.0,5,4,2)
 
     @testset "recursive" begin
         S = SMatrix{2,3}(1:6)
@@ -1522,6 +1522,22 @@ end
         @test F' == G'
         @test transpose(F) == transpose(G)
     end
+
+    H = if VERSION >= v"1.8"
+        @inferred(permutedims(Fill(2, (SOneTo(2), SOneTo(3)))))
+    else
+        permutedims(Fill(2, (SOneTo(2), SOneTo(3))))
+    end
+    @test H === Fill(2, (SOneTo(3), SOneTo(2)))
+
+    # test for inference only if aggressive constant propagation is available
+    F = Fill(2, (SOneTo(2), SOneTo(3), SOneTo(1)))
+    H = if VERSION >= v"1.8"
+        @inferred((F -> permutedims(F, (3,1,2)))(F))
+    else
+        (F -> permutedims(F, (3,1,2)))(F)
+    end
+    @test H  === Fill(2, (SOneTo(1), SOneTo(2), SOneTo(3)))
 end
 
 @testset "reverse" begin
