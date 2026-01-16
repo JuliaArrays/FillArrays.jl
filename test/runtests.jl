@@ -505,6 +505,19 @@ end
         for A in As, Z in (TZ -> Zeros{TZ}(3)).((Int, Float64, Int8, ComplexF64))
             test_addition_and_subtraction_dim_mismatch(A, Z)
         end
+
+        # Zeros should act as an additive identity
+        # Arbitrary AbstractMatrix
+        D = Diagonal([1, 1])
+        Z = Zeros(2, 2)
+        @test D + Z isa Diagonal
+        @test D + Z == D
+        @test D - Z == D
+        @test Z - D == -D
+
+        @test Z + Z isa Zeros
+        @test Z + Z == Z
+        @test Z - Z == Z
     end
 end
 
