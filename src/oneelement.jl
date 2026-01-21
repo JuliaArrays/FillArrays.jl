@@ -190,6 +190,30 @@ function *(D::Diagonal, A::OneElementMatrix)
     OneElement(val, A.ind, size(A))
 end
 
+function *(A::OneElementMatrix, D::DiagonalZeros)
+    check_matmul_sizes(A, D)
+    Zeros{promote_type(eltype(A),eltype(D))}(size(A, 1), size(D, 2))
+end
+
+function *(D::DiagonalZeros, A::OneElementMatrix)
+    check_matmul_sizes(D, A)
+    Zeros{promote_type(eltype(A),eltype(D))}(size(D, 1), size(A, 2))
+end
+
+for type in (DiagonalFill, DiagonalOnes)
+    @eval begin
+        function *(A::OneElementMatrix, D::$type)
+            check_matmul_sizes(A, D)
+            getindex_value(D.diag) * A
+        end
+
+        function *(D::$type, A::OneElementMatrix)
+            check_matmul_sizes(D, A)
+            getindex_value(D.diag) * A
+        end
+    end
+end
+
 # Inplace multiplication
 
 # We use this for out overloads for _mul! for OneElement because its more efficient
