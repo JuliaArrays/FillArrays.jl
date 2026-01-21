@@ -434,7 +434,7 @@ Base.reduce_first(::typeof(+), x::AbstractOnes) = Fill(Base.reduce_first(+, geti
 
 function +(a::AbstractZeros{T}, b::AbstractZeros{V}) where {T, V} # for disambiguity
     promote_shape(a,b)
-    return elconvert(promote_op(+,T,V),a)
+    return convert_eltype(promote_op(+,T,V),a)
 end
 
 function -(a::AbstractZeros{T}, b::AbstractZeros{V}) where {T, V} # for disambiguity
@@ -446,7 +446,9 @@ end
 for TYPE in (:Array, :AbstractFill, :AbstractRange, :AbstractArray)
     @eval function +(a::$TYPE{T}, b::AbstractZeros{V}) where {T, V}
         promote_shape(a,b)
-        return elconvert(promote_op(+,T,V),a)
+        ret = convert_eltype(promote_op(+,T,V), a)
+        ret ≡ a ? copy(ret) : ret # must return a copy
+        # (_to_eltype(promote_op(+,T,V), typeof(a)))(a) doesn't work for types not supporting such constructors. E.g. https://github.com/JuliaLang/LinearAlgebra.jl/pull/1158
     end
      @eval function -(a::$TYPE{T}, b::AbstractZeros{V}) where {T, V}
         promote_shape(a,b)
@@ -492,11 +494,6 @@ end
     promote_shape(a, b)
     a .+ getindex_value(b)
 end
-
-# following needed since as of Julia v1.8 convert(AbstractArray{T}, ::AbstractRange) might return a Vector
-@inline elconvert(::Type{T}, A::AbstractRange) where T = T(first(A)):T(step(A)):T(last(A))
-@inline elconvert(::Type{T}, A::AbstractUnitRange) where T<:Integer = AbstractUnitRange{T}(A)
-@inline elconvert(::Type{T}, A::AbstractArray) where T = AbstractArray{T}(A)
 
 ####
 # norm
