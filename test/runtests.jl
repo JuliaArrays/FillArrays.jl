@@ -643,6 +643,17 @@ end
 
 @testset "IndexStyle" begin
     @test IndexStyle(Zeros(5,5)) == IndexStyle(typeof(Zeros(5,5))) == IndexLinear()
+    for ax in (Base.OneTo(2), SOneTo(2), Base.IdentityUnitRange(2:3))
+        for f in (Fill(1, (ax,)), Fill(1, (ax,ax)),
+                    Zeros{Int}((ax,)), Zeros{Int}((ax, ax)),
+                    Ones{Int}((ax,)), Ones{Int}((ax, ax)),
+                    )
+            @test IndexStyle(f) == IndexLinear()
+            for (CI, LI) in zip(CartesianIndices(f), LinearIndices(f))
+                @test f[CI] == f[LI]
+            end
+        end
+    end
 end
 
 @testset "Identities" begin
