@@ -7,6 +7,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 Documenter = "1"
+FillArrays = "1.16.0"
 Random = "1"
 SparseArrays = "1"
 StaticArrays = "1"
