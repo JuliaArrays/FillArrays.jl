@@ -33,40 +33,33 @@ end
 # this preserves the init cases of Base.mapreduce
 _fill_reduce_empty_iter(f, op, A) = Base.reduce_empty_iter(Base._xfadjoint(Base.BottomRF(op), Base.Generator(f, A))...)
 
+
+# these special cases can be computed exactly. 
+# We special-case zeros value to avoid ∞ * 0 in InfiniteArrays.jl
+_foldl_length_op(f, ::Union{typeof(max), typeof(min), typeof(&), typeof(|)}, A) = f(getindex_value(A))
+
+function _foldl_length_op(f, op::Union{typeof(+), typeof(add_sum)}, A)
+    v = f(getindex_value(A))
+    iszero(v) && return op(v, v) # get type right
+    length(A)*v
+end
+
+function _foldl_length_op(f, op::Union{typeof(*), typeof(mul_prod)}, A)
+    v = f(getindex_value(A))
+    (iszero(v) || isone(v)) && return op(v, v) # get type right
+    v^length(A)
+end
+
 ### mapreduce
 # Fast special cases
-for mapfold in (:(Base.mapfoldl_impl), :(Base.mapfoldr_impl))
-    for op in (:max, :min, :&, :|)
-        @eval function $mapfold(f, ::typeof($op), nt, A::AbstractFill)
-            if nt isa Base._InitialValue
-                isempty(A) && return _fill_reduce_empty_iter(f, $op, A)
-                f(getindex_value(A))
-            else
-                isempty(A) && return nt
-                $op(nt, f(getindex_value(A)))
-            end
-        end
-    end
-    for op in(:+, :add_sum)
-        @eval function $mapfold(f, ::typeof($op), nt, A::AbstractFill)
-            if nt isa Base._InitialValue
-                isempty(A) && return _fill_reduce_empty_iter(f, $op, A)
-                length(A)*f(getindex_value(A)) # multiplication promotes type a la +, add_sum
-            else
-                isempty(A) && return nt
-                $op(nt, length(A)*f(getindex_value(A)))
-            end
-        end
-    end
-    for op in(:*, :mul_prod)
-        @eval function $mapfold(f, ::typeof($op), nt, A::AbstractFill)
-            if nt isa Base._InitialValue
-                isempty(A) && _fill_reduce_empty_iter(f, $op, A)
-                f(getindex_value(A))^length(A) # multiplication promotes type a la *, mul_prod
-            else
-                isempty(A) && return nt
-                $op(nt, f(getindex_value(A))^length(A))
-            end
+for mapfold in (:(Base.mapfoldl_impl), :(Base.mapfoldr_impl)), op in (:max, :min, :&, :|, :+, :add_sum, :*, :mul_prod)
+    @eval function $mapfold(f, ::typeof($op), nt, A::AbstractFill)
+        if nt isa Base._InitialValue
+            isempty(A) && return _fill_reduce_empty_iter(f, $op, A)
+            _foldl_length_op(f, $op, A) # multiplication promotes type a la +, add_sum
+        else
+            isempty(A) && return nt
+            $op(nt, _foldl_length_op(f, $op, A))
         end
     end
 end
