@@ -583,28 +583,6 @@ end
 
 
 #########
-# maximum/minimum
-#########
-
-
-for op in (:max, :min, :&, :|)
-    @eval _fill_reduce(::typeof($op), x) = getindex_value(x)
-end
-for op in(:+, :add_sum)
-    @eval _fill_reduce(::typeof($op), x) = length(x)*getindex_value(x) # multiplication promotes type a la +, add_sum
-end
-for op in(:*, :mul_prod)
-    @eval _fill_reduce(::typeof($op), x) = getindex_value(x)^length(x) # multiplication promotes type a la *, mul_prod
-end
-
-_fill_reduce(op, x) = Base._mapreduce(identity, op, IndexStyle(x), :) # use default def
-
-Base._mapreduce_dim(f, op, ::Base._InitialValue, x::AbstractFill, ::Colon) = isempty(x) ? Base.reduce_empty_iter(op, x) : _fill_reduce(op, map(f,x))
-Base._mapreduce_dim(f, op, nt, x::AbstractFill, ::Colon) = isempty(x) ? nt : _fill_reduce(op, map(f,x))
-
-
-
-#########
 # Cumsum
 #########
 

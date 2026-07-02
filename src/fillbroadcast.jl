@@ -32,8 +32,27 @@ end
 
 ### mapreduce
 
-function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, ::Colon)
-    fval = f(getindex_value(A))
+function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dim)
+    isempty(A) && Base.reduce_empty_iter(op, A)
+    _fill_reduce(op, map(f,A), dim)
+end
+function Base._mapreduce_dim(f, op, nt, A::AbstractFill, dim)
+    isempty(A) && return nt
+    _fill_reduce(op, map(f,A), dim)
+end
+
+for op in (:max, :min, :&, :|)
+    @eval _fill_reduce(::typeof($op), A) = getindeA_value(A)
+end
+for op in(:+, :add_sum)
+    @eval _fill_reduce(::typeof($op), A) = length(A)*getindeA_value(A) # multiplication promotes type a la +, add_sum
+end
+for op in(:*, :mul_prod)
+    @eval _fill_reduce(::typeof($op), A) = getindeA_value(A)^length(A) # multiplication promotes type a la *, mul_prod
+end
+
+function _fill_reduce(op, A, ::Colon)
+    fval = getindex_value(A)
     out = fval
     for _ in 2:length(A)
         out = op(out, fval)
@@ -41,8 +60,8 @@ function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, ::Col
     out
 end
 
-function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
-    fval = f(getindex_value(A))
+function _fill_reduce(op, A::AbstractFill, dims)
+    fval = getindex_value(A)
     red = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
     out = fval
     for _ in 2:red
@@ -51,10 +70,8 @@ function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
     Fill(out, ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
 end
 
-function mapreduce(f, op, A::AbstractFill, B::AbstractFill; kw...)
-    val(_...) = f(getindex_value(A), getindex_value(B))
-    reduce(op, map(val, A, B); kw...)
-end
+# map for AbstractFills returns an AbstractFill
+mapreduce(f, op, A::AbstractFill, B::AbstractFill, Cs::AbstractFill...; kw...) = reduce(op, map(f, A, B, Cs...); kw...)
 
 # These are particularly useful because mapreduce(*, +, A, B; dims) is slow in Base,
 # but can be re-written as some mapreduce(g, +, C; dims) which is fast.
