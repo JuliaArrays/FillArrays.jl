@@ -32,45 +32,111 @@ end
 
 ### mapreduce
 
-function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dim)
-    isempty(A) && Base.reduce_empty_iter(op, A)
-    _fill_reduce(op, map(f,A), dim)
-end
-function Base._mapreduce_dim(f, op, nt, A::AbstractFill, dim)
-    isempty(A) && return nt
-    _fill_reduce(op, map(f,A), dim)
+# for fold in (:foldl, :foldr)
+#     mapfold_impl = symbol("Base.map" * string(fold) * "_impl")
+
+function Base.mapfoldl_impl(f, op, nt, A::AbstractFill)
+    # based on JuliaLang/julia/base/reduce.jl#foldl_impl
+    if nt isa Base._InitialValue && isempty(A)
+         Base.reduce_empty_iter(op, A)
+    elseif nt isa Base._InitialValue
+        _fill_foldl(op, map(f,A)) # maps of Fill are Fill
+    elseif isempty(A)
+        nt
+    else
+        op(nt, _fill_foldl(op, map(f,A))) # maps of Fill are Fill
+    end
 end
 
-for op in (:max, :min, :&, :|)
-    @eval _fill_reduce(::typeof($op), A) = getindeA_value(A)
-end
-for op in(:+, :add_sum)
-    @eval _fill_reduce(::typeof($op), A) = length(A)*getindeA_value(A) # multiplication promotes type a la +, add_sum
-end
-for op in(:*, :mul_prod)
-    @eval _fill_reduce(::typeof($op), A) = getindeA_value(A)^length(A) # multiplication promotes type a la *, mul_prod
+
+# Fast special cases
+for mapfold in (:(Base.mapfoldl_impl), :(Base.mapfoldr_impl))
+    for op in (:max, :min, :&, :|)
+        @eval function $mapfold(f, ::typeof($op), nt, A::AbstractFill)
+            if nt isa Base._InitialValue
+                isempty(A) && Base.reduce_empty_iter($op, A)
+                f(getindex_value(A))
+            else
+                isempty(A) && return nt
+                $op(nt, f(getindex_value(A)))
+            end
+        end
+    end
+    for op in(:+, :add_sum)
+        @eval function $mapfold(f, ::typeof($op), nt, A::AbstractFill)
+            if nt isa Base._InitialValue
+                isempty(A) && Base.reduce_empty_iter($op, A)
+                length(A)*f(getindex_value(A)) # multiplication promotes type a la +, add_sum
+            else
+                isempty(A) && return nt
+                $op(nt, length(A)*f(getindex_value(A)))
+            end
+        end
+    end
+    for op in(:*, :mul_prod)
+        @eval function $mapfold(f, ::typeof($op), nt, A::AbstractFill)
+            if nt isa Base._InitialValue
+                isempty(A) && Base.reduce_empty_iter($op, A)
+                f(getindex_value(A))^length(A) # multiplication promotes type a la *, mul_prod
+            else
+                isempty(A) && return nt
+                $op(nt, f(getindex_value(A))^length(A))
+            end
+        end
+    end
 end
 
-function _fill_reduce(op, A, ::Colon)
-    fval = getindex_value(A)
-    out = fval
+function Base.mapfoldl_impl(f, op, nt, A::AbstractFill)
+    fval = f(getindex_value(A))
+    out = if nt isa Base._InitialValue
+        isempty(A) && Base.reduce_empty_iter(op, A)
+        fval
+    elseif isempty(A)
+        nt
+    else
+        op(nt, fval)
+    end
     for _ in 2:length(A)
         out = op(out, fval)
     end
     out
 end
 
-function _fill_reduce(op, A::AbstractFill, dims)
-    fval = getindex_value(A)
-    red = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
-    out = fval
-    for _ in 2:red
-        out = op(out, fval)
+function Base.mapfoldr_impl(f, op, nt, A::AbstractFill)
+    fval = f(getindex_value(A))
+    out = if nt isa Base._InitialValue
+        isempty(A) && Base.reduce_empty_iter(op, A)
+        fval
+    elseif isempty(A)
+        nt
+    else
+        op(nt, fval)
     end
-    Fill(out, ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
+    for _ in length(A)-1:-1:1
+        out = op(fval, out)
+    end
+    out
 end
 
-# map for AbstractFills returns an AbstractFill
+
+mapreduce(f, op, A::AbstractFill; dims=:, init=Base._InitialValue()) = _fill_mapreduce_dim(f, op, init, A, dims)
+_fill_mapreduce_dim(f, op, init, A, ::Colon) = mapfoldl(f, op, A; init=init) # foldl is fast
+
+# Opposite of Base.reduced_indices
+# Based on base/reducedim.jl
+# for reductions that expand ≠0 dims to 1
+unreduced_indices(a, region) = unreduced_indices(axes(a), region)
+function unreduced_indices(axs::Base.Indices{N}, region) where N
+    Base._check_valid_region(region)
+    ntuple(d -> !(d in region) ? Base.reduced_index(axs[d]) : axs[d], Val(N))
+end
+
+function _fill_mapreduce_dim(f, op, init, A, dims)
+    A_red = A[unreduced_indices(A, dims)...] # reduce A, still a Fill
+    Fill(mapreduce(f, op, A_red; init=init), ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
+end
+
+# map for AbstractFills returns an AbstractFill so just call reduce
 mapreduce(f, op, A::AbstractFill, B::AbstractFill, Cs::AbstractFill...; kw...) = reduce(op, map(f, A, B, Cs...); kw...)
 
 # These are particularly useful because mapreduce(*, +, A, B; dims) is slow in Base,

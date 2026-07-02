@@ -1220,12 +1220,14 @@ end
     Y = Fill(1.0, 3, 4)
     O = Ones(3, 4)
 
-    @test mapreduce(exp, +, Y) == mapreduce(exp, +, y)
+    @test mapfoldl(exp, +, Y) == mapfoldr(exp, +, Y) == mapreduce(exp, +, Y) == mapreduce(exp, +, y) == mapfoldl(exp, +, Y; init=0) == mapfoldr(exp, +, Y; init=0) == mapreduce(exp, +, Y; init=0)
     @test mapreduce(exp, +, Y; dims=2) == mapreduce(exp, +, y; dims=2)
-    @test mapreduce(identity, +, Y) == sum(y) == sum(Y)
-    @test mapreduce(identity, +, Y, dims=1) == sum(y, dims=1) == sum(Y, dims=1)
+    @test foldl(+, Y) == foldr(+, Y) == mapreduce(identity, +, Y) == sum(y) == sum(Y)
+    @test mapreduce(identity, +, Y, dims=1) == mapreduce(identity, +, y, dims=1) == sum(y, dims=1) == sum(Y, dims=1)
+    @test mapreduce(exp, +, Y; dims=(1,), init=5.0) ≈ mapreduce(exp, +, y; dims=(1,), init=5.0)
 
-    @test mapreduce(exp, +, Y; dims=(1,), init=5.0) == mapreduce(exp, +, y; dims=(1,), init=5.0)
+    @test mapfoldl(exp, *, Y) == mapfoldr(exp, *, Y) == mapreduce(exp, *, Y) == mapreduce(exp, *, y) == mapfoldl(exp, *, Y; init=1) == mapfoldr(exp, *, Y; init=1) == mapreduce(exp, *, Y; init=1)
+    @test mapfoldl(exp, max, Y) == mapfoldr(exp, max, Y) == mapreduce(exp, max, Y) == mapreduce(exp, max, y) == mapfoldl(exp, max, Y; init=0) == mapfoldr(exp, max, Y; init=0) == mapreduce(exp, max, Y; init=0)
 
     # Two arrays
     @test mapreduce(*, +, x, Y) == mapreduce(*, +, x, y)
