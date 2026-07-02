@@ -30,13 +30,16 @@ function _maplinear(rs...) # tries to match Base's behaviour, could perhaps hook
     end
 end
 
+# this preserves the init cases of Base.mapreduce
+_fill_reduce_empty_iter(f, op, A) = Base.reduce_empty_iter(Base._xfadjoint(Base.BottomRF(op), Base.Generator(f, A))...)
+
 ### mapreduce
 # Fast special cases
 for mapfold in (:(Base.mapfoldl_impl), :(Base.mapfoldr_impl))
     for op in (:max, :min, :&, :|)
         @eval function $mapfold(f, ::typeof($op), nt, A::AbstractFill)
             if nt isa Base._InitialValue
-                isempty(A) && Base.reduce_empty_iter($op, A)
+                isempty(A) && return _fill_reduce_empty_iter(f, $op, A)
                 f(getindex_value(A))
             else
                 isempty(A) && return nt
@@ -47,7 +50,7 @@ for mapfold in (:(Base.mapfoldl_impl), :(Base.mapfoldr_impl))
     for op in(:+, :add_sum)
         @eval function $mapfold(f, ::typeof($op), nt, A::AbstractFill)
             if nt isa Base._InitialValue
-                isempty(A) && Base.reduce_empty_iter($op, A)
+                isempty(A) && return _fill_reduce_empty_iter(f, $op, A)
                 length(A)*f(getindex_value(A)) # multiplication promotes type a la +, add_sum
             else
                 isempty(A) && return nt
@@ -58,7 +61,7 @@ for mapfold in (:(Base.mapfoldl_impl), :(Base.mapfoldr_impl))
     for op in(:*, :mul_prod)
         @eval function $mapfold(f, ::typeof($op), nt, A::AbstractFill)
             if nt isa Base._InitialValue
-                isempty(A) && Base.reduce_empty_iter($op, A)
+                isempty(A) && _fill_reduce_empty_iter(f, $op, A)
                 f(getindex_value(A))^length(A) # multiplication promotes type a la *, mul_prod
             else
                 isempty(A) && return nt
@@ -71,7 +74,7 @@ end
 function Base.mapfoldl_impl(f, op, nt, A::AbstractFill)
     fval = f(getindex_value(A))
     out = if nt isa Base._InitialValue
-        isempty(A) && Base.reduce_empty_iter(op, A)
+        isempty(A) && _fill_reduce_empty_iter(f, op, A)
         fval
     elseif isempty(A)
         nt
@@ -87,7 +90,7 @@ end
 function Base.mapfoldr_impl(f, op, nt, A::AbstractFill)
     fval = f(getindex_value(A))
     out = if nt isa Base._InitialValue
-        isempty(A) && Base.reduce_empty_iter(op, A)
+        isempty(A) && return _fill_reduce_empty_iter(f, op, A)
         fval
     elseif isempty(A)
         nt

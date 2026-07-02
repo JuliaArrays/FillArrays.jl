@@ -1236,7 +1236,10 @@ end
     @test mapreduce(*, +, Y, O) == mapreduce(*, +, y, y)
 
     f2(x,y) = 1 + x/y
-    op2(x,y) = x^2 + 3y
+    op2(x,y) = x^2 - 3y
+    @test mapreduce(cos, op2, Y) == mapfoldl(cos, op2, Y) == mapfoldl(cos, op2, y)
+    @test mapfoldr(cos, op2, Y) == mapfoldr(cos, op2, y)
+
     @test mapreduce(f2, op2, x, Y) == mapreduce(f2, op2, x, y)
 
     @test mapreduce(f2, op2, x, Y, dims=1, init=5.0) == mapreduce(f2, op2, x, y, dims=1, init=5.0)
@@ -1250,6 +1253,13 @@ end
     @test mapreduce(+, +, x, O, Y) == mapreduce(+, +, x, y, y)
     @test mapreduce(+, +, Y, O, Y) == mapreduce(+, +, y, y, y)
     @test mapreduce(+, +, Y, O, Y, x) == mapreduce(+, +, y, y, y, x)
+
+    @test mapreduce(identity, +, Fill(0,0)) == 0
+    @test mapreduce(identity, +, Fill(0,0); init=1) == 1
+    @test_throws ArgumentError mapreduce(exp, +, Fill(0,0))
+    @test mapreduce(cos, op2, Fill(0,0); init=1.0) == mapfoldl(cos, op2, Fill(0,0); init=1.0) == mapfoldr(cos, op2, Fill(0,0); init=1.0) == 1.0
+    @test_throws ArgumentError mapreduce(cos, op2, Fill(0,0))
+    @test_throws ArgumentError mapfoldr(cos, op2, Fill(0,0))
 end
 
 @testset "Offset indexing" begin
