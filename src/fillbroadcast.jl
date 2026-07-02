@@ -31,24 +31,6 @@ function _maplinear(rs...) # tries to match Base's behaviour, could perhaps hook
 end
 
 ### mapreduce
-
-# for fold in (:foldl, :foldr)
-#     mapfold_impl = symbol("Base.map" * string(fold) * "_impl")
-
-function Base.mapfoldl_impl(f, op, nt, A::AbstractFill)
-    # based on JuliaLang/julia/base/reduce.jl#foldl_impl
-    if nt isa Base._InitialValue && isempty(A)
-         Base.reduce_empty_iter(op, A)
-    elseif nt isa Base._InitialValue
-        _fill_foldl(op, map(f,A)) # maps of Fill are Fill
-    elseif isempty(A)
-        nt
-    else
-        op(nt, _fill_foldl(op, map(f,A))) # maps of Fill are Fill
-    end
-end
-
-
 # Fast special cases
 for mapfold in (:(Base.mapfoldl_impl), :(Base.mapfoldr_impl))
     for op in (:max, :min, :&, :|)
