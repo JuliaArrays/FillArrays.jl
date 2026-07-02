@@ -7,7 +7,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     any, all, axes, isone, iszero, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, map, zero,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
-    parent, similar, issorted, add_sum, accumulate, OneTo, permutedims
+    parent, similar, issorted, add_sum, mul_prod, accumulate, OneTo, permutedims
 
 import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
@@ -586,19 +586,28 @@ end
 # maximum/minimum
 #########
 
-for op in (:maximum, :minimum)
-    @eval $op(x::AbstractFill) = getindex_value(x)
+
+for op in (:max, :min, :&, :|)
+    @eval _fill_reduce(::typeof($op), x) = getindex_value(x)
 end
+for op in(:+, :add_sum)
+    @eval _fill_reduce(::typeof($op), x) = length(x)*getindex_value(x) # multiplication promotes type a la +, add_sum
+end
+for op in(:*, :mul_prod)
+    @eval _fill_reduce(::typeof($op), x) = getindex_value(x)^length(x) # multiplication promotes type a la *, mul_prod
+end
+
+_fill_reduce(op, x) = Base._mapreduce(identity, op, IndexStyle(x), :) # use default def
+
+Base._mapreduce_dim(f, op, ::Base._InitialValue, x::AbstractFill, ::Colon) = isempty(x) ? Base.reduce_empty_iter(op, x) : _fill_reduce(op, map(f,x))
+Base._mapreduce_dim(f, op, nt, x::AbstractFill, ::Colon) = isempty(x) ? nt : _fill_reduce(op, map(f,x))
+
 
 
 #########
 # Cumsum
 #########
 
-# These methods are necessary to deal with infinite arrays
-sum(x::AbstractFill) = getindex_value(x)*length(x)
-sum(f, x::AbstractFill) = length(x) * f(getindex_value(x))
-sum(x::AbstractZeros) = getindex_value(x)
 
 # needed to support infinite case
 steprangelen(st...) = StepRangeLen(st...)
