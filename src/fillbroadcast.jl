@@ -107,9 +107,16 @@ _fill_mapreduce_dim(f, op, init, A, ::Colon) = mapfoldl(f, op, A; init=init) # f
 # Opposite of Base.reduced_indices
 # Based on base/reducedim.jl
 # for reductions that expand ≠0 dims to 1
+function _check_valid_region(region)
+    for d in region
+        isa(d, Integer) || throw(ArgumentError("reduced dimension(s) must be integers"))
+        Int(d) < 1 && throw(ArgumentError("region dimension(s) must be ≥ 1, got $d"))
+    end
+end
+
 unreduced_indices(a, region) = unreduced_indices(axes(a), region)
 function unreduced_indices(axs::Base.Indices{N}, region) where N
-    Base._check_valid_region(region)
+    _check_valid_region(region)
     ntuple(d -> !(d in region) ? Base.reduced_index(axs[d]) : axs[d], Val(N))
 end
 
