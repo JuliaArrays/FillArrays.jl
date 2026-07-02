@@ -340,21 +340,20 @@ function *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::TransposeAbsVec{<:A
     a * b2
 end
 *(a::AdjointAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractZerosMatrix) = (b' * a')'
-for MT in (:AbstractMatrix, :AbstractTriangular, :(Transpose{<:Any,<:AdjointAbsVec}), :AbstractFillMatrix)
+for MT in (:AbstractMatrix, :AbstractTriangular, :(Transpose{<:Any,<:AdjointAbsVec}), :AbstractFillMatrix, :(AdjointAbsVec{<:Any,<:TransposeAbsVec}))
     @eval *(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, b::$MT) = transpose(transpose(b) * transpose(a))
 end
 *(a::TransposeAbsVec{<:Any,<:AbstractZerosVector}, b::AbstractZerosMatrix) = transpose(transpose(b) * transpose(a))
 
 *(a::AbstractVector, b::AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}) = a * permutedims(parent(b))
-for MT in (:AbstractMatrix, :AbstractTriangular)
+for MT in (:AbstractMatrix, :AbstractTriangular, :TransposeAbsVec, :AdjointAbsVec, :(AdjointAbsVec{<:Any,<:AbstractZerosVector}), :(TransposeAbsVec{<:Any,<:AbstractZerosVector}))
     @eval *(a::$MT, b::AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}) = a * permutedims(parent(b))
 end
 *(a::AbstractZerosVector, b::AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}) = a * permutedims(parent(b))
 *(a::AbstractZerosMatrix, b::AdjOrTransAbsVec{<:Any,<:AbstractZerosVector}) = a * permutedims(parent(b))
 
-*(a::AdjointAbsVec, b::AbstractZerosVector) = _adjvec_mul_zeros(a, b)
+*(a::AdjOrTransAbsVec, b::AbstractZerosVector) = _adjvec_mul_zeros(a, b)
 *(a::AdjointAbsVec{<:Number}, b::AbstractZerosVector{<:Number}) = _adjvec_mul_zeros(a, b)
-*(a::TransposeAbsVec, b::AbstractZerosVector) = _adjvec_mul_zeros(a, b)
 *(a::TransposeAbsVec{<:Number}, b::AbstractZerosVector{<:Number}) = _adjvec_mul_zeros(a, b)
 
 *(a::Adjoint{T, <:AbstractMatrix{T}} where T, b::AbstractZeros{<:Any, 1}) = mult_zeros(a, b)
