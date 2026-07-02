@@ -1256,10 +1256,12 @@ end
 
     @test mapreduce(identity, +, Fill(0,0)) == 0
     @test mapreduce(identity, +, Fill(0,0); init=1) == 1
-    @test_throws ArgumentError mapreduce(exp, +, Fill(0,0))
     @test mapreduce(cos, op2, Fill(0,0); init=1.0) == mapfoldl(cos, op2, Fill(0,0); init=1.0) == mapfoldr(cos, op2, Fill(0,0); init=1.0) == 1.0
-    @test_throws ArgumentError mapreduce(cos, op2, Fill(0,0))
-    @test_throws ArgumentError mapfoldr(cos, op2, Fill(0,0))
+    if VERSION ≥ v"1.12" # early versions throw MethodError
+        @test_throws ArgumentError mapreduce(exp, +, Fill(0,0))
+        @test_throws ArgumentError mapreduce(cos, op2, Fill(0,0))
+        @test_throws ArgumentError mapfoldr(cos, op2, Fill(0,0))
+    end
 end
 
 @testset "Offset indexing" begin
@@ -1958,14 +1960,14 @@ end
     @test K == kron(C, C)
 
     E = Eye(2,3)
-    K = kron(E, E)
+    K = kron(sparse(E), sparse(E))
     C = collect(E)
     @test K == kron(C, C)
-    @test issparse(kron(E,E))
+    @test issparse(kron(sparse(E), sparse(E)))
 
     E = RectDiagonal(Fill(4,3), (6,3))
     C = collect(E)
-    K = kron(E, E)
+    K = kron(sparse(E), sparse(E))
     @test K == kron(C, C)
     @test issparse(K)
 end
