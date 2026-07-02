@@ -1262,6 +1262,12 @@ end
         @test_throws ArgumentError mapreduce(cos, op2, Fill(0,0))
         @test_throws ArgumentError mapfoldr(cos, op2, Fill(0,0))
     end
+
+    # an empty Fill has an emplied entry so we can attach a value.
+    # this (debatable) behaviour is used downstream.
+    @test mapreduce(identity, max, Fill(0,0)) == mapreduce(identity, min, Fill(0,0)) == 0
+    @test mapreduce(identity, max, Fill(0,0); init=1) == 1
+    @test mapreduce(identity, min, Fill(0,0); init=-1) == -1
 end
 
 @testset "Offset indexing" begin

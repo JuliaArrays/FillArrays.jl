@@ -32,6 +32,8 @@ end
 
 # this preserves the init cases of Base.mapreduce
 _fill_reduce_empty_iter(f, op, A) = Base.reduce_empty_iter(Base._xfadjoint(Base.BottomRF(op), Base.Generator(f, A))...)
+# unlike a standard array, we have a well-defined notion of max/min for FillArrays
+_fill_reduce_empty_iter(f, ::Union{typeof(max), typeof(min)}, A) = f(getindex_value(A))
 
 
 # these special cases can be computed exactly. 
