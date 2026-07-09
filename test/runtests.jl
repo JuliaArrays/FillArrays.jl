@@ -1522,6 +1522,19 @@ end
         @test F' == G'
         @test transpose(F) == transpose(G)
     end
+
+    @testset "ambiguities" begin
+        r = 1:2
+        f = Fill(2,2)
+        z = Zeros(2)
+        @test transpose([1]) * z' ≡ transpose([1]) * transpose(z) ≡ transpose(z)
+        @test [1]' * z' ≡ [1]' * transpose(z) ≡ z'
+
+        m = [[1,2], [3,4]]
+        @test m'z == [0 0]
+        @test transpose(Zeros(1))z' ≡transpose(Zeros(2))
+        @test Zeros(1)'z' ≡ Zeros(1)'transpose(z) ≡ Zeros(2)'
+    end
 end
 
 @testset "reverse" begin
@@ -3051,4 +3064,9 @@ end
     @test sqrt(F) ≈ sqrt(A) atol=1e-14
     @test sqrt(F)^2 == F
     @test cbrt(F)^3 == F
+end
+
+@testset "eigvals/svdvals" begin
+    @test svdvals(Fill(2,3,4)) == svdvals!(Fill(2,3,4)) == [sqrt(48),0,0]
+    @test svdvals(Fill(2,3,4)) ≈ svdvals(fill(2,3,4))
 end
