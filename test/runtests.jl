@@ -1066,7 +1066,7 @@ end
 
         @test conj.(Zeros(5)) ≡ Zeros(5)
         @test conj.(Zeros{ComplexF64}(5)) ≡ Zeros{ComplexF64}(5)
-        @test adjoint.(Zeros(5)) ≡ Zeros(5)
+        @test @inferred(broadcast(adjoint,Zeros(5))) ≡ Zeros(5)
         @test adjoint.(Zeros{ComplexF64}(5)) ≡ Zeros{ComplexF64}(5)
         @test transpose.(Zeros(5)) ≡ Zeros(5)
 
