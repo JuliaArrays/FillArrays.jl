@@ -9,7 +9,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
     parent, similar, issorted, add_sum, mul_prod, accumulate, OneTo, permutedims
 
-import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
+import LinearAlgebra: rank, svdvals, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
     issymmetric, ishermitian, AdjOrTransAbsVec, checksquare, mul!, kron, AbstractTriangular
 
@@ -253,7 +253,9 @@ function sort!(a::AbstractFill; kwds...)
     return a
 end
 
-svdvals!(a::AbstractFillMatrix) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(min(size(a)...)-1)]
+for sv in (:svdvals, :svdvals!)
+    @eval $sv(a::AbstractFillMatrix) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(min(size(a)...)-1)]
+end
 
 function fill_reshape(parent, dims::Integer...)
     n = length(parent)
