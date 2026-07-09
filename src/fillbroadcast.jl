@@ -79,6 +79,15 @@ function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,
     return Fill(op(getindex_value(r)), axes(r))
 end
 
+function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractZeros{T,N}) where {T,N}
+    if isdefined(LinearAlgebra, :fzeropreserving) &&
+       LinearAlgebra.fzeropreserving(Base.Broadcast.Broadcasted(op, (r,)))
+        TT = Base.Broadcast.combine_eltypes(op, (r,))
+        return Zeros{TT}(axes(r))
+    end
+    return Fill(op(getindex_value(r)), axes(r))
+end
+
 broadcasted(::DefaultArrayStyle, ::typeof(+), r::AbstractZeros) = r
 broadcasted(::DefaultArrayStyle, ::typeof(-), r::AbstractZeros) = r
 broadcasted(::DefaultArrayStyle, ::typeof(+), r::AbstractOnes) = r
