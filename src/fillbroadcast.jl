@@ -79,13 +79,11 @@ function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,
     return Fill(op(getindex_value(r)), axes(r))
 end
 
-if isdefined(LinearAlgebra, :fzeropreserving)
-    function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractZeros{T,N}) where {T,N}
-        if LinearAlgebra.fzeropreserving(Base.Broadcast.Broadcasted(op, (r,)))
-            Zeros{typeof(zero(getindex_value(r)))}(axes(r))
-        else
-            Fill(op(getindex_value(r)), axes(r))
-        end
+function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractZeros{T,N}) where {T,N}
+    if LinearAlgebra.fzeropreserving(Base.Broadcast.Broadcasted(op, (r,)))
+        Zeros{typeof(zero(getindex_value(r)))}(axes(r))
+    else
+        Fill(op(getindex_value(r)), axes(r))
     end
 end
 
