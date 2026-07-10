@@ -69,7 +69,7 @@ end
 function Base.mapfoldl_impl(f, op, nt, A::AbstractFill)
     fval = f(getindex_value(A))
     out = if nt isa Base._InitialValue
-        isempty(A) && _fill_reduce_empty_iter(f, op, A)
+        isempty(A) && return _fill_reduce_empty_iter(f, op, A)
         fval
     elseif isempty(A)
         nt
