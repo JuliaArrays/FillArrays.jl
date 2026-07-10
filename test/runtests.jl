@@ -601,6 +601,14 @@ end
             testsparsediag(E)
         end
     end
+
+    F = Fill(3, 4, 4)
+    @test sparse(F) == sparse(fill(3, size(F)...))
+    @test SparseMatrixCSC{Int8,Int16}(F) isa SparseMatrixCSC{Int8,Int16}
+
+    F = Fill(3, 4)
+    @test sparse(F) == sparse(fill(3, size(F)...))
+    @test SparseVector{Int8,Int16}(F) isa SparseVector{Int8,Int16}
 end
 
 @testset "==" begin
