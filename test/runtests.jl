@@ -407,15 +407,12 @@ function test_addition_subtraction_dot(As, Bs, Tout::Type)
             @test @inferred(B - A) isa Tout{promote_type(eltype(B), eltype(A))}
             @test isapprox_or_undef(as_array(B - A), as_array(B) - as_array(A))
 
-            # Julia 1.6 doesn't support dot(UniformScaling)
-            if VERSION < v"1.6.0" || VERSION >= v"1.8.0"
-                d1 = dot(A, B)
-                d2 = dot(as_array(A), as_array(B))
-                d3 = dot(B, A)
-                d4 = dot(as_array(B), as_array(A))
-                @test d1 ≈ d2 || d1 ≡ d2
-                @test d3 ≈ d4 || d3 ≡ d4
-            end
+            d1 = dot(A, B)
+            d2 = dot(as_array(A), as_array(B))
+            d3 = dot(B, A)
+            d4 = dot(as_array(B), as_array(A))
+            @test d1 ≈ d2 || d1 ≡ d2
+            @test d3 ≈ d4 || d3 ≡ d4
         end
     end
 end
@@ -508,6 +505,19 @@ end
         for A in As, Z in (TZ -> Zeros{TZ}(3)).((Int, Float64, Int8, ComplexF64))
             test_addition_and_subtraction_dim_mismatch(A, Z)
         end
+
+        # Zeros should act as an additive identity
+        # Arbitrary AbstractMatrix
+        D = Diagonal([1, 1])
+        Z = Zeros(2, 2)
+        @test D + Z isa Diagonal
+        @test D + Z == D
+        @test D - Z == D
+        @test Z - D == -D
+
+        @test Z + Z isa Zeros
+        @test Z + Z == Z
+        @test Z - Z == Z
     end
 end
 
@@ -1513,11 +1523,7 @@ end
         @test transpose(F) == transpose(G)
     end
 
-    H = if VERSION >= v"1.8"
-        @inferred(permutedims(Fill(2, (SOneTo(2), SOneTo(3)))))
-    else
-        permutedims(Fill(2, (SOneTo(2), SOneTo(3))))
-    end
+    H = @inferred(permutedims(Fill(2, (SOneTo(2), SOneTo(3)))))
     @test H === Fill(2, (SOneTo(3), SOneTo(2)))
 
     # test for inference only if aggressive constant propagation is available
@@ -1528,6 +1534,18 @@ end
         (F -> permutedims(F, (3,1,2)))(F)
     end
     @test H  === Fill(2, (SOneTo(1), SOneTo(2), SOneTo(3)))
+    @testset "ambiguities" begin
+        r = 1:2
+        f = Fill(2,2)
+        z = Zeros(2)
+        @test transpose([1]) * z' ≡ transpose([1]) * transpose(z) ≡ transpose(z)
+        @test [1]' * z' ≡ [1]' * transpose(z) ≡ z'
+
+        m = [[1,2], [3,4]]
+        @test m'z == [0 0]
+        @test transpose(Zeros(1))z' ≡transpose(Zeros(2))
+        @test Zeros(1)'z' ≡ Zeros(1)'transpose(z) ≡ Zeros(2)'
+    end
 end
 
 @testset "reverse" begin
@@ -1904,11 +1922,12 @@ end
 end
 
 @testset "norm" begin
-    for a in (Zeros{Int}(5), Zeros(5,3), Zeros(2,3,3),
-                Ones{Int}(5), Ones(5,3), Ones(2,3,3),
-                Fill(2.3,5), Fill([2.3,4.2],5), Fill(4)),
+    for a in (Zeros{Int}(5), Zeros(5,3), Zeros(2,3,3), Zeros{ComplexF32}(5),
+                Ones{Int}(5), Ones(5,3), Ones(2,3,3), Ones{ComplexF32}(5),
+                Fill(2.3,5), Fill([2.3,4.2],5), Fill(4), Fill(2f0+3f0im,5)),
         p in (-Inf, 0, 0.1, 1, 2, 3, Inf)
-        @test norm(a,p) ≈ norm(Array(a),p)
+        @test @inferred(norm(a,p)) ≈ norm(Array(a),p)
+        @test typeof(norm(a,p)) == typeof(norm(Array(a),p))
     end
 end
 
@@ -1946,9 +1965,7 @@ end
     E = Eye(2)
     K = kron(E, E)
     @test K isa Diagonal
-    if VERSION >= v"1.9"
-        @test K isa typeof(E)
-    end
+    @test K isa typeof(E)
     C = collect(E)
     @test K == kron(C, C)
 
@@ -2805,11 +2822,7 @@ end
                                 )
             O = OneElement(v,ind,sz)
             A = Array(O)
-            if VERSION >= v"1.10"
-                @test @inferred(sum(O)) === sum(A)
-            else
-                @test @inferred(sum(O)) == sum(A)
-            end
+            @test @inferred(sum(O)) === sum(A)
             @test @inferred(sum(O, init=zero(eltype(O)))) === sum(A, init=zero(eltype(O)))
             @test @inferred(sum(x->1, O, init=0)) === sum(Fill(1, axes(O)), init=0)
         end
@@ -2964,13 +2977,7 @@ end
 end
 
 @testset "structured matrix" begin
-    # strange bug on Julia v1.6, see
-    # https://discourse.julialang.org/t/strange-seemingly-out-of-bounds-access-bug-in-julia-v1-6/101041
-    bands = if VERSION >= v"1.9"
-        ((Fill(2,3), Fill(6,2)), (Zeros(3), Zeros(2)))
-    else
-        ((Fill(2,3), Fill(6,2)),)
-    end
+    bands = ((Fill(2,3), Fill(6,2)), (Zeros(3), Zeros(2)))
     @testset for (dv, ev) in bands
         for D in (Diagonal(dv), Bidiagonal(dv, ev, :U),
                     Tridiagonal(ev, dv, ev), SymTridiagonal(dv, ev))
@@ -3034,6 +3041,32 @@ end
     @test tril(Z, 2) === Z
 end
 
+@testset "eigen" begin
+    sortby = x -> (real(x), imag(x))
+    @testset "AbstractFill" begin
+        sizes = VERSION >= v"1.10" ? (0, 1, 4) : (1, 4)
+        @testset for val in (2.0, -2, 3+2im, 4 - 5im, 2im), n in sizes
+            sortby_val = iszero(real(val)) ? imag : sortby
+            F = Fill(val, n, n)
+            M = Matrix(F)
+            @test eigvals(F; sortby = sortby_val) ≈ eigvals(M; sortby = sortby_val)
+            λ, V = eigen(F; sortby = sortby_val)
+            @test λ == eigvals(F; sortby = sortby_val)
+            @test V'V ≈ I
+            @test F * V ≈ V * Diagonal(λ)
+        end
+        @testset for MT in (Ones, Zeros), T in (Float64, Int, ComplexF64), n in sizes
+            F = MT{T}(n,n)
+            M = Matrix(F)
+            @test eigvals(F; sortby) ≈ eigvals(M; sortby)
+            λ, V = eigen(F; sortby)
+            @test λ == eigvals(F; sortby)
+            @test V'V ≈ I
+            @test F * V ≈ V * Diagonal(λ)
+        end
+    end
+end
+
 @testset "Diagonal conversion (#389)" begin
     @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) isa Diagonal{Int,Vector{Int}}
     @test convert(Diagonal{Int, Vector{Int}}, Zeros(5,5)) == zeros(5,5)
@@ -3068,4 +3101,9 @@ end
     @test sqrt(F) ≈ sqrt(A) atol=1e-14
     @test sqrt(F)^2 == F
     @test cbrt(F)^3 == F
+end
+
+@testset "eigvals/svdvals" begin
+    @test svdvals(Fill(2,3,4)) == svdvals!(Fill(2,3,4)) == [sqrt(48),0,0]
+    @test svdvals(Fill(2,3,4)) ≈ svdvals(fill(2,3,4))
 end

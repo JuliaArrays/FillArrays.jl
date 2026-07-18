@@ -9,9 +9,10 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
     parent, similar, issorted, add_sum, accumulate, OneTo, permutedims
 
-import LinearAlgebra: rank, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
+import LinearAlgebra: rank, svdvals, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
-    issymmetric, ishermitian, AdjOrTransAbsVec, checksquare, mul!, kron, AbstractTriangular
+    issymmetric, ishermitian, AdjOrTransAbsVec, checksquare, mul!, kron, AbstractTriangular,
+    eigvecs, eigvals, eigen
 
 
 import Base.Broadcast: broadcasted, DefaultArrayStyle, broadcast_shape, BroadcastStyle, Broadcasted
@@ -48,18 +49,18 @@ Base.@propagate_inbounds getindex(F::AbstractFill{T, N}, kj::Vararg{Integer, N})
 
 @inline function setindex!(F::AbstractFill, v, k::Integer)
     @boundscheck checkbounds(F, k)
-    v == getindex_value(F) || throw(ArgumentError("Cannot setindex! to $v for an AbstractFill with value $(getindex_value(F))."))
+    v == getindex_value(F) || throw(ArgumentError(LazyString("Cannot setindex! to ", v, " for an AbstractFill with value ", getindex_value(F), ".")))
     F
 end
 
 @inline function setindex!(F::AbstractFill{T, N}, v, kj::Vararg{Integer, N}) where {T, N}
     @boundscheck checkbounds(F, kj...)
-    v == getindex_value(F) || throw(ArgumentError("Cannot setindex! to $v for an AbstractFill with value $(getindex_value(F))."))
+    v == getindex_value(F) || throw(ArgumentError(LazyString("Cannot setindex! to ", v, " for an AbstractFill with value ", getindex_value(F), ".")))
     F
 end
 
 @inline function fill!(F::AbstractFill, v)
-    v == getindex_value(F) || throw(ArgumentError("Cannot fill! with $v an AbstractFill with value $(getindex_value(F))."))
+    v == getindex_value(F) || throw(ArgumentError(LazyString("Cannot fill! with ", v, " an AbstractFill with value ", getindex_value(F), ".")))
     F
 end
 
@@ -72,18 +73,10 @@ ishermitian(F::AbstractFillMatrix) = axes(F,1) == axes(F,2) && (isempty(F) || is
 Base.IteratorSize(::Type{<:AbstractFill{T,N,Axes}}) where {T,N,Axes} = _IteratorSize(Axes)
 _IteratorSize(::Type{Tuple{}}) = Base.HasShape{0}()
 _IteratorSize(::Type{Tuple{T}}) where {T} = Base.IteratorSize(T)
-# Julia Base has an optimized any for Tuples on versions >= v1.9
-# On lower versions, a recursive implementation helps with type-inference
-if VERSION >= v"1.9.0-beta3"
-    _any(f, t::Tuple) = any(f, t)
-else
-    _any(f, ::Tuple{}) = false
-    _any(f, t::Tuple) = f(t[1]) || _any(f, Base.tail(t))
-end
 function _IteratorSize(::Type{T}) where {T<:Tuple}
     N = fieldcount(T)
     s = ntuple(i-> Base.IteratorSize(fieldtype(T, i)), N)
-    _any(x -> x isa Base.IsInfinite, s) ? Base.IsInfinite() : Base.HasShape{N}()
+    any(x -> x isa Base.IsInfinite, s) ? Base.IsInfinite() : Base.HasShape{N}()
 end
 
 
@@ -190,7 +183,7 @@ function unique_value(arr::AbstractArray)
     val = first(arr)
     for x in arr
         if x !== val
-            error("Input array contains both $x and $val. Cannot convert to Fill")
+            error(LazyString("Input array contains both ", x, " and ", val, ". Cannot convert to Fill"))
         end
     end
     return val
@@ -261,34 +254,34 @@ function sort!(a::AbstractFill; kwds...)
     return a
 end
 
-svdvals!(a::AbstractFillMatrix) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(min(size(a)...)-1)]
-
-@noinline function _throw_dmrs(n, str, dims)
-    throw(DimensionMismatch("parent has $n elements, which is incompatible with $str $dims"))
+for sv in (:svdvals, :svdvals!)
+    @eval $sv(a::AbstractFillMatrix) = [getindex_value(a)*sqrt(prod(size(a))); Zeros(min(size(a)...)-1)]
 end
+
 function fill_reshape(parent, dims::Integer...)
     n = length(parent)
-    prod(dims) == n || _throw_dmrs(n, "size", dims)
+    prod(dims) == n || throw(DimensionMismatch(LazyString("parent has ", n, " elements, which is incompatible with size ", dims)))
     fillsimilar(parent, dims...)
 end
 
-reshape(parent::AbstractFill, dims::Integer...) = reshape(parent, dims)
-reshape(parent::AbstractFill, dims::Union{Int,Colon}...) = reshape(parent, dims)
-reshape(parent::AbstractFill, dims::Union{Integer,Colon}...) = reshape(parent, dims)
-# resolve ambiguity with Base
-reshape(parent::AbstractFillVector, dims::Colon) = parent
-
-reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Integer,Colon}}}) =
-    fill_reshape(parent, Base._reshape_uncolon(parent, dims)...)
-reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Int,Colon}}}) =
-    fill_reshape(parent, Base._reshape_uncolon(parent, dims)...)
-reshape(parent::AbstractFill, shp::Tuple{Union{Integer,Base.OneTo}, Vararg{Union{Integer,Base.OneTo}}}) =
-    reshape(parent, Base.to_shape(shp))
+if VERSION < v"1.12.0-DEV.1726"
+    # resolve ambiguity with Base
+    reshape(parent::AbstractFillVector, ::Colon) = parent
+    reshape(parent::AbstractFill, dims::Integer...) = reshape(parent, dims)
+    reshape(parent::AbstractFill, dims::Union{Int,Colon}...) = reshape(parent, dims)
+    reshape(parent::AbstractFill, dims::Union{Integer,Colon}...) = reshape(parent, dims)
+    reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Integer,Colon}}}) =
+        fill_reshape(parent, Base._reshape_uncolon(parent, dims)...)
+    reshape(parent::AbstractFill, dims::Tuple{Vararg{Union{Int,Colon}}}) =
+        fill_reshape(parent, Base._reshape_uncolon(parent, dims)...)
+    reshape(parent::AbstractFill, shp::Tuple{Union{Integer,Base.OneTo}, Vararg{Union{Integer,Base.OneTo}}}) =
+        reshape(parent, Base.to_shape(shp))
+    # resolve ambiguity with Base
+    reshape(parent::AbstractFillVector, ::Tuple{Colon}) = parent
+end
 reshape(parent::AbstractFill, dims::Dims) = fill_reshape(parent, dims...)
 reshape(parent::AbstractFill, dims::Tuple{Integer, Vararg{Integer}}) = fill_reshape(parent, dims...)
 
-# resolve ambiguity with Base
-reshape(parent::AbstractFillVector, dims::Tuple{Colon}) = parent
 
 for (AbsTyp, Typ, funcs, func) in ((:AbstractZeros, :Zeros, :zeros, :zero), (:AbstractOnes, :Ones, :ones, :one))
     @eval begin
@@ -347,10 +340,10 @@ for (AbsTyp, Typ, funcs, func) in ((:AbstractZeros, :Zeros, :zeros, :zero), (:Ab
         convert(::Type{$Typ{T,N}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
         convert(::Type{$Typ{T}}, A::$AbsTyp{V,N,Axes}) where {T,V,N,Axes} = convert($Typ{T,N,Axes}, A)
         function convert(::Type{Typ}, A::AbstractFill{V,N}) where {T,V,N,Axes,Typ<:$AbsTyp{T,N,Axes}}
-            axes(A) isa Axes || throw(ArgumentError("cannot convert, as axes of array are not $Axes"))
+            axes(A) isa Axes || throw(ArgumentError(LazyString("cannot convert, as axes of array are not ", Axes)))
             val = getindex_value(A)
             y = convert(T, val)
-            y == $func(T) || throw(ArgumentError(string("cannot convert an array containinig $val to ", $Typ)))
+            y == $func(T) || throw(ArgumentError(LazyString("cannot convert an array containinig ", val, " to ", Typ)))
             Typ(axes(A))
         end
         function convert(::Type{$Typ{T,N}}, A::AbstractFill{<:Any,N}) where {T,N}
@@ -389,7 +382,7 @@ fillsimilar(a::AbstractFill, axes...) = Fill(getindex_value(a), axes...)
 # functions
 function Base.sqrt(a::AbstractFillMatrix{<:Union{Real, Complex}})
     Base.require_one_based_indexing(a)
-    size(a,1) == size(a,2) || throw(DimensionMismatch("matrix is not square: dimensions are $(size(a))"))
+    size(a,1) == size(a,2) || throw(DimensionMismatch(LazyString("matrix is not square: dimensions are ", size(a))))
     _sqrt(a)
 end
 _sqrt(a::AbstractZerosMatrix) = float(a)
@@ -401,7 +394,7 @@ function _sqrt(a::AbstractFillMatrix)
 end
 function Base.cbrt(a::AbstractFillMatrix{<:Real})
     Base.require_one_based_indexing(a)
-    size(a,1) == size(a,2) || throw(DimensionMismatch("matrix is not square: dimensions are $(size(a))"))
+    size(a,1) == size(a,2) || throw(DimensionMismatch(LazyString("matrix is not square: dimensions are ", size(a))))
     _cbrt(a)
 end
 _cbrt(a::AbstractZerosMatrix) = float(a)
@@ -460,7 +453,7 @@ function setindex!(rd::RectDiagonal, v, i::Integer, j::Integer)
     if i == j
         @inbounds rd.diag[i] = v
     elseif !iszero(v)
-        throw(ArgumentError("cannot set off-diagonal entry ($i, $j) to a nonzero value ($v)"))
+        throw(ArgumentError(LazyString("cannot set off-diagonal entry (", i, ", ", j, ") to a nonzero value (", v, ")")))
     end
     return v
 end
@@ -545,8 +538,9 @@ end
 # Also, maybe this should reuse the broadcasting behavior of the parent,
 # once AbstractFill types implement their own BroadcastStyle
 BroadcastStyle(::Type{<:RectDiagonal}) = LinearAlgebra.StructuredMatrixStyle{RectDiagonal}()
-LinearAlgebra.structured_broadcast_alloc(bc, ::Type{<:RectDiagonal}, ::Type{ElType}, n) where {ElType} =
-    RectDiagonal(Array{ElType}(undef, n), axes(bc))
+function LinearAlgebra.structured_broadcast_alloc(bc, ::Type{<:RectDiagonal}, ::Type{ElType}, n) where {ElType}
+    RectDiagonal(Array{ElType}(undef, minimum(n)), axes(bc))
+end
 @inline LinearAlgebra.fzero(S::RectDiagonal{T}) where {T} = zero(T)
 
 #########
@@ -738,12 +732,6 @@ include("fillalgebra.jl")
 include("fillbroadcast.jl")
 include("trues.jl")
 
-if !isdefined(Base, :get_extension)
-    include("../ext/FillArraysPDMatsExt.jl")
-    include("../ext/FillArraysSparseArraysExt.jl")
-    include("../ext/FillArraysStatisticsExt.jl")
-end
-
 ##
 # print
 ##
@@ -752,15 +740,9 @@ Base.replace_in_print_matrix(::AbstractZeros, ::Integer, ::Integer, s::AbstractS
 
 # following support blocked fill array printing via
 # BlockArrays.jl
-if VERSION < v"1.8-"
-    axes_print_matrix_row(lay, io, X, A, i, cols, sep) =
-        Base.invoke(Base.print_matrix_row, Tuple{IO,AbstractVecOrMat,Vector,Integer,AbstractVector,AbstractString},
-                    io, X, A, i, cols, sep)
-else
-    axes_print_matrix_row(lay, io, X, A, i, cols, sep, idxlast::Integer=last(axes(X, 2))) =
-        Base.invoke(Base.print_matrix_row, Tuple{IO,AbstractVecOrMat,Vector,Integer,AbstractVector,AbstractString,Integer},
+axes_print_matrix_row(lay, io, X, A, i, cols, sep, idxlast::Integer=last(axes(X, 2))) =
+    Base.invoke(Base.print_matrix_row, Tuple{IO,AbstractVecOrMat,Vector,Integer,AbstractVector,AbstractString,Integer},
                     io, X, A, i, cols, sep, idxlast)
-end
 
 Base.print_matrix_row(io::IO,
         X::Union{AbstractFillVector,
@@ -871,11 +853,9 @@ end
 function _repeat(A; inner=ntuple(x->1, ndims(A)), outer=ntuple(x->1, ndims(A)))
     Base.require_one_based_indexing(A)
     length(inner) >= ndims(A) ||
-        throw(ArgumentError("number of inner repetitions $(length(inner)) cannot be "*
-            "less than number of dimensions of input array $(ndims(A))"))
+        throw(ArgumentError(LazyString("number of inner repetitions ", length(inner), " cannot be less than number of dimensions of input array ", ndims(A))))
     length(outer) >= ndims(A) ||
-        throw(ArgumentError("number of outer repetitions $(length(outer)) cannot be "*
-            "less than number of dimensions of input array $(ndims(A))"))
+        throw(ArgumentError(LazyString("number of outer repetitions ", length(outer), " cannot be less than number of dimensions of input array ", ndims(A))))
     sz = _repeat_size(size(A), Tuple(inner), Tuple(outer))
     fillsimilar(A, sz)
 end
