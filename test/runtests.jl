@@ -1220,12 +1220,14 @@ end
     Y = Fill(1.0, 3, 4)
     O = Ones(3, 4)
 
-    @test mapreduce(exp, +, Y) == mapreduce(exp, +, y)
+    @test mapfoldl(exp, +, Y) == mapfoldr(exp, +, Y) == mapreduce(exp, +, Y) == mapreduce(exp, +, y) == mapfoldl(exp, +, Y; init=0) == mapfoldr(exp, +, Y; init=0) == mapreduce(exp, +, Y; init=0)
     @test mapreduce(exp, +, Y; dims=2) == mapreduce(exp, +, y; dims=2)
-    @test mapreduce(identity, +, Y) == sum(y) == sum(Y)
-    @test mapreduce(identity, +, Y, dims=1) == sum(y, dims=1) == sum(Y, dims=1)
+    @test foldl(+, Y) == foldr(+, Y) == mapreduce(identity, +, Y) == sum(y) == sum(Y)
+    @test mapreduce(identity, +, Y, dims=1) == mapreduce(identity, +, y, dims=1) == sum(y, dims=1) == sum(Y, dims=1)
+    @test mapreduce(exp, +, Y; dims=(1,), init=5.0) ≈ mapreduce(exp, +, y; dims=(1,), init=5.0)
 
-    @test mapreduce(exp, +, Y; dims=(1,), init=5.0) == mapreduce(exp, +, y; dims=(1,), init=5.0)
+    @test mapfoldl(exp, *, Y) == mapfoldr(exp, *, Y) == mapreduce(exp, *, Y) == mapreduce(exp, *, y) == mapfoldl(exp, *, Y; init=1) == mapfoldr(exp, *, Y; init=1) == mapreduce(exp, *, Y; init=1)
+    @test mapfoldl(exp, max, Y) == mapfoldr(exp, max, Y) == mapreduce(exp, max, Y) == mapreduce(exp, max, y) == mapfoldl(exp, max, Y; init=0) == mapfoldr(exp, max, Y; init=0) == mapreduce(exp, max, Y; init=0)
 
     # Two arrays
     @test mapreduce(*, +, x, Y) == mapreduce(*, +, x, y)
@@ -1234,7 +1236,10 @@ end
     @test mapreduce(*, +, Y, O) == mapreduce(*, +, y, y)
 
     f2(x,y) = 1 + x/y
-    op2(x,y) = x^2 + 3y
+    op2(x,y) = x^2 - 3y
+    @test mapreduce(cos, op2, Y) == mapfoldl(cos, op2, Y) == mapfoldl(cos, op2, y)
+    @test mapfoldr(cos, op2, Y) == mapfoldr(cos, op2, y)
+
     @test mapreduce(f2, op2, x, Y) == mapreduce(f2, op2, x, y)
 
     @test mapreduce(f2, op2, x, Y, dims=1, init=5.0) == mapreduce(f2, op2, x, y, dims=1, init=5.0)
@@ -1248,6 +1253,21 @@ end
     @test mapreduce(+, +, x, O, Y) == mapreduce(+, +, x, y, y)
     @test mapreduce(+, +, Y, O, Y) == mapreduce(+, +, y, y, y)
     @test mapreduce(+, +, Y, O, Y, x) == mapreduce(+, +, y, y, y, x)
+
+    @test mapreduce(identity, +, Fill(0,0)) == 0
+    @test mapreduce(identity, +, Fill(0,0); init=1) == 1
+    @test mapreduce(cos, op2, Fill(0,0); init=1.0) == mapfoldl(cos, op2, Fill(0,0); init=1.0) == mapfoldr(cos, op2, Fill(0,0); init=1.0) == 1.0
+    if VERSION ≥ v"1.12" # early versions throw MethodError
+        @test_throws ArgumentError mapreduce(exp, +, Fill(0,0))
+        @test_throws ArgumentError mapreduce(cos, op2, Fill(0,0))
+        @test_throws ArgumentError mapfoldr(cos, op2, Fill(0,0))
+    end
+
+    # an empty Fill has an implied entry so we can attach a value.
+    # this (debatable) behaviour is used downstream.
+    @test mapreduce(identity, max, Fill(0,0)) == mapreduce(identity, min, Fill(0,0)) == 0
+    @test mapreduce(identity, max, Fill(0,0); init=1) == 1
+    @test mapreduce(identity, min, Fill(0,0); init=-1) == -1
 end
 
 @testset "Offset indexing" begin
@@ -1959,14 +1979,14 @@ end
     @test K == kron(C, C)
 
     E = Eye(2,3)
-    K = kron(E, E)
+    K = kron(sparse(E), sparse(E))
     C = collect(E)
     @test K == kron(C, C)
-    @test issparse(kron(E,E))
+    @test issparse(kron(sparse(E), sparse(E)))
 
     E = RectDiagonal(Fill(4,3), (6,3))
     C = collect(E)
-    K = kron(E, E)
+    K = kron(sparse(E), sparse(E))
     @test K == kron(C, C)
     @test issparse(K)
 end

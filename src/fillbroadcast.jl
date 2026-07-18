@@ -30,31 +30,101 @@ function _maplinear(rs...) # tries to match Base's behaviour, could perhaps hook
     end
 end
 
-### mapreduce
+# this preserves the init cases of Base.mapreduce
+_fill_reduce_empty_iter(f, op, A) = Base.reduce_empty_iter(Base._xfadjoint(Base.BottomRF(op), Base.Generator(f, A))...)
+# unlike a standard array, we have a well-defined notion of max/min for FillArrays
+_fill_reduce_empty_iter(f, ::Union{typeof(max), typeof(min)}, A) = f(getindex_value(A))
 
-function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, ::Colon)
+
+# these special cases can be computed exactly. 
+# We special-case zeros value to avoid ∞ * 0 in InfiniteArrays.jl
+_foldl_length_op(f, ::Union{typeof(max), typeof(min), typeof(&), typeof(|)}, A) = f(getindex_value(A))
+
+function _foldl_length_op(f, op::Union{typeof(+), typeof(add_sum)}, A)
+    v = f(getindex_value(A))
+    iszero(v) && return op(v, v) # get type right
+    length(A)*v
+end
+
+function _foldl_length_op(f, op::Union{typeof(*), typeof(mul_prod)}, A)
+    v = f(getindex_value(A))
+    (iszero(v) || isone(v)) && return op(v, v) # get type right
+    v^length(A)
+end
+
+### mapreduce
+# Fast special cases
+for mapfold in (:(Base.mapfoldl_impl), :(Base.mapfoldr_impl)), op in (:max, :min, :&, :|, :+, :add_sum, :*, :mul_prod)
+    @eval function $mapfold(f, ::typeof($op), nt, A::AbstractFill)
+        if nt isa Base._InitialValue
+            isempty(A) && return _fill_reduce_empty_iter(f, $op, A)
+            _foldl_length_op(f, $op, A) # multiplication promotes type a la +, add_sum
+        else
+            isempty(A) && return nt
+            $op(nt, _foldl_length_op(f, $op, A))
+        end
+    end
+end
+
+function Base.mapfoldl_impl(f, op, nt, A::AbstractFill)
     fval = f(getindex_value(A))
-    out = fval
+    out = if nt isa Base._InitialValue
+        isempty(A) && return _fill_reduce_empty_iter(f, op, A)
+        fval
+    elseif isempty(A)
+        nt
+    else
+        op(nt, fval)
+    end
     for _ in 2:length(A)
         out = op(out, fval)
     end
     out
 end
 
-function Base._mapreduce_dim(f, op, ::Base._InitialValue, A::AbstractFill, dims)
+function Base.mapfoldr_impl(f, op, nt, A::AbstractFill)
     fval = f(getindex_value(A))
-    red = *(ntuple(d -> d in dims ? size(A,d) : 1, ndims(A))...)
-    out = fval
-    for _ in 2:red
-        out = op(out, fval)
+    out = if nt isa Base._InitialValue
+        isempty(A) && return _fill_reduce_empty_iter(f, op, A)
+        fval
+    elseif isempty(A)
+        nt
+    else
+        op(nt, fval)
     end
-    Fill(out, ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
+    for _ in length(A)-1:-1:1
+        out = op(fval, out)
+    end
+    out
 end
 
-function mapreduce(f, op, A::AbstractFill, B::AbstractFill; kw...)
-    val(_...) = f(getindex_value(A), getindex_value(B))
-    reduce(op, map(val, A, B); kw...)
+
+mapreduce(f, op, A::AbstractFill; dims=:, init=Base._InitialValue()) = _fill_mapreduce_dim(f, op, init, A, dims)
+_fill_mapreduce_dim(f, op, init, A, ::Colon) = mapfoldl(f, op, A; init=init) # foldl is fast
+
+# Opposite of Base.reduced_indices
+# Based on base/reducedim.jl
+# for reductions that expand ≠0 dims to 1
+function _check_valid_region(region)
+    for d in region
+        isa(d, Integer) || throw(ArgumentError("reduced dimension(s) must be integers"))
+        Int(d) < 1 && throw(ArgumentError("region dimension(s) must be ≥ 1, got $d"))
+    end
 end
+
+unreduced_indices(a, region) = unreduced_indices(axes(a), region)
+function unreduced_indices(axs::Base.Indices{N}, region) where N
+    _check_valid_region(region)
+    ntuple(d -> !(d in region) ? Base.reduced_index(axs[d]) : axs[d], Val(N))
+end
+
+function _fill_mapreduce_dim(f, op, init, A, dims)
+    A_red = A[unreduced_indices(A, dims)...] # reduce A, still a Fill
+    Fill(mapreduce(f, op, A_red; init=init), ntuple(d -> d in dims ? Base.OneTo(1) : axes(A,d), ndims(A)))
+end
+
+# map for AbstractFills returns an AbstractFill so just call reduce
+mapreduce(f, op, A::AbstractFill, B::AbstractFill, Cs::AbstractFill...; kw...) = reduce(op, map(f, A, B, Cs...); kw...)
 
 # These are particularly useful because mapreduce(*, +, A, B; dims) is slow in Base,
 # but can be re-written as some mapreduce(g, +, C; dims) which is fast.
