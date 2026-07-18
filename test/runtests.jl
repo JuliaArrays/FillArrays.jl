@@ -1475,6 +1475,32 @@ end
 
     E = Eye((SOneTo(2), SOneTo(2)))
     @test axes(E .+ E) === axes(E)
+
+    # Issue #415: broadcasting with scalars should preserve Fill structure
+    for E in (Eye(3), Eye(3, 4), Eye(4, 3), Diagonal(Fill(2.0, 3)))
+        M = Matrix(E)
+        # unary broadcast
+        F = (.-)(E)
+        @test F isa Diagonal || F isa FillArrays.RectDiagonal
+        @test parent(F) isa AbstractFill
+        @test F == (.-)(M)
+        # scalar multiplication
+        F = -1 .* E
+        @test F isa Diagonal || F isa FillArrays.RectDiagonal
+        @test parent(F) isa AbstractFill
+        @test F == -1 .* M
+        F = E .* -1
+        @test F isa Diagonal || F isa FillArrays.RectDiagonal
+        @test parent(F) isa AbstractFill
+        @test F == M .* -1
+        # scalar division
+        F = E ./ 2
+        @test F isa Diagonal || F isa FillArrays.RectDiagonal
+        @test parent(F) isa AbstractFill
+        @test F == M ./ 2
+        # non-zero-preserving ops should not return structured types
+        @test (E .+ 1) == (M .+ 1)
+    end
 end
 
 @testset "Issues" begin

@@ -269,3 +269,39 @@ broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValu
 if isdefined(LinearAlgebra, :fzero)
     LinearAlgebra.fzero(x::AbstractZeros) = zero(eltype(x))
 end
+
+# Broadcasting on Diagonal/RectDiagonal with AbstractFill diagonal
+# These ensure that operations like `(.-)(Eye(n))` and `-1 .* Eye(n)` preserve the Fill type.
+# Only intercept when the operation preserves zeros (fzeropreserving), to avoid changing the
+# behavior of non-structure-preserving operations like `exp.(D)`.
+function broadcasted(sty::LinearAlgebra.StructuredMatrixStyle{<:Diagonal}, op, D::Diagonal{<:Any, <:AbstractFill})
+    bc = Base.Broadcast.Broadcasted(op, (D,))
+    LinearAlgebra.fzeropreserving(bc) && return Diagonal(broadcasted(op, D.diag))
+    return Base.Broadcast.Broadcasted{typeof(sty)}(op, (D,))
+end
+function broadcasted(sty::LinearAlgebra.StructuredMatrixStyle{<:Diagonal}, op, x::Number, D::Diagonal{<:Any, <:AbstractFill})
+    bc = Base.Broadcast.Broadcasted(op, (x, D))
+    LinearAlgebra.fzeropreserving(bc) && return Diagonal(broadcasted(op, x, D.diag))
+    return Base.Broadcast.Broadcasted{typeof(sty)}(op, (x, D))
+end
+function broadcasted(sty::LinearAlgebra.StructuredMatrixStyle{<:Diagonal}, op, D::Diagonal{<:Any, <:AbstractFill}, x::Number)
+    bc = Base.Broadcast.Broadcasted(op, (D, x))
+    LinearAlgebra.fzeropreserving(bc) && return Diagonal(broadcasted(op, D.diag, x))
+    return Base.Broadcast.Broadcasted{typeof(sty)}(op, (D, x))
+end
+
+function broadcasted(sty::LinearAlgebra.StructuredMatrixStyle{<:RectDiagonal}, op, D::RectDiagonal{<:Any, <:AbstractFill})
+    bc = Base.Broadcast.Broadcasted(op, (D,))
+    LinearAlgebra.fzeropreserving(bc) && return RectDiagonal(broadcasted(op, D.diag), axes(D))
+    return Base.Broadcast.Broadcasted{typeof(sty)}(op, (D,))
+end
+function broadcasted(sty::LinearAlgebra.StructuredMatrixStyle{<:RectDiagonal}, op, x::Number, D::RectDiagonal{<:Any, <:AbstractFill})
+    bc = Base.Broadcast.Broadcasted(op, (x, D))
+    LinearAlgebra.fzeropreserving(bc) && return RectDiagonal(broadcasted(op, x, D.diag), axes(D))
+    return Base.Broadcast.Broadcasted{typeof(sty)}(op, (x, D))
+end
+function broadcasted(sty::LinearAlgebra.StructuredMatrixStyle{<:RectDiagonal}, op, D::RectDiagonal{<:Any, <:AbstractFill}, x::Number)
+    bc = Base.Broadcast.Broadcasted(op, (D, x))
+    LinearAlgebra.fzeropreserving(bc) && return RectDiagonal(broadcasted(op, D.diag, x), axes(D))
+    return Base.Broadcast.Broadcasted{typeof(sty)}(op, (D, x))
+end
