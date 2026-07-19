@@ -1480,21 +1480,21 @@ end
     for E in (Eye(3), Eye(3, 4), Eye(4, 3), Diagonal(Fill(2.0, 3)))
         M = Matrix(E)
         # unary broadcast
-        F = (.-)(E)
+        F = @inferred((.-)(E))
         @test F isa Diagonal || F isa FillArrays.RectDiagonal
         @test parent(F) isa AbstractFill
         @test F == (.-)(M)
         # scalar multiplication
-        F = -1 .* E
+        F = @inferred(-1 .* E)
         @test F isa Diagonal || F isa FillArrays.RectDiagonal
         @test parent(F) isa AbstractFill
         @test F == -1 .* M
-        F = E .* -1
+        F = @inferred(E .* -1)
         @test F isa Diagonal || F isa FillArrays.RectDiagonal
         @test parent(F) isa AbstractFill
         @test F == M .* -1
         # scalar division
-        F = E ./ 2
+        F = @inferred(E ./ 2)
         @test F isa Diagonal || F isa FillArrays.RectDiagonal
         @test parent(F) isa AbstractFill
         @test F == M ./ 2
