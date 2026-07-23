@@ -1,7 +1,3 @@
-## vec
-
-vec(a::AbstractFill) = fillsimilar(a, length(a))
-
 ## Transpose/Adjoint
 # cannot do this for vectors since that would destroy scalar dot product
 
@@ -425,8 +421,6 @@ end
 
 # Addition and Subtraction
 +(a::AbstractFill) = a
--(a::AbstractZeros) = a
--(a::AbstractFill) = Fill(-getindex_value(a), size(a))
 
 # special-cased for type-stability, as Ones + Ones is not a Ones
 Base.reduce_first(::typeof(+), x::AbstractOnes) = Fill(Base.reduce_first(+, getindex_value(x)), axes(x))
