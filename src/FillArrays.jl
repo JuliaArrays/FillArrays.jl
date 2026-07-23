@@ -5,7 +5,7 @@ using LinearAlgebra
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iszero, iterate, unique, allunique, permutedims, inv,
-    copy, vec, setindex!, count, ==, reshape, map, zero,
+    copy, setindex!, count, ==, reshape, map, zero,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
     parent, similar, issorted, add_sum, mul_prod, accumulate, OneTo, permutedims
 
@@ -33,11 +33,6 @@ const AbstractFillMatrix{T} = AbstractFill{T,2}
 const AbstractFillVecOrMat{T} = Union{AbstractFillVector{T},AbstractFillMatrix{T}}
 
 ==(a::AbstractFill, b::AbstractFill) = axes(a) == axes(b) && getindex_value(a) == getindex_value(b)
-
-@inline function Base.isassigned(F::AbstractFill, i::Integer...)
-    @boundscheck checkbounds(Bool, F, to_indices(F, i)...) || return false
-    return true
-end
 
 @inline function _fill_getindex(F::AbstractFill, kj::Integer...)
     @boundscheck checkbounds(F, kj...)
@@ -512,7 +507,7 @@ function diag(E::Eye, k::Integer=0)
 end
 
 # These should actually be in StdLib, LinearAlgebra.jl, for all Diagonal
-for f in (:permutedims, :triu, :triu!, :tril, :tril!, :copy)
+for f in (:triu, :triu!, :tril, :tril!, :copy)
     @eval ($f)(IM::Diagonal{<:Any,<:AbstractFill}) = IM
 end
 
@@ -694,11 +689,6 @@ function all(f::Function, x::AbstractFill)
     fval = f(getindex_value(x))
     return all((fval,))
 end
-any(x::AbstractFill) = any(identity, x)
-all(x::AbstractFill) = all(identity, x)
-
-count(x::AbstractOnes{Bool}) = length(x)
-count(x::AbstractZeros{Bool}) = 0
 count(f, x::AbstractFill) = f(getindex_value(x)) ? length(x) : 0
 
 #########
