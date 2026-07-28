@@ -254,6 +254,13 @@ broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill) where {N} = _dispatch_o
 broadcasted(::DefaultArrayStyle{N}, op, a::AbstractFill, b) where {N} = _dispatch_on_fills(Val(N), op, a, b)
 broadcasted(::DefaultArrayStyle{N}, op, a, b::AbstractFill) where {N} = _dispatch_on_fills(Val(N), op, a, b)
 broadcasted(::DefaultArrayStyle{N}, op, a::AbstractFill, b::AbstractFill) where {N} = _dispatch_on_fills(Val(N), op, a, b)
+# `x .^ k` lowers to a three-argument `literal_pow` broadcast, which none of the shapes above
+# match. The `Ref`s are unwrapped here so that the styleless rules apply to the arguments, which
+# means that the style has to be obtained from the fill instead of from all of them. The `Ref`s
+# are zero-dimensional, so they wouldn't have contributed to it anyway.
+broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), x::Base.RefValue{typeof(^)},
+        r::AbstractFill, y::Base.RefValue{<:Val}) where {N} =
+    _dispatch_on_fills(Broadcast.combine_styles(r), Val(N), op, x[], r, y[])
 
 _dispatch_on_fills(v::Val, op, args...) = _dispatch_on_fills(Broadcast.combine_styles(args...), v, op, args...)
 # The arguments are ours to handle, so the styleless methods below apply. As their style isn't a
@@ -434,6 +441,7 @@ broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractFill{T,N}, ::V
 broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractOnes{T,N}, ::Val{k}) where {T,N,k} = broadcasted_ones(op, r, T, axes(r))
 broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractZeros{T,N}, ::Val{0}) where {T,N} = broadcasted_ones(op, r, T, axes(r))
 broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractZeros{T,N}, ::Val{k}) where {T,N,k} = broadcasted_zeros(op, r, T, axes(r))
+has_fill_rule(::typeof(Base.literal_pow), ::typeof(^), ::AbstractFill, ::Val) = true
 
 # supports structured broadcast
 if isdefined(LinearAlgebra, :fzero)
