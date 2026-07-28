@@ -152,10 +152,25 @@ FillStyle{N}(::Val{M}) where {N,M} = FillStyle{M}()
 ZerosStyle{N}(::Val{M}) where {N,M} = ZerosStyle{M}()
 Broadcast.BroadcastStyle(::Type{<:AbstractFill{<:Any,N}}) where {N} = FillStyle{N}()
 Broadcast.BroadcastStyle(::Type{<:AbstractZeros{<:Any,N}}) where {N} = ZerosStyle{N}()
-Broadcast.BroadcastStyle(::FillStyle{M}, ::ZerosStyle{N}) where {M,N} = FillStyle{max(M,N)}()
-Broadcast.BroadcastStyle(S::LinearAlgebra.StructuredMatrixStyle, ::ZerosStyle{2}) = S
-Broadcast.BroadcastStyle(S::LinearAlgebra.StructuredMatrixStyle, ::ZerosStyle{1}) = S
-Broadcast.BroadcastStyle(S::LinearAlgebra.StructuredMatrixStyle, ::ZerosStyle{0}) = S
+
+# An `AbstractFillStyle` resolves conflicts in the same way that a `DefaultArrayStyle` of the
+# same dimension does, as a fill is an ordinary dynamically sized array with extra structure.
+# Styles that win against `DefaultArrayStyle` (e.g. lazy, banded or block styles) therefore win
+# against a fill style too, and those that defer to it (e.g. `StaticArrayStyle`, which can't
+# size a dynamic array) keep deferring, with neither having to define a rule for
+# `FillStyle`/`ZerosStyle`. Only the two `where`-shapes below are defined, so that the rules
+# that follow (which are strictly more specific) can't be ambiguous with them.
+Broadcast.BroadcastStyle(a::Broadcast.AbstractArrayStyle{Any}, b::AbstractFillStyle) = _fillstyle_result(a, b)
+Broadcast.BroadcastStyle(a::Broadcast.AbstractArrayStyle{M}, b::AbstractFillStyle{N}) where {M,N} = _fillstyle_result(a, b)
+
+_fillstyle_result(a::Broadcast.AbstractArrayStyle, b::AbstractFillStyle{N}) where {N} =
+    _fillstyle_defer(Broadcast.result_style(a, DefaultArrayStyle{N}()), b)
+# the other style defers to the default one, so we are free to preserve the fill structure
+_fillstyle_defer(::DefaultArrayStyle{M}, b::AbstractFillStyle) where {M} = typeof(b)(Val(M))
+_fillstyle_defer(a::Broadcast.BroadcastStyle, ::AbstractFillStyle) = a
+# within the family, `FillStyle` wins as it is the least specific of the two
+_fillstyle_result(::AbstractFillStyle{M}, ::AbstractFillStyle{N}) where {M,N} = FillStyle{max(M,N)}()
+_fillstyle_result(::ZerosStyle{M}, ::ZerosStyle{N}) where {M,N} = ZerosStyle{max(M,N)}()
 
 # Obtain the fill value of a broadcasted object by recursively evaluating the fill components
 broadcast_getindex_value(f::AbstractFill) = getindex_value(f)
@@ -228,6 +243,33 @@ end
 # make the zero-dimensional case consistent with Base
 Base.copy(bc::Broadcast.Broadcasted{<:AbstractFillStyle{0}}) = _fallback_copy(bc)
 
+# Packages that specialize broadcasting for their own style (e.g. LazyArrays) opt out of it for
+# fills by explicitly routing these through `DefaultArrayStyle`, as in
+#     broadcasted(::AbstractLazyArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,N} =
+#         broadcast(DefaultArrayStyle{N}(), op, r)
+# Since the fill rules are no longer attached to `DefaultArrayStyle`, we re-dispatch such calls
+# on the arguments alone. This way these packages keep obtaining a fill without having to change
+# the style that they forward to.
+broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill) where {N} = _dispatch_on_fills(Val(N), op, r)
+broadcasted(::DefaultArrayStyle{N}, op, a::AbstractFill, b) where {N} = _dispatch_on_fills(Val(N), op, a, b)
+broadcasted(::DefaultArrayStyle{N}, op, a, b::AbstractFill) where {N} = _dispatch_on_fills(Val(N), op, a, b)
+broadcasted(::DefaultArrayStyle{N}, op, a::AbstractFill, b::AbstractFill) where {N} = _dispatch_on_fills(Val(N), op, a, b)
+
+_dispatch_on_fills(v::Val, op, args...) = _dispatch_on_fills(Broadcast.combine_styles(args...), v, op, args...)
+# The arguments are ours to handle, so the styleless methods below apply. As their style isn't a
+# foreign one, this can't be routed back here by a package that forwards to `DefaultArrayStyle`.
+_dispatch_on_fills(::Union{AbstractFillStyle,DefaultArrayStyle}, ::Val, op, args...) = broadcasted(op, args...)
+# The arguments carry a foreign style (e.g. an infinite fill, which `InfiniteArrays` marks as
+# lazy). Re-entering style-based dispatch would be routed straight back here, so we only apply
+# the rules that are independent of the style, and leave anything else to the caller.
+function _dispatch_on_fills(::Broadcast.BroadcastStyle, ::Val{N}, op, args...) where {N}
+    has_fill_rule(op, args...) && return broadcasted(op, args...)
+    # `FillStyle` dispatch is safe as well, as it can't be routed back here either
+    bc = Broadcast.broadcasted(FillStyle{N}(), op, args...)
+    bc isa Broadcast.Broadcasted || return bc # a fill-specific method applied
+    isfill(bc) ? _copy_fill(bc) : Broadcast.Broadcasted{DefaultArrayStyle{N}}(op, args)
+end
+
 # some cases that preserve 0d
 function broadcast_preserving_0d(f, As...)
     bc = Base.broadcasted(f, As...)
@@ -275,30 +317,34 @@ end
 
 # In following, need to restrict to <: Number as otherwise we cannot infer zero from type
 # TODO: generalise to things like SVector
-for op in (:*, :/)
-    @eval begin
-        broadcasted(::typeof($op), a::AbstractZeros, b::AbstractFill{<:Number}) = _broadcasted_zeros($op, a, b)
-        broadcasted(::typeof($op), a::AbstractZeros, b::Number) = _broadcasted_zeros($op, a, b)
-        broadcasted(::typeof($op), a::AbstractZeros, b::AbstractOnes) = _broadcasted_zeros($op, a, b)
-        broadcasted(::typeof($op), a::AbstractZeros, b::AbstractRange) = _broadcasted_zeros($op, a, b)
-        broadcasted(::typeof($op), a::AbstractZeros, b::AbstractArray{<:Number}) = _broadcasted_zeros($op, a, b)
-        broadcasted(::typeof($op), a::AbstractZeros, b::Base.Broadcast.Broadcasted) = _broadcasted_zeros($op, a, b)
+# These rules hold whatever the style of the other argument is, which is why they are attached
+# to the operation instead of to a style. `has_fill_rule` records that one of them applies, and
+# is used to route the calls that packages forward to us through `DefaultArrayStyle`.
+has_fill_rule(op, args...) = false
+for T in (:(AbstractFill{<:Number}), :Number, :AbstractOnes, :AbstractRange, :(AbstractArray{<:Number}), :(Base.Broadcast.Broadcasted))
+    for op in (:*, :/)
+        @eval begin
+            broadcasted(::typeof($op), a::AbstractZeros, b::$T) = _broadcasted_zeros($op, a, b)
+            has_fill_rule(::typeof($op), ::AbstractZeros, ::$T) = true
+        end
     end
-end
-
-for op in (:*, :\)
-    @eval begin
-        broadcasted(::typeof($op), a::AbstractOnes, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
-        broadcasted(::typeof($op), a::AbstractFill{<:Number}, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
-        broadcasted(::typeof($op), a::Number, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
-        broadcasted(::typeof($op), a::AbstractRange, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
-        broadcasted(::typeof($op), a::AbstractArray{<:Number}, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
-        broadcasted(::typeof($op), a::Base.Broadcast.Broadcasted, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
+    for op in (:*, :\)
+        @eval begin
+            broadcasted(::typeof($op), a::$T, b::AbstractZeros) = _broadcasted_zeros($op, a, b)
+            has_fill_rule(::typeof($op), ::$T, ::AbstractZeros) = true
+        end
     end
 end
 broadcasted(::typeof(*), a::AbstractZeros, b::AbstractZeros) = _broadcasted_zeros(*, a, b)
 broadcasted(::typeof(/), a::AbstractZeros, b::AbstractZeros) = _broadcasted_nan(/, a, b)
 broadcasted(::typeof(\), a::AbstractZeros, b::AbstractZeros) = _broadcasted_nan(\, a, b)
+for op in (:*, :/, :\)
+    @eval begin
+        has_fill_rule(::typeof($op), ::AbstractZeros, ::AbstractZeros) = true
+        broadcasted(::typeof($op), a::AbstractOnes, b::AbstractOnes) = _broadcasted_ones($op, a, b)
+        has_fill_rule(::typeof($op), ::AbstractOnes, ::AbstractOnes) = true
+    end
+end
 
 # special case due to missing converts for ranges
 _range_convert(::Type{AbstractVector{T}}, a::AbstractRange{T}) where T = a
@@ -363,6 +409,9 @@ for op in (:+, :-)
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
             Zeros(TT, ax)
         end
+        has_fill_rule(::typeof($op), ::AbstractVector, ::AbstractZerosVector) = true
+        has_fill_rule(::typeof($op), ::AbstractZerosVector, ::AbstractVector) = true
+        has_fill_rule(::typeof($op), ::AbstractZerosVector, ::AbstractZerosVector) = true
     end
 end
 
