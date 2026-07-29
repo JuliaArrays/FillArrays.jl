@@ -1302,6 +1302,7 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
             # `InfiniteArrays` uses a lazy style, and forwards fills to `DefaultArrayStyle`
             r = InfiniteArrays.OneToInf()
             O, Z, F = Ones{Int}((r,)), Zeros{Int}((r,)), Fill(2, (r,))
+            DAS = Broadcast.DefaultArrayStyle{1}()
 
             @testset "fills are preserved" begin
                 @test broadcast(-, O) ≡ Fill(-1, (r,))
@@ -1315,6 +1316,10 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
                 @test Z .+ Z ≡ Z .- Z ≡ Z
                 @test exp.(Z) ≡ Ones((r,))
                 @test Fill(2, (r,r)) .+ Fill(3, (r,r)) ≡ Fill(5, (r,r))
+                # forwarded explicitly, as a package would: the two-`Zeros` shapes take a
+                # dedicated rule rather than being evaluated on the fill values
+                @test broadcast(DAS, *, Z, Z) ≡ broadcast(DAS, +, Z, Z) ≡ broadcast(DAS, -, Z, Z) ≡ Z
+                @test broadcast(DAS, /, Z, Z) ≡ broadcast(DAS, \, Z, Z) ≡ Fill(NaN, (r,))
             end
 
             @testset "ranges" begin
@@ -1336,7 +1341,6 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
 
                 # `.^` is caught by the styleless rule before any style is consulted, so the
                 # forwarded three-argument form needs exercising on its own
-                DAS = Broadcast.DefaultArrayStyle{1}()
                 @test broadcast(DAS, Base.literal_pow, Ref(^), F, Ref(Val(2))) ≡ Fill(4, (r,))
                 @test broadcast(DAS, Base.literal_pow, Ref(^), O, Ref(Val(2))) ≡ O
                 @test broadcast(DAS, Base.literal_pow, Ref(^), Z, Ref(Val(2))) ≡ Z
@@ -1351,7 +1355,6 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
 
             @testset "zeros absorb non-fills" begin
                 # `Zeros` absorbs an argument that can be neither sized nor materialized
-                DAS = Broadcast.DefaultArrayStyle{1}()
                 lazy = O .+ r
                 @test broadcast(DAS, *, Z, lazy) ≡ broadcast(DAS, *, lazy, Z) ≡ Z
                 @test broadcast(DAS, /, Z, lazy) ≡ broadcast(DAS, \, lazy, Z) ≡ Zeros((r,))
