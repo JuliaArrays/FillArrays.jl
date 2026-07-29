@@ -943,8 +943,8 @@ end
     end
 end
 
-# An array that uses a style of its own that isn't tied to a dimension, as in the `Broadcast`
-# documentation. Such styles are `AbstractArrayStyle{Any}`s, which fill styles defer to.
+# a style of its own that isn't tied to a dimension, as in the `Broadcast` documentation:
+# an `AbstractArrayStyle{Any}`, which fill styles defer to
 struct CustomStyleArray{T,N} <: AbstractArray{T,N}
     a::Array{T,N}
 end
@@ -1221,7 +1221,7 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
         bc = Broadcast.broadcasted(*, Zeros(4), Ones(4), Broadcast.broadcasted(*, Zeros(4), Ones(4), Zeros(4)))
         @test copy(bc) === Zeros(4)
 
-        # the nested broadcast isn't a fill, so it is materialized by the fallback
+        # the nested broadcast isn't a fill, so the fallback materializes it
         @test Fill(2,3) .+ ([1,2,3] .* 2) == [4,6,8]
         @test Ones(3) .* ([1,2,3] .* 2) == [2,4,6]
     end
@@ -1287,8 +1287,7 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
 
     @testset "custom styles" begin
         @testset "forwarding to DefaultArrayStyle" begin
-            # Packages that specialize broadcasting for their own style opt out of it for fills by
-            # forwarding these to `DefaultArrayStyle`, which must keep simplifying them.
+            # packages forward fills to `DefaultArrayStyle`, which must keep simplifying them
             DAS = Broadcast.DefaultArrayStyle{1}()
             @test broadcast(DAS, *, Zeros(5), 1:5) ≡ broadcast(DAS, *, 1:5, Zeros(5)) ≡ Zeros(5)
             @test broadcast(DAS, *, Ones{Int}(5), 1:5) ≡ broadcast(DAS, *, 1:5, Ones{Int}(5)) ≡ 1:5
@@ -1336,7 +1335,7 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
                 @test Ones{Int}((r,r)) .^ 2 ≡ Ones{Int}((r,r))
 
                 # `.^` is caught by the styleless rule before any style is consulted, so the
-                # forwarded three-argument form has to be exercised on its own
+                # forwarded three-argument form needs exercising on its own
                 DAS = Broadcast.DefaultArrayStyle{1}()
                 @test broadcast(DAS, Base.literal_pow, Ref(^), F, Ref(Val(2))) ≡ Fill(4, (r,))
                 @test broadcast(DAS, Base.literal_pow, Ref(^), O, Ref(Val(2))) ≡ O
@@ -1344,21 +1343,19 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
             end
 
             @testset "not forwarded" begin
-                # nothing is forwarded for these, so they are left to the lazy style
+                # nothing forwards this, so it is left to the lazy style
                 bc = O .+ r
                 @test bc isa Broadcast.Broadcasted
                 @test bc[3] == 4
             end
 
             @testset "zeros absorb non-fills" begin
-                # `Zeros` absorbs the other argument whatever it is, so a package that forwards
-                # such a call has to obtain `Zeros` back even though the other argument is
-                # neither a fill nor something that we could otherwise size or materialize.
+                # `Zeros` absorbs an argument that can be neither sized nor materialized
                 DAS = Broadcast.DefaultArrayStyle{1}()
                 lazy = O .+ r
                 @test broadcast(DAS, *, Z, lazy) ≡ broadcast(DAS, *, lazy, Z) ≡ Z
                 @test broadcast(DAS, /, Z, lazy) ≡ broadcast(DAS, \, lazy, Z) ≡ Zeros((r,))
-                # adding `Zeros` leaves such an argument untouched
+                # adding `Zeros` leaves it untouched
                 v = InfiniteArrays.InfVector()
                 @test broadcast(DAS, +, Z, v) ≡ broadcast(DAS, +, v, Z) ≡ broadcast(DAS, -, v, Z) ≡ v
             end

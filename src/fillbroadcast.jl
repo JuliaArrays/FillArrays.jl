@@ -153,22 +153,18 @@ ZerosStyle{N}(::Val{M}) where {N,M} = ZerosStyle{M}()
 Broadcast.BroadcastStyle(::Type{<:AbstractFill{<:Any,N}}) where {N} = FillStyle{N}()
 Broadcast.BroadcastStyle(::Type{<:AbstractZeros{<:Any,N}}) where {N} = ZerosStyle{N}()
 
-# An `AbstractFillStyle` resolves conflicts in the same way that a `DefaultArrayStyle` of the
-# same dimension does, as a fill is an ordinary dynamically sized array with extra structure.
-# Styles that win against `DefaultArrayStyle` (e.g. lazy, banded or block styles) therefore win
-# against a fill style too, and those that defer to it (e.g. `StaticArrayStyle`, which can't
-# size a dynamic array) keep deferring, with neither having to define a rule for
-# `FillStyle`/`ZerosStyle`. Only the two `where`-shapes below are defined, so that the rules
-# that follow (which are strictly more specific) can't be ambiguous with them.
+# A fill style resolves conflicts the way `DefaultArrayStyle` of the same dimension does, so
+# that styles winning against or deferring to the default one need no rule of their own. Only
+# these two `where`-shapes are defined, leaving the rules below unambiguous with them.
 Broadcast.BroadcastStyle(a::Broadcast.AbstractArrayStyle{Any}, b::AbstractFillStyle) = _fillstyle_result(a, b)
 Broadcast.BroadcastStyle(a::Broadcast.AbstractArrayStyle{M}, b::AbstractFillStyle{N}) where {M,N} = _fillstyle_result(a, b)
 
 _fillstyle_result(a::Broadcast.AbstractArrayStyle, b::AbstractFillStyle{N}) where {N} =
     _fillstyle_defer(Broadcast.result_style(a, DefaultArrayStyle{N}()), b)
-# the other style defers to the default one, so we are free to preserve the fill structure
+# the other style defers, so the fill structure may be preserved
 _fillstyle_defer(::DefaultArrayStyle{M}, b::AbstractFillStyle) where {M} = typeof(b)(Val(M))
 _fillstyle_defer(a::Broadcast.BroadcastStyle, ::AbstractFillStyle) = a
-# within the family, `FillStyle` wins as it is the least specific of the two
+# `FillStyle` wins within the family, being the less specific of the two
 _fillstyle_result(::AbstractFillStyle{M}, ::AbstractFillStyle{N}) where {M,N} = FillStyle{max(M,N)}()
 _fillstyle_result(::ZerosStyle{M}, ::ZerosStyle{N}) where {M,N} = ZerosStyle{max(M,N)}()
 
@@ -243,35 +239,29 @@ end
 # make the zero-dimensional case consistent with Base
 Base.copy(bc::Broadcast.Broadcasted{<:AbstractFillStyle{0}}) = _fallback_copy(bc)
 
-# Packages that specialize broadcasting for their own style (e.g. LazyArrays) opt out of it for
-# fills by explicitly routing these through `DefaultArrayStyle`, as in
-#     broadcasted(::AbstractLazyArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,N} =
-#         broadcast(DefaultArrayStyle{N}(), op, r)
-# Since the fill rules are no longer attached to `DefaultArrayStyle`, we re-dispatch such calls
-# on the arguments alone. This way these packages keep obtaining a fill without having to change
-# the style that they forward to.
+# Packages with a style of their own (e.g. LazyArrays) opt out of it for fills by forwarding to
+# `DefaultArrayStyle`. The fill rules are no longer attached to that style, so re-dispatch such
+# calls on the arguments alone and keep returning a fill.
 broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill) where {N} = _dispatch_on_fills(Val(N), op, r)
 broadcasted(::DefaultArrayStyle{N}, op, a::AbstractFill, b) where {N} = _dispatch_on_fills(Val(N), op, a, b)
 broadcasted(::DefaultArrayStyle{N}, op, a, b::AbstractFill) where {N} = _dispatch_on_fills(Val(N), op, a, b)
 broadcasted(::DefaultArrayStyle{N}, op, a::AbstractFill, b::AbstractFill) where {N} = _dispatch_on_fills(Val(N), op, a, b)
-# `x .^ k` lowers to a three-argument `literal_pow` broadcast, which none of the shapes above
-# match. The `Ref`s are unwrapped here so that the styleless rules apply to the arguments, which
-# means that the style has to be obtained from the fill instead of from all of them. The `Ref`s
-# are zero-dimensional, so they wouldn't have contributed to it anyway.
+# `x .^ k` lowers to a three-argument `literal_pow` broadcast, matching none of the shapes above.
+# Unwrapping the `Ref`s lets the styleless rules apply, so the style comes from the fill alone;
+# the `Ref`s are zero-dimensional and wouldn't have contributed to it anyway.
 broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), x::Base.RefValue{typeof(^)},
         r::AbstractFill, y::Base.RefValue{<:Val}) where {N} =
     _dispatch_on_fills(Broadcast.combine_styles(r), Val(N), op, x[], r, y[])
 
 _dispatch_on_fills(v::Val, op, args...) = _dispatch_on_fills(Broadcast.combine_styles(args...), v, op, args...)
-# The arguments are ours to handle, so the styleless methods below apply. As their style isn't a
-# foreign one, this can't be routed back here by a package that forwards to `DefaultArrayStyle`.
+# ours to handle, and the style can't route the styleless methods back here
 _dispatch_on_fills(::Union{AbstractFillStyle,DefaultArrayStyle}, ::Val, op, args...) = broadcasted(op, args...)
-# The arguments carry a foreign style (e.g. an infinite fill, which `InfiniteArrays` marks as
-# lazy). Re-entering style-based dispatch would be routed straight back here, so we only apply
-# the rules that are independent of the style, and leave anything else to the caller.
+# A foreign style (e.g. an infinite fill, which `InfiniteArrays` marks as lazy). Re-entering
+# style-based dispatch would route straight back here, so apply only the style-independent
+# rules and leave the rest to the caller.
 function _dispatch_on_fills(::Broadcast.BroadcastStyle, ::Val{N}, op, args...) where {N}
     has_fill_rule(op, args...) && return broadcasted(op, args...)
-    # `FillStyle` dispatch is safe as well, as it can't be routed back here either
+    # `FillStyle` can't route back here either
     bc = Broadcast.broadcasted(FillStyle{N}(), op, args...)
     bc isa Broadcast.Broadcasted || return bc # a fill-specific method applied
     isfill(bc) ? _copy_fill(bc) : Broadcast.Broadcasted{DefaultArrayStyle{N}}(op, args)
@@ -324,12 +314,10 @@ end
 
 # In following, need to restrict to <: Number as otherwise we cannot infer zero from type
 # TODO: generalise to things like SVector
-# These rules hold whatever the style of the other argument is, which is why they are attached
-# to the operation instead of to a style. `has_fill_rule` records that one of them applies, and
-# is used to route the calls that packages forward to us through `DefaultArrayStyle`. Only the
-# shapes in which an argument may be something other than a fill need an entry: where every
-# argument is a fill, the caller reaches the same result by evaluating the operation on the fill
-# values instead, without having to know that a rule exists.
+# These rules hold whatever the other argument's style is, hence being attached to the operation
+# rather than to a style. `has_fill_rule` records that one applies, and routes the calls that
+# packages forward through `DefaultArrayStyle`. Only shapes admitting a non-fill argument need an
+# entry: where every argument is a fill, evaluating the operation on the fill values suffices.
 has_fill_rule(op, args...) = false
 for T in (:(AbstractFill{<:Number}), :Number, :AbstractOnes, :AbstractRange, :(AbstractArray{<:Number}), :(Base.Broadcast.Broadcasted))
     for op in (:*, :/)
@@ -350,8 +338,7 @@ broadcasted(::typeof(/), a::AbstractZeros, b::AbstractZeros) = _broadcasted_nan(
 broadcasted(::typeof(\), a::AbstractZeros, b::AbstractZeros) = _broadcasted_nan(\, a, b)
 for op in (:*, :/, :\)
     @eval begin
-        # two fills, so not needed for its own sake, but the one-sided entries above are
-        # ambiguous without it when both arguments are `AbstractZeros`
+        # two fills, so only needed to disambiguate the one-sided entries above
         has_fill_rule(::typeof($op), ::AbstractZeros, ::AbstractZeros) = true
         broadcasted(::typeof($op), a::AbstractOnes, b::AbstractOnes) = _broadcasted_ones($op, a, b)
     end
@@ -359,10 +346,8 @@ end
 
 # special case due to missing converts for ranges
 _range_convert(::Type{AbstractVector{T}}, a::AbstractRange{T}) where T = a
-# a unit range that already has the right eltype is returned as-is. The `AbstractUnitRange`
-# method below would be preferred over the `AbstractRange{T}` one above otherwise, and the
-# endpoints that it converts may not be representable, as is the case for the infinite ranges
-# of `InfiniteArrays`.
+# without this the `AbstractUnitRange` method below wins over the `AbstractRange{T}` one above,
+# and the endpoints it converts may not be representable, as for an infinite range
 _range_convert(::Type{AbstractVector{T}}, a::AbstractUnitRange{T}) where T = a
 _range_convert(::Type{AbstractVector{T}}, a::AbstractUnitRange) where T = convert(T,first(a)):convert(T,last(a))
 _range_convert(::Type{AbstractVector{T}}, a::OneTo) where T = OneTo(convert(T, a.stop))
@@ -427,7 +412,7 @@ for op in (:+, :-)
         end
         has_fill_rule(::typeof($op), ::AbstractVector, ::AbstractZerosVector) = true
         has_fill_rule(::typeof($op), ::AbstractZerosVector, ::AbstractVector) = true
-        # as above, only defined to keep the two entries above from being ambiguous
+        # as above, only to disambiguate
         has_fill_rule(::typeof($op), ::AbstractZerosVector, ::AbstractZerosVector) = true
     end
 end
