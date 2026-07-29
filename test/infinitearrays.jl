@@ -60,6 +60,14 @@ module InfiniteArrays
     # `BroadcastArray` that `LazyArrays` would return here
     Base.copy(bc::Broadcasted{<:InfiniteArrayStyle}) = bc
 
+    # an infinite vector that is neither a fill nor a range, so that a rule which absorbs it
+    # can't be recovered by evaluating the operation on fill values instead
+    struct InfVector <: AbstractVector{Int} end
+    Base.axes(::InfVector) = (OneToInf(),)
+    Base.size(::InfVector) = (ℵ₀,)
+    Base.getindex(::InfVector, i::Integer) = 2i
+    BroadcastStyle(::Type{InfVector}) = InfiniteArrayStyle{1}()
+
     # the forwards that `LazyArrays` defines, which cover the one- and two-argument forms
     broadcasted(::InfiniteArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,N} =
         broadcast(DefaultArrayStyle{N}(), op, r)

@@ -1334,6 +1334,13 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
                 @test Z .^ 2 ≡ Z
                 @test Z .^ 0 ≡ O
                 @test Ones{Int}((r,r)) .^ 2 ≡ Ones{Int}((r,r))
+
+                # `.^` is caught by the styleless rule before any style is consulted, so the
+                # forwarded three-argument form has to be exercised on its own
+                DAS = Broadcast.DefaultArrayStyle{1}()
+                @test broadcast(DAS, Base.literal_pow, Ref(^), F, Ref(Val(2))) ≡ Fill(4, (r,))
+                @test broadcast(DAS, Base.literal_pow, Ref(^), O, Ref(Val(2))) ≡ O
+                @test broadcast(DAS, Base.literal_pow, Ref(^), Z, Ref(Val(2))) ≡ Z
             end
 
             @testset "not forwarded" begin
@@ -1351,6 +1358,9 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
                 lazy = O .+ r
                 @test broadcast(DAS, *, Z, lazy) ≡ broadcast(DAS, *, lazy, Z) ≡ Z
                 @test broadcast(DAS, /, Z, lazy) ≡ broadcast(DAS, \, lazy, Z) ≡ Zeros((r,))
+                # adding `Zeros` leaves such an argument untouched
+                v = InfiniteArrays.InfVector()
+                @test broadcast(DAS, +, Z, v) ≡ broadcast(DAS, +, v, Z) ≡ broadcast(DAS, -, v, Z) ≡ v
             end
         end
 

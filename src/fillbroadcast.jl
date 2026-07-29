@@ -326,7 +326,10 @@ end
 # TODO: generalise to things like SVector
 # These rules hold whatever the style of the other argument is, which is why they are attached
 # to the operation instead of to a style. `has_fill_rule` records that one of them applies, and
-# is used to route the calls that packages forward to us through `DefaultArrayStyle`.
+# is used to route the calls that packages forward to us through `DefaultArrayStyle`. Only the
+# shapes in which an argument may be something other than a fill need an entry: where every
+# argument is a fill, the caller reaches the same result by evaluating the operation on the fill
+# values instead, without having to know that a rule exists.
 has_fill_rule(op, args...) = false
 for T in (:(AbstractFill{<:Number}), :Number, :AbstractOnes, :AbstractRange, :(AbstractArray{<:Number}), :(Base.Broadcast.Broadcasted))
     for op in (:*, :/)
@@ -347,9 +350,10 @@ broadcasted(::typeof(/), a::AbstractZeros, b::AbstractZeros) = _broadcasted_nan(
 broadcasted(::typeof(\), a::AbstractZeros, b::AbstractZeros) = _broadcasted_nan(\, a, b)
 for op in (:*, :/, :\)
     @eval begin
+        # two fills, so not needed for its own sake, but the one-sided entries above are
+        # ambiguous without it when both arguments are `AbstractZeros`
         has_fill_rule(::typeof($op), ::AbstractZeros, ::AbstractZeros) = true
         broadcasted(::typeof($op), a::AbstractOnes, b::AbstractOnes) = _broadcasted_ones($op, a, b)
-        has_fill_rule(::typeof($op), ::AbstractOnes, ::AbstractOnes) = true
     end
 end
 
@@ -423,6 +427,7 @@ for op in (:+, :-)
         end
         has_fill_rule(::typeof($op), ::AbstractVector, ::AbstractZerosVector) = true
         has_fill_rule(::typeof($op), ::AbstractZerosVector, ::AbstractVector) = true
+        # as above, only defined to keep the two entries above from being ambiguous
         has_fill_rule(::typeof($op), ::AbstractZerosVector, ::AbstractZerosVector) = true
     end
 end
