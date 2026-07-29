@@ -1342,6 +1342,16 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
                 @test bc isa Broadcast.Broadcasted
                 @test bc[3] == 4
             end
+
+            @testset "zeros absorb non-fills" begin
+                # `Zeros` absorbs the other argument whatever it is, so a package that forwards
+                # such a call has to obtain `Zeros` back even though the other argument is
+                # neither a fill nor something that we could otherwise size or materialize.
+                DAS = Broadcast.DefaultArrayStyle{1}()
+                lazy = O .+ r
+                @test broadcast(DAS, *, Z, lazy) ≡ broadcast(DAS, *, lazy, Z) ≡ Z
+                @test broadcast(DAS, /, Z, lazy) ≡ broadcast(DAS, \, lazy, Z) ≡ Zeros((r,))
+            end
         end
 
         @testset "dimension-agnostic style" begin
