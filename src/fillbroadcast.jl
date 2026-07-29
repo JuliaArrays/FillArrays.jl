@@ -355,6 +355,11 @@ end
 
 # special case due to missing converts for ranges
 _range_convert(::Type{AbstractVector{T}}, a::AbstractRange{T}) where T = a
+# a range that already has the right eltype is returned as-is. The specializations below would
+# be preferred over the one above otherwise, and their endpoints may not be representable, as is
+# the case for the infinite ranges of `InfiniteArrays`.
+_range_convert(::Type{AbstractVector{T}}, a::AbstractUnitRange{T}) where T = a
+_range_convert(::Type{AbstractVector{T}}, a::OneTo{T}) where T = a
 _range_convert(::Type{AbstractVector{T}}, a::AbstractUnitRange) where T = convert(T,first(a)):convert(T,last(a))
 _range_convert(::Type{AbstractVector{T}}, a::OneTo) where T = OneTo(convert(T, a.stop))
 _range_convert(::Type{AbstractVector{T}}, a::AbstractRange) where T = convert(T,first(a)):step(a):convert(T,last(a))

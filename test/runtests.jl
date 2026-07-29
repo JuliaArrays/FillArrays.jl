@@ -943,6 +943,18 @@ end
     end
 end
 
+# An array that uses a style of its own that isn't tied to a dimension, as in the `Broadcast`
+# documentation. Such styles are `AbstractArrayStyle{Any}`s, which fill styles defer to.
+struct CustomStyleArray{T,N} <: AbstractArray{T,N}
+    a::Array{T,N}
+end
+Base.size(A::CustomStyleArray) = size(A.a)
+Base.getindex(A::CustomStyleArray, i::Int...) = A.a[i...]
+Base.setindex!(A::CustomStyleArray, v, i::Int...) = (A.a[i...] = v)
+Base.BroadcastStyle(::Type{<:CustomStyleArray}) = Broadcast.ArrayStyle{CustomStyleArray}()
+Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, ::Type{T}) where {T} =
+    CustomStyleArray(similar(Array{T}, axes(bc)))
+
 @testset "Broadcast" begin
     x = Fill(5,5)
     @test (.+)(x) ≡ x
@@ -1208,6 +1220,10 @@ end
     @testset "nested broadcast" begin
         bc = Broadcast.broadcasted(*, Zeros(4), Ones(4), Broadcast.broadcasted(*, Zeros(4), Ones(4), Zeros(4)))
         @test copy(bc) === Zeros(4)
+
+        # the nested broadcast isn't a fill, so it is materialized by the fallback
+        @test Fill(2,3) .+ ([1,2,3] .* 2) == [4,6,8]
+        @test Ones(3) .* ([1,2,3] .* 2) == [2,4,6]
     end
 
     @testset "0d" begin
@@ -1267,6 +1283,74 @@ end
         f = Fill(3, 4)
         @test f * f' === Fill(9,4,4)
         @test f * transpose(f) === Fill(9,4,4)
+    end
+
+    @testset "custom styles" begin
+        @testset "forwarding to DefaultArrayStyle" begin
+            # Packages that specialize broadcasting for their own style opt out of it for fills by
+            # forwarding these to `DefaultArrayStyle`, which must keep simplifying them.
+            DAS = Broadcast.DefaultArrayStyle{1}()
+            @test broadcast(DAS, *, Zeros(5), 1:5) ≡ broadcast(DAS, *, 1:5, Zeros(5)) ≡ Zeros(5)
+            @test broadcast(DAS, *, Ones{Int}(5), 1:5) ≡ broadcast(DAS, *, 1:5, Ones{Int}(5)) ≡ 1:5
+            @test broadcast(DAS, -, Ones(5)) ≡ Fill(-1.0, 5)
+            @test broadcast(DAS, +, Ones(5), 2) ≡ broadcast(DAS, +, 2, Ones(5)) ≡ Fill(3.0, 5)
+            @test broadcast(DAS, +, Ones(5), Fill(2.0,5)) ≡ Fill(3.0, 5)
+            @test broadcast(DAS, Base.literal_pow, Ref(^), Ones(5), Ref(Val(2))) ≡ Ones(5)
+            @test broadcast(DAS, Base.literal_pow, Ref(^), Fill(2,5), Ref(Val(3))) ≡ Fill(8,5)
+        end
+
+        @testset "infinite arrays" begin
+            # `InfiniteArrays` uses a lazy style, and forwards fills to `DefaultArrayStyle`
+            r = InfiniteArrays.OneToInf()
+            O, Z, F = Ones{Int}((r,)), Zeros{Int}((r,)), Fill(2, (r,))
+
+            @testset "fills are preserved" begin
+                @test broadcast(-, O) ≡ Fill(-1, (r,))
+                @test O .+ 1 ≡ 1 .+ O ≡ F
+                @test 2 .* O ≡ O .* 2 ≡ F
+                @test O .* F ≡ F .* O ≡ F
+                @test O .* O ≡ O
+                @test O ./ O ≡ Ones((r,))
+                @test Z .* O ≡ O .* Z ≡ Z
+                @test Z .* Z ≡ Z
+                @test Z .+ Z ≡ Z .- Z ≡ Z
+                @test exp.(Z) ≡ Ones((r,))
+                @test Fill(2, (r,r)) .+ Fill(3, (r,r)) ≡ Fill(5, (r,r))
+            end
+
+            @testset "ranges" begin
+                @test Z .* r ≡ r .* Z ≡ Z
+                @test O .* r ≡ r .* O ≡ r
+                @test Z .+ r ≡ r .+ Z ≡ r
+                # `Zeros .- r` isn't a fill, so it stays lazy
+                bc = Z .- r
+                @test bc isa Broadcast.Broadcasted
+                @test bc[3] == -3
+            end
+
+            @testset "literal_pow" begin
+                @test O .^ 2 ≡ O
+                @test F .^ 2 ≡ Fill(4, (r,))
+                @test Z .^ 2 ≡ Z
+                @test Z .^ 0 ≡ O
+                @test Ones{Int}((r,r)) .^ 2 ≡ Ones{Int}((r,r))
+            end
+
+            @testset "not forwarded" begin
+                # nothing is forwarded for these, so they are left to the lazy style
+                bc = O .+ r
+                @test bc isa Broadcast.Broadcasted
+                @test bc[3] == 4
+            end
+        end
+
+        @testset "dimension-agnostic style" begin
+            A = CustomStyleArray([1,2,3])
+            @test A .* Ones(3) isa CustomStyleArray
+            @test A .* Ones(3) == A
+            @test Fill(2,3) .* A isa CustomStyleArray
+            @test Fill(2,3) .* A == A .* Fill(2,3) == [2,4,6]
+        end
     end
 end
 
