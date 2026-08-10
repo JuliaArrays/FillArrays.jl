@@ -243,7 +243,8 @@ Base.copy(bc::Broadcast.Broadcasted{<:AbstractFillStyle{0}}) = _fallback_copy(bc
 
 # Packages with a style of their own (e.g. LazyArrays) opt out of it for fills by forwarding to
 # `DefaultArrayStyle`. The fill rules are no longer attached to that style, so re-dispatch such
-# calls on the arguments alone and keep returning a fill.
+# calls on the arguments alone and keep returning a fill. `simplify_broadcasted` supersedes this
+# route; these shims exist for packages that predate it, and may go in a breaking release.
 broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill) where {N} = _dispatch_on_fills(Val(N), op, r)
 broadcasted(::DefaultArrayStyle{N}, op, a::AbstractFill, b) where {N} = _dispatch_on_fills(Val(N), op, a, b)
 broadcasted(::DefaultArrayStyle{N}, op, a, b::AbstractFill) where {N} = _dispatch_on_fills(Val(N), op, a, b)
@@ -260,20 +261,49 @@ _dispatch_on_fills(v::Val, op, args...) = _dispatch_on_fills(Broadcast.combine_s
 # deliberately not included: a fill among the arguments never resolves to it here, but a downstream
 # style that maps fills onto it would send `broadcasted` straight back and blow the stack.
 _dispatch_on_fills(::AbstractFillStyle, ::Val, op, args...) = broadcasted(op, args...)
-# A foreign style (e.g. an infinite fill, which `InfiniteArrays` marks as lazy). Re-entering
-# style-based dispatch would route straight back here, so apply only the style-independent
-# rules and leave the rest to the caller.
-function _dispatch_on_fills(::Broadcast.BroadcastStyle, ::Val{N}, op, args...) where {N}
+_dispatch_on_fills(::Broadcast.BroadcastStyle, v::Val{N}, op, args...) where {N} =
+    _simplify_broadcasted(DefaultArrayStyle{N}(), v, op, args...)
+
+"""
+    FillArrays.simplify_broadcasted(style, op, args...)
+
+Apply the fill simplifications for `op.(args...)` on behalf of a package whose own `style` won
+the broadcast style resolution, at least one of `args` being an [`AbstractFill`](@ref).
+
+Returns the simplified array where a rule applies, and otherwise a `Broadcasted`, leaving the
+caller free to keep the result lazy. That `Broadcasted` carries `style`, except where a rule
+rewrote the arguments without simplifying them any further, in which case it carries the style
+the rewritten arguments resolve to. `Ref`-wrapped `Base.literal_pow` arguments are unwrapped,
+so `x .^ k` needs no handling of its own.
+"""
+simplify_broadcasted(style::Broadcast.BroadcastStyle, op, args...) =
+    _simplify_broadcasted(style, Val(_bcdims(args...)), op, args...)
+# `x .^ k` lowers to a three-argument `literal_pow` whose `Ref`s none of the rules match. They are
+# zero-dimensional, so unwrapping them changes neither the shape nor the style.
+simplify_broadcasted(style::Broadcast.BroadcastStyle, op::typeof(Base.literal_pow),
+        x::Base.RefValue{typeof(^)}, r::AbstractFill, y::Base.RefValue{<:Val}) =
+    simplify_broadcasted(style, op, x[], r, y[])
+
+# the dimension the rules below are keyed on, taken from the arguments rather than from `style`,
+# which may be an `AbstractArrayStyle{Any}`
+_argdims(a::AbstractArray) = ndims(a)
+_argdims(bc::Broadcast.Broadcasted) = _bcdims(bc.args...)
+_argdims(_) = 0
+_bcdims(args...) = max(0, map(_argdims, args)...)
+
+# Re-entering style-based dispatch would route straight back to `style`, so apply only the
+# style-independent rules and leave the rest to the caller.
+function _simplify_broadcasted(style::Broadcast.BroadcastStyle, ::Val{N}, op, args...) where {N}
     has_fill_rule(op, args...) && return broadcasted(op, args...)
-    # `FillStyle` can't route back here either
+    # `FillStyle` can't route back to the caller either
     bc = Broadcast.broadcasted(FillStyle{N}(), op, args...)
     bc isa Broadcast.Broadcasted || return bc # a fill-specific method applied
     isfill(bc) && return _copy_fill(bc)
     # a fill-specific method may instead have rewritten the arguments while staying lazy, as the
     # fill-against-a-range rules do. That result already carries the caller's own style, so keep it
-    # rather than discarding it for a `DefaultArrayStyle` wrapper around the original arguments.
+    # rather than discarding it for a wrapper around the original arguments.
     bc isa Broadcast.Broadcasted{<:AbstractFillStyle} || return bc
-    Broadcast.Broadcasted{DefaultArrayStyle{N}}(op, args)
+    Broadcast.Broadcasted{typeof(style)}(op, args)
 end
 
 # some cases that preserve 0d. `Base.broadcast_preserving_zero_d` cannot be used, as its
