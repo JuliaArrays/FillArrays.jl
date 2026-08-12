@@ -48,6 +48,8 @@ module InfiniteArrays
     Base.axes(::InfVector) = (OneToInf(),)
     Base.size(::InfVector) = (ℵ₀,)
     Base.getindex(::InfVector, i::Integer) = 2i
+    # it holds no storage to be written through, so adding `Zeros` may hand it straight back
+    FillArrays.has_mutable_storage(::InfVector) = false
 
     # Broadcasting as `InfiniteArrays` does it through the `LazyArrayStyle` of `LazyArrays`: a
     # style of its own that wins against `DefaultArrayStyle`, with fills forwarded back to

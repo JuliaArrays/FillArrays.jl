@@ -978,6 +978,9 @@ Base.BroadcastStyle(::DeferStyle{M}, ::FillArrays.AbstractFillStyle{N}) where {M
     Broadcast.DefaultArrayStyle{max(M,N)}()
 
 # a package's own fill types, customizing the results FillArrays produces for them
+# a function barrier, so that `@allocated` measures the broadcast rather than the globals
+addzero!(u, v) = (u .+= v)
+
 struct TaggedZeros{T,N,Ax} <: FillArrays.AbstractZeros{T,N,Ax}
     axes::Ax
 end
@@ -1230,9 +1233,26 @@ end
             u = rand(S, 2)
             v = Zeros(T, 2)
             if zero(S) + zero(T) isa S
-                @test @inferred(Broadcast.broadcasted(-, u, v)) === u
-                @test @inferred(Broadcast.broadcasted(+, u, v)) === u
-                @test @inferred(Broadcast.broadcasted(+, v, u)) === u
+                # what #208 asked for is that adding zero in place costs nothing, which the fused
+                # loop gives just as the equivalent dense broadcast does
+                w = copy(u)
+                addzero!(w, v)
+                @test @allocated(addzero!(w, v)) == 0
+                @test w == u
+                # the result of an out-of-place broadcast is the caller's to mutate, so it must
+                # not be `u` itself. A `Vector` exposes storage; the arrays below do not.
+                @testset for bc in (@inferred(Broadcast.broadcasted(-, u, v)),
+                                    @inferred(Broadcast.broadcasted(+, u, v)),
+                                    @inferred(Broadcast.broadcasted(+, v, u)))
+                    @test bc isa Broadcast.Broadcasted
+                    @test Broadcast.materialize(bc) == u
+                    @test Broadcast.materialize(bc) !== u
+                end
+                r, f = one(S):S(2), Fill(one(S), 2)
+                @test @inferred(Broadcast.broadcasted(+, r, v)) ≡ r
+                @test @inferred(Broadcast.broadcasted(+, v, r)) ≡ r
+                @test @inferred(Broadcast.broadcasted(+, f, v)) ≡ f
+                @test @inferred(Broadcast.broadcasted(+, v, f)) ≡ f
             else
                 @test @inferred(Broadcast.broadcasted(-, u, v)) isa Broadcast.Broadcasted
                 @test @inferred(Broadcast.broadcasted(+, u, v)) isa Broadcast. Broadcasted

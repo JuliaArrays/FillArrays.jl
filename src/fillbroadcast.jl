@@ -404,6 +404,26 @@ function broadcasted(::FillStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractO
     return _range_convert(AbstractVector{TT}, a)
 end
 
+"""
+    FillArrays.has_mutable_storage(a)
+
+Whether `a` exposes storage that a caller could write through.
+
+Adding `Zeros` leaves the other argument's entries alone, so the result may be that argument
+itself — but only where handing it back cannot let a caller mutate the original through it.
+Anything else takes the ordinary fused loop, which allocates no more than the equivalent dense
+broadcast, and nothing at all in place.
+
+Defaults to `true`, as `Base` likewise assumes of any array it knows nothing about. An immutable
+array type may define it as `false` to keep its own type through such a broadcast.
+"""
+has_mutable_storage(_) = true
+has_mutable_storage(::AbstractRange) = false
+has_mutable_storage(::AbstractFill) = false
+
+_zeros_add(op, a, b, keep) = has_mutable_storage(keep) ?
+    Broadcast.Broadcasted{typeof(Broadcast.combine_styles(a, b))}(op, (a, b)) : keep
+
 for op in (:+, :-)
     @eval begin
         function broadcasted(::typeof($op), a::AbstractVector, b::AbstractZerosVector)
@@ -413,14 +433,16 @@ for op in (:+, :-)
                 size(a), " with ", b, ". Convert ", b, " to a Vector first.")))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
             # Use `TT ∘ (+)` to fix AD issues with `broadcasted(TT, x)`
-            eltype(a) === TT ? a : broadcasted(TT ∘ (+), a)
+            eltype(a) === TT || return broadcasted(TT ∘ (+), a)
+            _zeros_add($op, a, b, a)
         end
         function broadcasted(::typeof($op), a::AbstractZerosVector, b::AbstractVector)
             ax = broadcast_shape(axes(a), axes(b))
             ax == axes(b) || throw(ArgumentError(LazyString("cannot broadcast ", a,
                 " with an array with size ", size(b), ". Convert ", a, " to a Vector first.")))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
-            $op === (+) && eltype(b) === TT ? b : broadcasted(TT ∘ ($op), b)
+            $op === (+) && eltype(b) === TT || return broadcasted(TT ∘ ($op), b)
+            _zeros_add($op, a, b, b)
         end
         function broadcasted(::typeof($op), a::AbstractZerosVector, b::AbstractZerosVector)
             ax = broadcast_shape(axes(a), axes(b))
