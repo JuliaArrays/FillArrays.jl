@@ -1,4 +1,5 @@
 using FillArrays, LinearAlgebra, PDMats, SparseArrays, StaticArrays, ReverseDiff, Random, Test, Statistics, Quaternions
+using ArrayInterface
 
 import FillArrays: AbstractFill, RectDiagonal, SquareEye
 
@@ -1253,6 +1254,9 @@ end
                 @test @inferred(Broadcast.broadcasted(+, v, r)) ≡ r
                 @test @inferred(Broadcast.broadcasted(+, f, v)) ≡ f
                 @test @inferred(Broadcast.broadcasted(+, v, f)) ≡ f
+                # an `SArray` keeps its type, an `MArray` is assignable and so does not
+                @test Broadcast.broadcasted(+, SVector{2}(r), v) ≡ SVector{2}(r)
+                @test Broadcast.broadcasted(+, MVector{2}(r), v) isa Broadcast.Broadcasted
             else
                 @test @inferred(Broadcast.broadcasted(-, u, v)) isa Broadcast.Broadcasted
                 @test @inferred(Broadcast.broadcasted(+, u, v)) isa Broadcast. Broadcasted
@@ -1385,6 +1389,23 @@ end
             @test (w .+ Fill(zero(m), 1, 3))[1,1] == val
             @test (w .+ fill(zero(m), 1, 3))[1,1] == val
         end
+    end
+
+    @testset "has_mutable_storage" begin
+        v = rand(3)
+        @test !FillArrays.has_mutable_storage(1:3)
+        @test !FillArrays.has_mutable_storage(Fill(2,3))
+        @test FillArrays.has_mutable_storage(v)
+        @test FillArrays.has_mutable_storage(view(v, 1:2))
+        # `ArrayInterface` answers for the types this package has never heard of, so one that has
+        # declared itself there needs nothing from us. `SArray` is such a type, `MArray` is not.
+        @test !FillArrays.has_mutable_storage(SVector{3}(1,2,3))
+        @test FillArrays.has_mutable_storage(MVector{3}(1,2,3))
+        @test !ArrayInterface.can_setindex(typeof(SVector{3}(1,2,3)))
+        # the in-package methods hold whether or not the extension is loaded, so they must stay
+        # more specific than the one it adds
+        @test which(FillArrays.has_mutable_storage, Tuple{typeof(1:3)}).sig <:
+              Tuple{Any,AbstractRange}
     end
 
     @testset "customized broadcast results" begin

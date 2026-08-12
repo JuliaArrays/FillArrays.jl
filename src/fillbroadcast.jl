@@ -414,8 +414,11 @@ itself — but only where handing it back cannot let a caller mutate the origina
 Anything else takes the ordinary fused loop, which allocates no more than the equivalent dense
 broadcast, and nothing at all in place.
 
-Defaults to `true`, as `Base` likewise assumes of any array it knows nothing about. An immutable
-array type may define it as `false` to keep its own type through such a broadcast.
+Defaults to `true`, as `Base` likewise assumes of any array it knows nothing about. With
+[`ArrayInterface`](https://github.com/JuliaArrays/ArrayInterface.jl) loaded this defers to
+`ArrayInterface.can_setindex` for arrays, so a type that has declared itself there needs nothing
+further. Otherwise an immutable array type may define this method as `false` to keep its own type
+through such a broadcast.
 """
 has_mutable_storage(_) = true
 has_mutable_storage(::AbstractRange) = false
