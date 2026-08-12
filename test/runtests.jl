@@ -955,6 +955,38 @@ Base.BroadcastStyle(::Type{<:CustomStyleArray}) = Broadcast.ArrayStyle{CustomSty
 Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, ::Type{T}) where {T} =
     CustomStyleArray(similar(Array{T}, axes(bc)))
 
+# a package's own fill types, customizing the results FillArrays produces for them
+struct TaggedZeros{T,N,Ax} <: FillArrays.AbstractZeros{T,N,Ax}
+    axes::Ax
+end
+struct TaggedOnes{T,N,Ax} <: FillArrays.AbstractOnes{T,N,Ax}
+    axes::Ax
+end
+_taggedaxis(n::Integer) = Base.OneTo(n)
+_taggedaxis(r::AbstractUnitRange) = r
+for Typ in (:TaggedZeros, :TaggedOnes)
+    @eval begin
+        function $Typ{T}(ax::Vararg{Any,N}) where {T,N}
+            r = map(_taggedaxis, ax)
+            $Typ{T,N,typeof(r)}(r)
+        end
+        Base.axes(A::$Typ) = A.axes
+        Base.size(A::$Typ) = map(length, A.axes)
+    end
+end
+FillArrays.getindex_value(::TaggedZeros{T}) where {T} = zero(T)
+FillArrays.getindex_value(::TaggedOnes{T}) where {T} = one(T)
+const TaggedFill = Union{TaggedZeros,TaggedOnes}
+# both arities, the two-argument one on either side and disambiguated for both
+for (hook, Typ) in ((:broadcasted_zeros, :TaggedZeros), (:broadcasted_ones, :TaggedOnes))
+    @eval begin
+        FillArrays.$hook(f, a::TaggedFill, elt, ax) = $Typ{elt}(ax...)
+        FillArrays.$hook(f, a::TaggedFill, b, elt, ax) = $Typ{elt}(ax...)
+        FillArrays.$hook(f, a, b::TaggedFill, elt, ax) = $Typ{elt}(ax...)
+        FillArrays.$hook(f, a::TaggedFill, b::TaggedFill, elt, ax) = $Typ{elt}(ax...)
+    end
+end
+
 @testset "Broadcast" begin
     x = Fill(5,5)
     @test (.+)(x) ≡ x
@@ -1231,8 +1263,10 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
         @test (@. 2 * Fill(2) * 2) == (@. 2 * fill(2) * 2)
         # the array operators in Base return a container in the 0d case rather than the element,
         # which their `broadcast_preserving_zero_d` implementation does not manage for our types
-        @testset for op in (X -> X * 2, X -> 2 * X, X -> X / 2, X -> 2 \ X,
-                            X -> X + fill(3), X -> fill(3) + X, X -> X - fill(3), X -> fill(3) - X)
+        @testset for (name, op) in (("X * 2", X -> X * 2), ("2 * X", X -> 2 * X),
+                                    ("X / 2", X -> X / 2), ("2 \\ X", X -> 2 \ X),
+                                    ("X + A", X -> X + fill(3)), ("A + X", X -> fill(3) + X),
+                                    ("X - A", X -> X - fill(3)), ("A - X", X -> fill(3) - X))
             @testset for (F, A) in ((Fill(2), fill(2)), (Zeros(), zeros()), (Ones(), ones()))
                 @test op(F) isa AbstractArray{<:Any,0}
                 @test op(F) == op(A)
@@ -1297,6 +1331,24 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
         f = Fill(3, 4)
         @test f * f' === Fill(9,4,4)
         @test f * transpose(f) === Fill(9,4,4)
+    end
+
+    @testset "customized broadcast results" begin
+        # `real`/`imag` route through the hooks, so a package overloading them keeps its own types
+        @test real(TaggedZeros{ComplexF64}(4)) ≡ imag(TaggedZeros{ComplexF64}(4)) ≡ TaggedZeros{Float64}(4)
+        @test real(TaggedOnes{ComplexF64}(4)) ≡ TaggedOnes{Float64}(4)
+        @test imag(TaggedOnes{ComplexF64}(4)) ≡ TaggedZeros{Float64}(4)
+        @test imag(TaggedOnes{Int}(4)) ≡ TaggedZeros{Int}(4)
+        # `conj` and a real `real` return the argument, which preserves the type by construction
+        @test conj(TaggedZeros{Int}(4)) ≡ real(TaggedZeros{Int}(4)) ≡ TaggedZeros{Int}(4)
+        @test conj(TaggedOnes{Int}(4)) ≡ real(TaggedOnes{Int}(4)) ≡ TaggedOnes{Int}(4)
+        # the hooks apply to broadcasting itself, as ever, in both arities
+        @test TaggedZeros{Int}(4) .^ 2 ≡ TaggedZeros{Int}(4)
+        @test TaggedZeros{Int}(4) .^ 0 ≡ TaggedOnes{Int}(4)
+        @test TaggedOnes{Int}(4) .^ 2 ≡ TaggedOnes{Int}(4)
+        @test TaggedZeros{Int}(4) .* (1:4) ≡ (1:4) .* TaggedZeros{Int}(4) ≡ TaggedZeros{Int}(4)
+        @test TaggedZeros{Int}(4) .* TaggedOnes{Int}(4) ≡ TaggedZeros{Int}(4)
+        @test TaggedOnes{Int}(4) ./ TaggedOnes{Int}(4) ≡ TaggedOnes{Float64}(4)
     end
 
     @testset "custom styles" begin

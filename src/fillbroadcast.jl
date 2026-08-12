@@ -276,17 +276,19 @@ function broadcast_preserving_0d(f, As...)
     r = copy(bc)
     length(axes(bc)) == 0 ? Fill(r) : r
 end
+# the results go through `broadcasted_zeros`/`broadcasted_ones` rather than naming `Zeros`/`Ones`
+# outright, so that a package customizing those hooks gets its own type back here too
 for f in (:real, :imag)
     @eval ($f)(A::AbstractFill) = broadcast_preserving_0d($f, A)
-    @eval ($f)(A::AbstractZeros) = Zeros{real(eltype(A))}(axes(A))
+    @eval ($f)(A::AbstractZeros) = broadcasted_zeros($f, A, real(eltype(A)), axes(A))
 end
 conj(A::AbstractFill) = broadcast_preserving_0d(conj, A)
 conj(A::AbstractZeros) = A
-real(A::AbstractOnes) = Ones{real(eltype(A))}(axes(A))
-imag(A::AbstractOnes) = Zeros{real(eltype(A))}(axes(A))
+real(A::AbstractOnes) = broadcasted_ones(real, A, real(eltype(A)), axes(A))
+imag(A::AbstractOnes) = broadcasted_zeros(imag, A, real(eltype(A)), axes(A))
 conj(A::AbstractOnes) = A
 real(A::AbstractFill{<:Real}) = A
-imag(A::AbstractFill{<:Real}) = Zeros{eltype(A)}(axes(A))
+imag(A::AbstractFill{<:Real}) = broadcasted_zeros(imag, A, eltype(A), axes(A))
 conj(A::AbstractFill{<:Real}) = A
 
 ### Binary broadcasting
