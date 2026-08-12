@@ -267,9 +267,12 @@ function _dispatch_on_fills(::Broadcast.BroadcastStyle, ::Val{N}, op, args...) w
     isfill(bc) ? _copy_fill(bc) : Broadcast.Broadcasted{DefaultArrayStyle{N}}(op, args)
 end
 
-# some cases that preserve 0d
+# some cases that preserve 0d. `Base.broadcast_preserving_zero_d` cannot be used, as its
+# zero-dimensional branch calls `similar` on the `Broadcasted`, which we do not define.
 function broadcast_preserving_0d(f, As...)
     bc = Base.broadcasted(f, As...)
+    # a rule may have applied and returned an array already, in which case the shape is preserved
+    bc isa Broadcasted || return bc
     r = copy(bc)
     length(axes(bc)) == 0 ? Fill(r) : r
 end

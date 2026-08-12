@@ -1243,6 +1243,10 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
         @test Zeros() / 2 ≡ 2 \ Zeros() ≡ Zeros()
         @test Zeros{Int}() / 2 ≡ 2 \ Zeros{Int}() ≡ Zeros()
         @test Ones() / 2 ≡ 2 \ Ones() ≡ Fill(0.5)
+        # no method reaches it this way today, but `broadcast_preserving_0d` must not wrap a result
+        # that a broadcast rule has already returned as an array
+        @test FillArrays.broadcast_preserving_0d(/, Zeros(), 2) ≡ Zeros()
+        @test FillArrays.broadcast_preserving_0d(conj, Fill(2 + 3im)) ≡ Fill(2 - 3im)
     end
 
     @testset "preserve 0d" begin
