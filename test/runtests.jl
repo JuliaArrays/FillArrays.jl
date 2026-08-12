@@ -955,6 +955,28 @@ Base.BroadcastStyle(::Type{<:CustomStyleArray}) = Broadcast.ArrayStyle{CustomSty
 Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, ::Type{T}) where {T} =
     CustomStyleArray(similar(Array{T}, axes(bc)))
 
+# a range with a style of its own, which keeps `scalar .* range` lazy the way a lazy-array
+# package's does. The fill-against-a-range rules rewrite the arguments without simplifying any
+# further, so this is the shape where that rewrite has to survive.
+struct LazyRangeStyle <: Broadcast.AbstractArrayStyle{1} end
+LazyRangeStyle(::Val{1}) = LazyRangeStyle()
+struct LazyRange <: AbstractUnitRange{Int} end
+Base.first(::LazyRange) = 1
+Base.last(::LazyRange) = 5
+Base.getindex(::LazyRange, i::Int) = i
+Base.BroadcastStyle(::Type{LazyRange}) = LazyRangeStyle()
+
+# a style that resolves fills to `DefaultArrayStyle` — the natural thing for a package to write
+# now that the fill styles are visible, and a route FillArrays must not send straight back
+struct DeferStyle{N} <: Broadcast.AbstractArrayStyle{N} end
+DeferStyle{M}(::Val{N}) where {M,N} = DeferStyle{N}()
+struct DeferVec <: AbstractVector{Int} end
+Base.size(::DeferVec) = (3,)
+Base.getindex(::DeferVec, i::Int) = i
+Base.BroadcastStyle(::Type{DeferVec}) = DeferStyle{1}()
+Base.BroadcastStyle(::DeferStyle{M}, ::FillArrays.AbstractFillStyle{N}) where {M,N} =
+    Broadcast.DefaultArrayStyle{max(M,N)}()
+
 # a package's own fill types, customizing the results FillArrays produces for them
 struct TaggedZeros{T,N,Ax} <: FillArrays.AbstractZeros{T,N,Ax}
     axes::Ax
@@ -1364,6 +1386,30 @@ end
     end
 
     @testset "custom styles" begin
+        @testset "a lazy rewrite survives the forward" begin
+            # a fill-specific rule may rewrite the arguments and still return a `Broadcasted`, as
+            # the fill-against-a-range rules do against a range that stays lazy. That result
+            # already carries the caller's style, so it must come back rather than a wrapper
+            # rebuilt around the original arguments.
+            DAS, r = Broadcast.DefaultArrayStyle{1}(), LazyRange()
+            bc = Broadcast.broadcasted(DAS, *, Fill(2,5), r)
+            @test bc isa Broadcast.Broadcasted{LazyRangeStyle}
+            @test bc.args ≡ (2, r)
+            bc = Broadcast.broadcasted(DAS, *, r, Fill(2,5))
+            @test bc isa Broadcast.Broadcasted{LazyRangeStyle}
+            @test bc.args ≡ (r, 2)
+            # a real range simplifies eagerly instead, and so never reaches that branch
+            @test Broadcast.broadcasted(DAS, *, Fill(2,5), 1:5) == 2:2:10
+            @test !(Broadcast.broadcasted(DAS, *, Fill(2,5), 1:5) isa Broadcast.Broadcasted)
+        end
+
+        @testset "a style resolving fills to DefaultArrayStyle" begin
+            # re-entering style-based dispatch would route straight back here and blow the stack
+            @test Fill(2,3) .* DeferVec() == [2,4,6]
+            @test Zeros(3) .* DeferVec() ≡ Zeros(3)
+            @test Fill(2,3) .+ DeferVec() == [3,4,5]
+        end
+
         @testset "forwarding to DefaultArrayStyle" begin
             # packages forward fills to `DefaultArrayStyle`, which must keep simplifying them
             DAS = Broadcast.DefaultArrayStyle{1}()
