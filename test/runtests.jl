@@ -1229,10 +1229,20 @@ Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, 
     @testset "0d" begin
         @test real.(Fill(2)) == real.(fill(2))
         @test (@. 2 * Fill(2) * 2) == (@. 2 * fill(2) * 2)
-        for (F, A) in ((Fill(2), fill(2)), (Zeros(), zeros()), (Ones(), ones()))
-            @test F * 2 == A * 2
-            @test 2 * F == 2 * A
+        # the array operators in Base return a container in the 0d case rather than the element,
+        # which their `broadcast_preserving_zero_d` implementation does not manage for our types
+        @testset for op in (X -> X * 2, X -> 2 * X, X -> X / 2, X -> 2 \ X,
+                            X -> X + fill(3), X -> fill(3) + X, X -> X - fill(3), X -> fill(3) - X)
+            @testset for (F, A) in ((Fill(2), fill(2)), (Zeros(), zeros()), (Ones(), ones()))
+                @test op(F) isa AbstractArray{<:Any,0}
+                @test op(F) == op(A)
+            end
         end
+        # zero-dimensional fills stay fills, as they do in every other size
+        @test Fill(2) / 2 ≡ 2 \ Fill(2) ≡ Fill(1.0)
+        @test Zeros() / 2 ≡ 2 \ Zeros() ≡ Zeros()
+        @test Zeros{Int}() / 2 ≡ 2 \ Zeros{Int}() ≡ Zeros()
+        @test Ones() / 2 ≡ 2 \ Ones() ≡ Fill(0.5)
     end
 
     @testset "preserve 0d" begin

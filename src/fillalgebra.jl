@@ -79,14 +79,19 @@ mult_zeros(a, b) = mult_fill(a, b, mult_axes(a, b))
 mult_ones(a, b) = mult_ones(a, b, mult_axes(a, b))
 
 # scaling
-# Only zero-dimensional fills need these: for any other size, `*(::AbstractArray, ::Number)` in Base
-# broadcasts, and the broadcast rules already give the result below. The zero-dimensional branch of
-# `Base.broadcast_preserving_zero_d` does not survive our rules though — it calls `similar` on the
-# `Broadcasted`, which we do not define, and wraps an eagerly returned `Zeros` in a `fill`.
+# Only zero-dimensional fills need these: for any other size, the `AbstractArray`/`Number` methods in
+# Base broadcast, and the broadcast rules already give the results below. The zero-dimensional branch
+# of `Base.broadcast_preserving_zero_d` does not survive our rules though — it calls `similar` on the
+# `Broadcasted`, which we do not define, and wraps an eagerly returned `Zeros` in a `fill`. Base
+# defines `*` both ways round, but only `/` by a number and `\` into one.
 *(a::AbstractFill{<:Any,0}, b::Number) = Fill(getindex_value(a) * b, axes(a))
 *(a::Number, b::AbstractFill{<:Any,0}) = Fill(a * getindex_value(b), axes(b))
 *(a::AbstractZeros{<:Any,0}, b::Number) = Zeros(typeof(getindex_value(a) * b), axes(a))
 *(a::Number, b::AbstractZeros{<:Any,0}) = Zeros(typeof(a * getindex_value(b)), axes(b))
+/(a::AbstractFill{<:Any,0}, b::Number) = Fill(getindex_value(a) / b, axes(a))
+\(a::Number, b::AbstractFill{<:Any,0}) = Fill(a \ getindex_value(b), axes(b))
+/(a::AbstractZeros{<:Any,0}, b::Number) = Zeros(typeof(getindex_value(a) / b), axes(a))
+\(a::Number, b::AbstractZeros{<:Any,0}) = Zeros(typeof(a \ getindex_value(b)), axes(b))
 
 # matmul
 *(a::AbstractFillMatrix, b::AbstractFillMatrix) = mult_fill(a,b)
@@ -494,13 +499,15 @@ end
 +(a::AbstractFill, b::AbstractFill) = Fill(getindex_value(a) + getindex_value(b), promote_shape(a,b))
 -(a::AbstractFill, b::AbstractFill) = a + (-b)
 
+# `broadcast_preserving_zero_d`, not `.+`, as `+(::AbstractArray, ::AbstractArray)` in Base returns a
+# container in the zero-dimensional case rather than unwrapping to the element
 @inline function fill_add(a::AbstractArray, b::AbstractFill)
     promote_shape(a, b)
-    a .+ (getindex_value(b),)
+    Base.broadcast_preserving_zero_d(+, a, (getindex_value(b),))
 end
 @inline function fill_add(a::AbstractArray{<:Number}, b::AbstractFill)
     promote_shape(a, b)
-    a .+ getindex_value(b)
+    Base.broadcast_preserving_zero_d(+, a, getindex_value(b))
 end
 
 # following needed since as of Julia v1.8 convert(AbstractArray{T}, ::AbstractRange) might return a Vector
