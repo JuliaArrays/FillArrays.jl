@@ -79,10 +79,14 @@ mult_zeros(a, b) = mult_fill(a, b, mult_axes(a, b))
 mult_ones(a, b) = mult_ones(a, b, mult_axes(a, b))
 
 # scaling
-*(a::AbstractFill, b::Number) = Fill(getindex_value(a) * b, axes(a))
-*(a::Number, b::AbstractFill) = Fill(a * getindex_value(b), axes(b))
-*(a::AbstractZeros, b::Number) = Zeros(typeof(getindex_value(a) * b), axes(a))
-*(a::Number, b::AbstractZeros) = Zeros(typeof(a * getindex_value(b)), axes(b))
+# Only zero-dimensional fills need these: for any other size, `*(::AbstractArray, ::Number)` in Base
+# broadcasts, and the broadcast rules already give the result below. The zero-dimensional branch of
+# `Base.broadcast_preserving_zero_d` does not survive our rules though — it calls `similar` on the
+# `Broadcasted`, which we do not define, and wraps an eagerly returned `Zeros` in a `fill`.
+*(a::AbstractFill{<:Any,0}, b::Number) = Fill(getindex_value(a) * b, axes(a))
+*(a::Number, b::AbstractFill{<:Any,0}) = Fill(a * getindex_value(b), axes(b))
+*(a::AbstractZeros{<:Any,0}, b::Number) = Zeros(typeof(getindex_value(a) * b), axes(a))
+*(a::Number, b::AbstractZeros{<:Any,0}) = Zeros(typeof(a * getindex_value(b)), axes(b))
 
 # matmul
 *(a::AbstractFillMatrix, b::AbstractFillMatrix) = mult_fill(a,b)
