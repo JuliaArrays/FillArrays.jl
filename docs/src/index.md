@@ -178,6 +178,70 @@ julia> ones(1,5) .+ (_ -> rand()).(fill("vec", 2))  # fused, 10 evaluations
  1.19938  1.68253  1.64786  1.74919  1.49138
 ```
 
+## Extending
+
+Broadcasting over an `AbstractFill` is handled by a `BroadcastStyle` of this package, which
+resolves conflicts the way `DefaultArrayStyle` of the same dimension does. Rules that hold
+whatever the other argument is — `Zeros` absorbing under `*`, say — are attached to the operation
+rather than to a style, and so apply before any style is consulted. A package that merely gives
+its own array type a winning style therefore needs nothing from this section.
+
+What a winning style does take over is the fills themselves. A package that claims the
+`AbstractFill`s over an axis type of its own sees every fill-only broadcast, and would materialize
+what should have stayed a fill:
+
+```julia
+using FillArrays: AbstractFill
+import Base.Broadcast: AbstractArrayStyle, BroadcastStyle, Broadcasted, broadcasted
+
+struct PadAxis <: AbstractUnitRange{Int}
+    n::Int
+end
+Base.first(::PadAxis) = 1
+Base.last(r::PadAxis) = r.n
+
+struct PadArray{T} <: AbstractVector{T}   # this package's own container
+    data::Vector{T}
+    ax::PadAxis
+end
+Base.axes(A::PadArray) = (A.ax,)
+Base.size(A::PadArray) = (length(A.ax),)
+Base.getindex(A::PadArray, i::Int) = A.data[i]
+
+struct PadStyle <: AbstractArrayStyle{1} end
+PadStyle(::Val{1}) = PadStyle()
+BroadcastStyle(::Type{<:AbstractFill{T,1,Tuple{PadAxis}}}) where {T} = PadStyle()
+Base.copy(bc::Broadcasted{PadStyle}) = PadArray([bc[i] for i in eachindex(bc)], only(axes(bc)))
+```
+
+With only that, `Fill(2, (PadAxis(3),)) .* 3` is a `PadArray` rather than `Fill(6, …)`.
+[`FillArrays.simplify_broadcasted`](@ref) hands such broadcasts back:
+
+```julia
+broadcasted(S::PadStyle, op, a::AbstractFill{<:Any,1}) = FillArrays.simplify_broadcasted(S, op, a)
+for (A, B) in ((:(AbstractFill{<:Any,1}), :Any), (:Any, :(AbstractFill{<:Any,1})),
+               (:(AbstractFill{<:Any,1}), :(AbstractFill{<:Any,1})))
+    @eval broadcasted(S::PadStyle, op, a::$A, b::$B) = FillArrays.simplify_broadcasted(S, op, a, b)
+end
+```
+
+`simplify_broadcasted` returns the simplified array where a rule applies, so `Fill(2,ax) .* 3` is
+`Fill(6,ax)` and `Fill(2,ax) .+ Fill(3,ax)` is `Fill(5,ax)`. Where none applies it returns a
+`Broadcasted` carrying `S`, so `PadArray` still handles everything else. A rule may also rewrite
+the arguments without simplifying them any further — `Fill(2,ax) .* r` becomes `2 .* r` for a range
+`r` — and the `Broadcasted` then carries whatever style the rewritten arguments resolve to, which
+for a lazy caller is its own. Which rules exist is this package's concern rather than the caller's,
+so no operations need enumerating, and `x .^ k` — which lowers to a three-argument
+`Base.literal_pow` — needs no handling of its own. All three two-argument shapes are needed: the
+first two alone are ambiguous when both arguments are fills.
+
+Two further sets of hooks are available:
+
+- `broadcasted_fill`, `broadcasted_zeros` and `broadcasted_ones` construct the results of the
+  rules, and may be specialized to return a type other than `Fill`, `Zeros` or `Ones`.
+- A wrapper equivalent to an `AbstractFill` may opt into fill broadcasting by specializing
+  `isfill` and `broadcast_getindex_value`.
+
 # API
 
 ```@autodocs

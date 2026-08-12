@@ -1422,6 +1422,37 @@ end
             @test broadcast(DAS, Base.literal_pow, Ref(^), Fill(2,5), Ref(Val(3))) ≡ Fill(8,5)
         end
 
+        @testset "simplify_broadcasted" begin
+            # the supported route for a package whose own style wins
+            SB, S = FillArrays.simplify_broadcasted, Broadcast.ArrayStyle{CustomStyleArray}()
+            # a styleless rule applies
+            @test SB(S, *, Zeros(5), 1:5) ≡ SB(S, *, 1:5, Zeros(5)) ≡ Zeros(5)
+            # a fill-style rule applies
+            @test SB(S, *, Ones{Int}(5), 1:5) ≡ SB(S, *, 1:5, Ones{Int}(5)) ≡ 1:5
+            # no rule, but every argument is a fill
+            @test SB(S, -, Ones(5)) ≡ Fill(-1.0, 5)
+            @test SB(S, +, Ones(5), Fill(2.0,5)) ≡ Fill(3.0, 5)
+            # the `Ref`s are unwrapped, so `literal_pow` needs no handling of its own
+            @test SB(S, Base.literal_pow, Ref(^), Fill(2,5), Ref(Val(3))) ≡ Fill(8,5)
+            # nothing applies, so the caller's style comes back for it to deal with
+            bc = SB(S, max, Fill(2,5), [1,2,3,4,5])
+            @test bc isa Broadcast.Broadcasted{typeof(S)}
+            @test Broadcast.materialize(bc) isa CustomStyleArray
+            @test Broadcast.materialize(bc) == [2,2,3,4,5]
+            # a rule that rewrites the arguments without simplifying further keeps the rewrite,
+            # along with the style its arguments carry, rather than the caller's
+            r = LazyRange()
+            bc = SB(S, *, Fill(2,5), r)
+            @test bc isa Broadcast.Broadcasted{LazyRangeStyle}
+            @test bc.args ≡ (2, r)
+            @test SB(S, *, r, Fill(2,5)).args ≡ (r, 2)
+            # the dimension is taken from the arguments, the style being agnostic to it
+            @test SB(S, +, Ones(2,3), Fill(2,2,3)) ≡ Fill(3.0,2,3)
+            # including from a nested `Broadcasted`, when no other argument carries one
+            @test SB(S, +, Fill(2), Broadcast.broadcasted(+, Fill(1,3), Fill(2,3))) ≡ Fill(5,3)
+            @test SB(S, +, Fill(2), Broadcast.broadcasted(+, Fill(1,2,3), Fill(2,2,3))) ≡ Fill(5,2,3)
+        end
+
         @testset "infinite arrays" begin
             # `InfiniteArrays` uses a lazy style, and forwards fills to `DefaultArrayStyle`
             r = InfiniteArrays.OneToInf()
