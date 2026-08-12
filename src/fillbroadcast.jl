@@ -170,8 +170,10 @@ _fillstyle_result(::ZerosStyle{M}, ::ZerosStyle{N}) where {M,N} = ZerosStyle{max
 
 # Obtain the fill value of a broadcasted object by recursively evaluating the fill components
 broadcast_getindex_value(f::AbstractFill) = getindex_value(f)
-broadcast_getindex_value(f::Transpose{<:Any,<:AbstractFill}) = getindex_value(parent(f))
-broadcast_getindex_value(f::Adjoint{<:Any,<:AbstractFill}) = getindex_value(parent(f))
+# `transpose`/`adjoint` are recursive, so the wrapper's elements are the parent's fill value with
+# the operation applied to it, not the fill value itself
+broadcast_getindex_value(f::Transpose{<:Any,<:AbstractFill}) = transpose(getindex_value(parent(f)))
+broadcast_getindex_value(f::Adjoint{<:Any,<:AbstractFill}) = adjoint(getindex_value(parent(f)))
 broadcast_getindex_value(x::Number) = x
 broadcast_getindex_value(x::Ref) = x[]
 function broadcast_getindex_value(bc::Broadcast.Broadcasted)
@@ -254,8 +256,10 @@ broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), x::Base.RefVal
     _dispatch_on_fills(Broadcast.combine_styles(r), Val(N), op, x[], r, y[])
 
 _dispatch_on_fills(v::Val, op, args...) = _dispatch_on_fills(Broadcast.combine_styles(args...), v, op, args...)
-# ours to handle, and the style can't route the styleless methods back here
-_dispatch_on_fills(::Union{AbstractFillStyle,DefaultArrayStyle}, ::Val, op, args...) = broadcasted(op, args...)
+# ours to handle, and the style can't route the styleless methods back here. `DefaultArrayStyle` is
+# deliberately not included: a fill among the arguments never resolves to it here, but a downstream
+# style that maps fills onto it would send `broadcasted` straight back and blow the stack.
+_dispatch_on_fills(::AbstractFillStyle, ::Val, op, args...) = broadcasted(op, args...)
 # A foreign style (e.g. an infinite fill, which `InfiniteArrays` marks as lazy). Re-entering
 # style-based dispatch would route straight back here, so apply only the style-independent
 # rules and leave the rest to the caller.
@@ -264,7 +268,12 @@ function _dispatch_on_fills(::Broadcast.BroadcastStyle, ::Val{N}, op, args...) w
     # `FillStyle` can't route back here either
     bc = Broadcast.broadcasted(FillStyle{N}(), op, args...)
     bc isa Broadcast.Broadcasted || return bc # a fill-specific method applied
-    isfill(bc) ? _copy_fill(bc) : Broadcast.Broadcasted{DefaultArrayStyle{N}}(op, args)
+    isfill(bc) && return _copy_fill(bc)
+    # a fill-specific method may instead have rewritten the arguments while staying lazy, as the
+    # fill-against-a-range rules do. That result already carries the caller's own style, so keep it
+    # rather than discarding it for a `DefaultArrayStyle` wrapper around the original arguments.
+    bc isa Broadcast.Broadcasted{<:AbstractFillStyle} || return bc
+    Broadcast.Broadcasted{DefaultArrayStyle{N}}(op, args)
 end
 
 # some cases that preserve 0d. `Base.broadcast_preserving_zero_d` cannot be used, as its
@@ -399,14 +408,17 @@ for op in (:+, :-)
     @eval begin
         function broadcasted(::typeof($op), a::AbstractVector, b::AbstractZerosVector)
             ax = broadcast_shape(axes(a), axes(b))
-            ax == axes(a) || throw(ArgumentError(LazyString("cannot broadcast an array with size ", size(a), " with ", b)))
+            # the size, rather than `a` itself, which the styleless rule may be handed unrendered
+            ax == axes(a) || throw(ArgumentError(LazyString("cannot broadcast an array with size ",
+                size(a), " with ", b, ". Convert ", b, " to a Vector first.")))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
             # Use `TT ∘ (+)` to fix AD issues with `broadcasted(TT, x)`
             eltype(a) === TT ? a : broadcasted(TT ∘ (+), a)
         end
         function broadcasted(::typeof($op), a::AbstractZerosVector, b::AbstractVector)
             ax = broadcast_shape(axes(a), axes(b))
-            ax == axes(b) || throw(ArgumentError(LazyString("cannot broadcast ", a, " with an array with size ", size(b))))
+            ax == axes(b) || throw(ArgumentError(LazyString("cannot broadcast ", a,
+                " with an array with size ", size(b), ". Convert ", a, " to a Vector first.")))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
             $op === (+) && eltype(b) === TT ? b : broadcasted(TT ∘ ($op), b)
         end

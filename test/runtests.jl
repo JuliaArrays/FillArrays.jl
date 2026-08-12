@@ -1331,6 +1331,18 @@ end
         f = Fill(3, 4)
         @test f * f' === Fill(9,4,4)
         @test f * transpose(f) === Fill(9,4,4)
+        # `adjoint`/`transpose` apply to the elements too, which the fill value must reflect.
+        # Real values cannot tell the two apart, hence the complex and matrix elements here.
+        v = Fill(1 + 2im, 3)
+        @test v' .+ Fill(0, 1, 3) ≡ Fill(1 - 2im, 1, 3)
+        @test v' .+ fill(0, 1, 3) == Fill(1 - 2im, 1, 3)
+        @test transpose(v) .+ Fill(0, 1, 3) ≡ Fill(1 + 2im, 1, 3)
+        @test conj(v') .+ Fill(0, 1, 3) ≡ Fill(1 + 2im, 1, 3)
+        m = [1 2; 3 4]
+        @testset for (w, val) in ((transpose(Fill(m, 3)), transpose(m)), (Fill(m, 3)', adjoint(m)))
+            @test (w .+ Fill(zero(m), 1, 3))[1,1] == val
+            @test (w .+ fill(zero(m), 1, 3))[1,1] == val
+        end
     end
 
     @testset "customized broadcast results" begin
@@ -2488,6 +2500,30 @@ end
     @test Zeros(5,5) .+ D isa Diagonal
     f = (x,y) -> x+1
     @test f.(D, Zeros(5,5)) isa Matrix
+
+    # The `Zeros` absorption rules are attached to the operation rather than to a style, so they
+    # apply whatever the other argument's style is. Structure is deliberately lost under `*`, and
+    # deliberately kept under every operation that has no such rule. `Eye` is a `Diagonal` whose
+    # diagonal is a fill, so it keeps the structure without keeping its own type.
+    @testset for (S, Structured) in (
+                (Bidiagonal(collect(1.0:3), collect(1.0:2), :U), Bidiagonal),
+                (Bidiagonal(collect(1.0:3), collect(1.0:2), :L), Bidiagonal),
+                (Tridiagonal(collect(1.0:2), collect(1.0:3), collect(1.0:2)), Tridiagonal),
+                (SymTridiagonal(collect(1.0:3), collect(1.0:2)), SymTridiagonal),
+                (Diagonal(1:3), Diagonal),
+                (Eye(3), Diagonal),
+                (UpperTriangular(ones(3,3)), UpperTriangular))
+        Z = Zeros(3,3)
+        @test S .* Z ≡ Z .* S ≡ Z
+        @test S .+ Z isa Structured
+        @test S .- Z isa Structured
+        @test Z .+ S isa Structured
+        @test Z .- S isa Structured
+        # a function that merely happens to multiply is not the `*` rule, so it keeps the structure
+        @test ((x,y) -> x * y).(S, Z) isa Structured
+        # dividing by zero has no structure to keep
+        @test S ./ Z isa Matrix
+    end
 end
 
 @testset "OneElement" begin
