@@ -1110,6 +1110,27 @@ counted_identity(x) = (CALLS[] += 1; x)
         @test broadcast(*, rnge, Fill(5.0, 10)) == broadcast(*, rnge, 5.0)
         @test_throws DimensionMismatch broadcast(*, rnge, Fill(5.0, 11))
 
+        # shifting a range by a constant leaves a range, as scaling it does
+        @testset for op in (+, -)
+            @test op.(Fill(5.0, 10), rnge) ≡ op.(5.0, rnge)
+            @test op.(rnge, Fill(5.0, 10)) ≡ op.(rnge, 5.0)
+            @test op.(Ones{Int}(10), rnge) ≡ op.(1, rnge)
+            @test op.(rnge, Ones{Int}(10)) ≡ op.(rnge, 1)
+            @test op.(1:5, Ones{Int}(5)) ≡ op.(1:5, 1)
+            @test op.(Ones{Int}(5), 1:5) ≡ op.(1, 1:5)
+            @test op.(Base.OneTo(5), Fill(2, 5)) ≡ op.(Base.OneTo(5), 2)
+            @test op.(Ones{Int}(1), 1:5) ≡ op.(1, 1:5)
+            @test_throws DimensionMismatch op.(Ones(11), rnge)
+            @test_throws DimensionMismatch op.(rnge, Ones(11))
+            @test_throws ArgumentError op.(Ones(10), 5:5)
+            @test_throws ArgumentError op.(5:5, Ones(10))
+            @test op.(1:5, Zeros{Int}(5)) ≡ op.(1:5, 0) ≡ 1:5
+            @test op.(1:5, Zeros(5)) ≡ op.(1:5, 0.0)
+            @test op.(1:5, Zeros(5)) == op.(1:5, Fill(0.0, 5)) == 1:5
+        end
+        @test Zeros{Int}(5) .+ (1:5) ≡ 1:5
+        @test Zeros(5) .+ (1:5) ≡ 0.0 .+ (1:5)
+
         # following should pass using alternative implementation in code
         deg = 5:5
         @test_throws ArgumentError @inferred(broadcast(*, Fill(5.0, 10), deg)) == broadcast(*, fill(5.0,10), deg)

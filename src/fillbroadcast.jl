@@ -462,6 +462,27 @@ function broadcasted(::FillStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractF
     return broadcasted(*, a, _mayberef(getindex_value(b)))
 end
 
+# Shifting a range by a constant leaves a range, just as scaling it does, so rewrite these the same
+# way and let the range decide. `Zeros` needs nothing of its own here, being a fill whose value is
+# zero, but a range is a vector and `Zeros` is a fill, so these overlap the `Zeros` rules without
+# either being the more specific. The last two only break that tie, and do the same thing.
+function _shift_range(op, a::AbstractFill, b::AbstractRange)
+    broadcast_shape(axes(a), axes(b)) == axes(b) || throw(ArgumentError(LazyString("Cannot broadcast ", a, " and ", b, ". Convert ", b, " to a Vector first.")))
+    return broadcasted(op, _mayberef(getindex_value(a)), b)
+end
+function _shift_range(op, a::AbstractRange, b::AbstractFill)
+    broadcast_shape(axes(a), axes(b)) == axes(a) || throw(ArgumentError(LazyString("Cannot broadcast ", a, " and ", b, ". Convert ", b, " to a Vector first.")))
+    return broadcasted(op, a, _mayberef(getindex_value(b)))
+end
+for op in (:+, :-)
+    @eval begin
+        broadcasted(::FillStyle{1}, ::typeof($op), a::AbstractFill, b::AbstractRange) = _shift_range($op, a, b)
+        broadcasted(::FillStyle{1}, ::typeof($op), a::AbstractRange, b::AbstractFill) = _shift_range($op, a, b)
+        broadcasted(::FillStyle{1}, ::typeof($op), a::AbstractZerosVector, b::AbstractRange) = _shift_range($op, a, b)
+        broadcasted(::FillStyle{1}, ::typeof($op), a::AbstractRange, b::AbstractZerosVector) = _shift_range($op, a, b)
+    end
+end
+
 # support AbstractFill .^ k
 broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractFill{T,N}, ::Val{k}) where {T,N,k} = broadcasted_fill(op, r, getindex_value(r)^k, axes(r))
 broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractOnes{T,N}, ::Val{k}) where {T,N,k} = broadcasted_ones(op, r, T, axes(r))
