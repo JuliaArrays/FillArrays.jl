@@ -2608,7 +2608,10 @@ end
                 (Bidiagonal(collect(1.0:3), collect(1.0:2), :U), Bidiagonal),
                 (Bidiagonal(collect(1.0:3), collect(1.0:2), :L), Bidiagonal),
                 (Tridiagonal(collect(1.0:2), collect(1.0:3), collect(1.0:2)), Tridiagonal),
-                (SymTridiagonal(collect(1.0:3), collect(1.0:2)), SymTridiagonal),
+                # `SymTridiagonal` only began preserving its structure under broadcasting in Julia
+                # v1.12. Before that even `S .+ S` materializes, so there is no structure to keep.
+                (SymTridiagonal(collect(1.0:3), collect(1.0:2)),
+                    VERSION >= v"1.12" ? SymTridiagonal : Matrix),
                 (Diagonal(1:3), Diagonal),
                 (Eye(3), Diagonal),
                 (UpperTriangular(ones(3,3)), UpperTriangular))
