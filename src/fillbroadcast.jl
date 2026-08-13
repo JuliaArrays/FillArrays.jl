@@ -147,11 +147,8 @@ end
 
 abstract type AbstractFillStyle{N} <: Broadcast.AbstractArrayStyle{N} end
 struct FillStyle{N} <: AbstractFillStyle{N} end
-struct ZerosStyle{N} <: AbstractFillStyle{N} end
 FillStyle{N}(::Val{M}) where {N,M} = FillStyle{M}()
-ZerosStyle{N}(::Val{M}) where {N,M} = ZerosStyle{M}()
 Broadcast.BroadcastStyle(::Type{<:AbstractFill{<:Any,N}}) where {N} = FillStyle{N}()
-Broadcast.BroadcastStyle(::Type{<:AbstractZeros{<:Any,N}}) where {N} = ZerosStyle{N}()
 
 # A fill style resolves conflicts the way `DefaultArrayStyle` of the same dimension does, so
 # that styles winning against or deferring to the default one need no rule of their own. Only
@@ -164,9 +161,7 @@ _fillstyle_result(a::Broadcast.AbstractArrayStyle, b::AbstractFillStyle{N}) wher
 # the other style defers, so the fill structure may be preserved
 _fillstyle_defer(::DefaultArrayStyle{M}, b::AbstractFillStyle) where {M} = typeof(b)(Val(M))
 _fillstyle_defer(a::Broadcast.BroadcastStyle, ::AbstractFillStyle) = a
-# `FillStyle` wins within the family, being the less specific of the two
 _fillstyle_result(::AbstractFillStyle{M}, ::AbstractFillStyle{N}) where {M,N} = FillStyle{max(M,N)}()
-_fillstyle_result(::ZerosStyle{M}, ::ZerosStyle{N}) where {M,N} = ZerosStyle{max(M,N)}()
 
 # Obtain the fill value of a broadcasted object by recursively evaluating the fill components
 broadcast_getindex_value(f::AbstractFill) = getindex_value(f)
