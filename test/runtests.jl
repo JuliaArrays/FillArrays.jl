@@ -1009,6 +1009,11 @@ for (hook, Typ) in ((:broadcasted_zeros, :TaggedZeros), (:broadcasted_ones, :Tag
     end
 end
 
+# counts how often a broadcast evaluates the function, at top level so that the name can't collide
+# with the helpers that the testsets below define
+const CALLS = Ref(0)
+counted_identity(x) = (CALLS[] += 1; x)
+
 @testset "Broadcast" begin
     x = Fill(5,5)
     @test (.+)(x) ≡ x
@@ -1278,11 +1283,31 @@ end
         # the nested broadcast isn't a fill, so the fallback materializes it
         @test Fill(2,3) .+ ([1,2,3] .* 2) == [4,6,8]
         @test Ones(3) .* ([1,2,3] .* 2) == [2,4,6]
+
+        # collapsing the fill component of the fallback may expose a rule that returns an array
+        # outright, leaving nothing for the fallback to materialize
+        v, o, r = [1.0,2,3], Ones(3), 1:3
+        @test (@. v * (o - o)) ≡ Zeros(3)
+        @test (@. r * (o - o)) ≡ Zeros(3)
+        @test (@. v * ((o - o) + (o - o))) ≡ Zeros(3)
+        @test (@. v + (o - o)) ≡ v
+        @test (@. (o - o) + v) ≡ v
+        @test (@. v - (o - o)) == v
+        m, om = rand(2,3), Ones(2,3)
+        @test (@. m * (om - om)) ≡ Zeros(2,3)
     end
 
     @testset "0d" begin
-        @test real.(Fill(2)) == real.(fill(2))
-        @test (@. 2 * Fill(2) * 2) == (@. 2 * fill(2) * 2)
+        # broadcasting keeps the container in the zero-dimensional case, as it does in every other
+        # size, rather than unwrapping to the element the way Base does
+        F = Fill(2)
+        @test real.(F) ≡ F
+        @test (@. 2 * F * 2) ≡ Fill(8)
+        @test F .+ 1 ≡ Fill(3)
+        @test F .+ Fill(3) ≡ Fill(5)
+        @test Zeros() .+ Zeros() ≡ Zeros()
+        @test Ones() .+ Zeros() ≡ Ones()
+        @test conj.(Fill(2 + 3im)) ≡ Fill(2 - 3im)
         # the array operators in Base return a container in the 0d case rather than the element,
         # which their `broadcast_preserving_zero_d` implementation does not manage for our types
         @testset for (name, op) in (("X * 2", X -> X * 2), ("2 * X", X -> 2 * X),
@@ -1360,6 +1385,10 @@ end
         @test v' .+ fill(0, 1, 3) == Fill(1 - 2im, 1, 3)
         @test transpose(v) .+ Fill(0, 1, 3) ≡ Fill(1 + 2im, 1, 3)
         @test conj(v') .+ Fill(0, 1, 3) ≡ Fill(1 + 2im, 1, 3)
+        # a wrapper around a wrapper is still a fill, so the fill value must recurse as far as
+        # `isfill` does
+        @test adjoint(transpose(v)) .+ Fill(0, 3, 1) ≡ Fill(1 - 2im, 3, 1)
+        @test transpose(v') .+ Fill(0, 3, 1) ≡ Fill(1 - 2im, 3, 1)
         m = [1 2; 3 4]
         @testset for (w, val) in ((transpose(Fill(m, 3)), transpose(m)), (Fill(m, 3)', adjoint(m)))
             @test (w .+ Fill(zero(m), 1, 3))[1,1] == val
@@ -1494,6 +1523,30 @@ end
             @test A .* Ones(3) == A
             @test Fill(2,3) .* A isa CustomStyleArray
             @test Fill(2,3) .* A == A .* Fill(2,3) == [2,4,6]
+        end
+
+        @testset "adding Zeros does not pre-empt a winning style" begin
+            # the rules that return the other argument itself must leave a style that builds a
+            # container of its own alone, rather than handing back the argument
+            A = CustomStyleArray([1,2,3])
+            @testset for op in (+, -)
+                @test op.(A, Zeros{Int}(3)) isa CustomStyleArray
+                @test op.(A, Zeros{Int}(3)) !== A
+                @test op.(A, Zeros{Int}(3)) == op.([1,2,3], zeros(Int,3))
+                @test op.(Zeros{Int}(3), A) isa CustomStyleArray
+                @test op.(Zeros{Int}(3), A) == op.(zeros(Int,3), [1,2,3])
+            end
+            # a plain array has no style of its own, so it is still returned untouched
+            v = [1.0,2,3]
+            @test v .+ Zeros(3) ≡ v .- Zeros(3) ≡ v
+        end
+    end
+
+    @testset "the fill value is computed once" begin
+        @testset for A in (Ones(3), Zeros(3), Fill(2,3), Ones{Int}(2,3))
+            CALLS[] = 0
+            counted_identity.(A)
+            @test CALLS[] == 1
         end
     end
 end

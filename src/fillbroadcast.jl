@@ -171,9 +171,10 @@ _fillstyle_result(::ZerosStyle{M}, ::ZerosStyle{N}) where {M,N} = ZerosStyle{max
 # Obtain the fill value of a broadcasted object by recursively evaluating the fill components
 broadcast_getindex_value(f::AbstractFill) = getindex_value(f)
 # `transpose`/`adjoint` are recursive, so the wrapper's elements are the parent's fill value with
-# the operation applied to it, not the fill value itself
-broadcast_getindex_value(f::Transpose{<:Any,<:AbstractFill}) = transpose(getindex_value(parent(f)))
-broadcast_getindex_value(f::Adjoint{<:Any,<:AbstractFill}) = adjoint(getindex_value(parent(f)))
+# the operation applied to it, not the fill value itself. These recurse into the parent rather than
+# requiring an `AbstractFill` there, so that they cover every wrapper that `isfill` accepts.
+broadcast_getindex_value(f::Transpose) = transpose(broadcast_getindex_value(parent(f)))
+broadcast_getindex_value(f::Adjoint) = adjoint(broadcast_getindex_value(parent(f)))
 broadcast_getindex_value(x::Number) = x
 broadcast_getindex_value(x::Ref) = x[]
 function broadcast_getindex_value(bc::Broadcast.Broadcasted)
@@ -184,17 +185,18 @@ has_static_value(x) = false
 has_static_value(x::Union{AbstractZeros, AbstractOnes}) = true
 has_static_value(x::Broadcast.Broadcasted) = all(has_static_value, x.args)
 
-# _iszeros and _isones are conservative checks for zeros and ones,
-# which are used to determine if a broadcasted object is a Fill, Zeros or Ones.
-function _iszeros(bc::Broadcast.Broadcasted)
-    all(has_static_value, bc.args) && _iszero(broadcast_getindex_value(bc))
+# _iszeros and _isones are conservative checks for zeros and ones, which are used to determine if a
+# broadcasted object is a Fill, Zeros or Ones. They take the fill value that the caller has already
+# computed, so that the broadcasted function is evaluated exactly once.
+function _iszeros(bc::Broadcast.Broadcasted, v)
+    all(has_static_value, bc.args) && _iszero(v)
 end
 # conservative check for zeros. In most cases, there isn't a zero element to compare with
 _iszero(x::Union{Number, AbstractArray}) = iszero(x)
 _iszero(_) = false
 
-function _isones(bc::Broadcast.Broadcasted)
-    all(has_static_value, bc.args) && _isone(broadcast_getindex_value(bc))
+function _isones(bc::Broadcast.Broadcasted, v)
+    all(has_static_value, bc.args) && _isone(v)
 end
 # conservative check for ones. In most cases, there isn't a unit element to compare with
 _isone(x::Union{Number, AbstractArray}) = isone(x)
@@ -212,9 +214,9 @@ isfill(::Any) = false
 
 function _copy_fill(bc)
     v = broadcast_getindex_value(bc)
-    if _iszeros(bc)
+    if _iszeros(bc, v)
         return Zeros(typeof(v), axes(bc))
-    elseif _isones(bc)
+    elseif _isones(bc, v)
         return Ones(typeof(v), axes(bc))
     end
     return Fill(v, axes(bc))
@@ -230,6 +232,9 @@ _preprocess_fill(x) = x
 function _fallback_copy(bc)
     # copy the purely fill components
     bc2 = Base.broadcasted(bc.f, map(_preprocess_fill, bc.args)...)
+    # collapsing the fill components may have exposed a rule that returns an array eagerly, in
+    # which case there is nothing left to materialize
+    bc2 isa Broadcasted || return bc2
     # fallback style
     S = Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{ndims(bc)}}
     copy(convert(S, bc2))
@@ -238,8 +243,6 @@ end
 function Base.copy(bc::Broadcast.Broadcasted{<:AbstractFillStyle})
     isfill(bc) ? _copy_fill(bc) : _fallback_copy(bc)
 end
-# make the zero-dimensional case consistent with Base
-Base.copy(bc::Broadcast.Broadcasted{<:AbstractFillStyle{0}}) = _fallback_copy(bc)
 
 # Packages with a style of their own (e.g. LazyArrays) opt out of it for fills by forwarding to
 # `DefaultArrayStyle`. The fill rules are no longer attached to that style, so re-dispatch such
@@ -256,7 +259,8 @@ broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), x::Base.RefVal
     _dispatch_on_fills(Broadcast.combine_styles(r), Val(N), op, x[], r, y[])
 
 _dispatch_on_fills(v::Val, op, args...) = _dispatch_on_fills(Broadcast.combine_styles(args...), v, op, args...)
-# ours to handle, and the style can't route the styleless methods back here. `DefaultArrayStyle` is
+# ours to handle, so ordinary dispatch on the arguments reaches every fill rule, and neither the
+# styleless ones nor those attached to a fill style can route back here. `DefaultArrayStyle` is
 # deliberately not included: a fill among the arguments never resolves to it here, but a downstream
 # style that maps fills onto it would send `broadcasted` straight back and blow the stack.
 _dispatch_on_fills(::AbstractFillStyle, ::Val, op, args...) = broadcasted(op, args...)
@@ -264,7 +268,7 @@ _dispatch_on_fills(::AbstractFillStyle, ::Val, op, args...) = broadcasted(op, ar
 # style-based dispatch would route straight back here, so apply only the style-independent
 # rules and leave the rest to the caller.
 function _dispatch_on_fills(::Broadcast.BroadcastStyle, ::Val{N}, op, args...) where {N}
-    has_fill_rule(op, args...) && return broadcasted(op, args...)
+    has_fill_rule(op, args...) && return fill_rule(op, args...)
     # `FillStyle` can't route back here either
     bc = Broadcast.broadcasted(FillStyle{N}(), op, args...)
     bc isa Broadcast.Broadcasted || return bc # a fill-specific method applied
@@ -283,7 +287,9 @@ function broadcast_preserving_0d(f, As...)
     # a rule may have applied and returned an array already, in which case the shape is preserved
     bc isa Broadcasted || return bc
     r = copy(bc)
-    length(axes(bc)) == 0 ? Fill(r) : r
+    # our own rules keep the container in the zero-dimensional case, but a foreign style handling
+    # the broadcast may unwrap it to the element the way Base does
+    length(axes(bc)) == 0 && !(r isa AbstractArray) ? Fill(r) : r
 end
 # the results go through `broadcasted_zeros`/`broadcasted_ones` rather than naming `Zeros`/`Ones`
 # outright, so that a package customizing those hooks gets its own type back here too
@@ -328,11 +334,14 @@ end
 
 # In following, need to restrict to <: Number as otherwise we cannot infer zero from type
 # TODO: generalise to things like SVector
-# These rules hold whatever the other argument's style is, hence being attached to the operation
-# rather than to a style. `has_fill_rule` records that one applies, and routes the calls that
-# packages forward through `DefaultArrayStyle`. Only shapes admitting a non-fill argument need an
+# `has_fill_rule` records that a rule applies to these arguments and `fill_rule` applies it, so that
+# the calls a package forwards through `DefaultArrayStyle` reach the rules that style-based dispatch
+# would otherwise hand to the caller's own style. Only shapes admitting a non-fill argument need an
 # entry: where every argument is a fill, evaluating the operation on the fill values suffices.
 has_fill_rule(op, args...) = false
+# most rules hold whatever the other argument's style is, hence being attached to the operation
+# rather than to a style; those that don't overload `fill_rule` directly
+fill_rule(op, args...) = broadcasted(op, args...)
 for T in (:(AbstractFill{<:Number}), :Number, :AbstractOnes, :AbstractRange, :(AbstractArray{<:Number}), :(Base.Broadcast.Broadcasted))
     for op in (:*, :/)
         @eval begin
@@ -404,29 +413,39 @@ function broadcasted(::FillStyle{1}, ::typeof(*), a::AbstractRange, b::AbstractO
     return _range_convert(AbstractVector{TT}, a)
 end
 
+# Unlike the rules above, these return the other argument itself where they can, so they must not
+# pre-empt a style that would have built a container of its own. They are attached to the fill
+# styles, which win only once every other style has deferred to `DefaultArrayStyle`, and `fill_rule`
+# makes them reachable for the calls a package forwards through `DefaultArrayStyle`.
 for op in (:+, :-)
     @eval begin
-        function broadcasted(::typeof($op), a::AbstractVector, b::AbstractZerosVector)
+        function fill_rule(::typeof($op), a::AbstractVector, b::AbstractZerosVector)
             ax = broadcast_shape(axes(a), axes(b))
-            # the size, rather than `a` itself, which the styleless rule may be handed unrendered
+            # the size, rather than `a` itself, which the rule may be handed unrendered
             ax == axes(a) || throw(ArgumentError(LazyString("cannot broadcast an array with size ",
                 size(a), " with ", b, ". Convert ", b, " to a Vector first.")))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
             # Use `TT ∘ (+)` to fix AD issues with `broadcasted(TT, x)`
             eltype(a) === TT ? a : broadcasted(TT ∘ (+), a)
         end
-        function broadcasted(::typeof($op), a::AbstractZerosVector, b::AbstractVector)
+        function fill_rule(::typeof($op), a::AbstractZerosVector, b::AbstractVector)
             ax = broadcast_shape(axes(a), axes(b))
             ax == axes(b) || throw(ArgumentError(LazyString("cannot broadcast ", a,
                 " with an array with size ", size(b), ". Convert ", a, " to a Vector first.")))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
             $op === (+) && eltype(b) === TT ? b : broadcasted(TT ∘ ($op), b)
         end
-        function broadcasted(::typeof($op), a::AbstractZerosVector, b::AbstractZerosVector)
+        function fill_rule(::typeof($op), a::AbstractZerosVector, b::AbstractZerosVector)
             ax = broadcast_shape(axes(a), axes(b))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
             Zeros(TT, ax)
         end
+        broadcasted(::AbstractFillStyle{1}, ::typeof($op), a::AbstractVector, b::AbstractZerosVector) =
+            fill_rule($op, a, b)
+        broadcasted(::AbstractFillStyle{1}, ::typeof($op), a::AbstractZerosVector, b::AbstractVector) =
+            fill_rule($op, a, b)
+        broadcasted(::AbstractFillStyle{1}, ::typeof($op), a::AbstractZerosVector, b::AbstractZerosVector) =
+            fill_rule($op, a, b)
         has_fill_rule(::typeof($op), ::AbstractVector, ::AbstractZerosVector) = true
         has_fill_rule(::typeof($op), ::AbstractZerosVector, ::AbstractVector) = true
         # as above, only to disambiguate
