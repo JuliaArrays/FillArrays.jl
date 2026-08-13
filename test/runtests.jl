@@ -1097,6 +1097,18 @@ counted_identity(x) = (CALLS[] += 1; x)
     @test imag(Ones{ComplexF64}(10)) isa Zeros{Float64}
     @test imag(Ones{ComplexF64}(10,10)) isa Zeros{Float64}
 
+    # broadcasting these agrees with applying them: `imag` of a real fill is zero by the eltype,
+    # which the value the generic path goes on cannot report for a `Fill`
+    @testset "$f($A)" for f in (real, imag, conj), A in (
+                Fill(4), Fill(4, 3), Fill(4.0, 3), Fill(4 + 5im, 3),
+                Ones{Int}(3), Ones{ComplexF64}(3), Zeros{Int}(3), Zeros{ComplexF64}(3),
+                Ones{Float64}(2,3), Fill(4, 2, 3))
+        @test f(A) ≡ f.(A)
+        # against Base in the same form: broadcasting unwraps a zero-dimensional result there,
+        # while we keep the container
+        @test f(A) == f(collect(A))
+    end
+
     @testset "range broadcast" begin
         rnge = range(-5.0, step=1.0, length=10)
         @test broadcast(*, Fill(5.0, 10), rnge) == broadcast(*, 5.0, rnge)

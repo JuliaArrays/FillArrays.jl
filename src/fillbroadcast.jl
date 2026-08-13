@@ -300,6 +300,10 @@ conj(A::AbstractOnes) = A
 real(A::AbstractFill{<:Real}) = A
 imag(A::AbstractFill{<:Real}) = broadcasted_zeros(imag, A, eltype(A), axes(A))
 conj(A::AbstractFill{<:Real}) = A
+# `imag` of a real fill is zero by the eltype rather than by the value, which is what
+# `_copy_fill` would have to go on, so state it here and keep `imag.(A)` agreeing with `imag(A)`
+broadcasted(::AbstractFillStyle, ::typeof(imag), A::AbstractFill{<:Real}) =
+    broadcasted_zeros(imag, A, eltype(A), axes(A))
 
 ### Binary broadcasting
 
