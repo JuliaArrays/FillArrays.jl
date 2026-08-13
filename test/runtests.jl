@@ -1035,8 +1035,8 @@ counted_identity(x) = (CALLS[] += 1; x)
     @test y .+ y ≡ Fill(2.0,5,5)
     @test y .* y ≡ y ./ y ≡ y .\ y ≡ y
     @test y .^ 1 ≡ y .^ 0 ≡ Ones(5,5)
-    @test (x -> 0).(y) ≡ Zeros(5,5)
-    @test (x -> 1).(y) ≡ Ones(5,5)
+    @test (x -> 0).(y) ≡ Zeros(Int,5,5)
+    @test (x -> 1).(y) ≡ Ones(Int,5,5)
 
     z = Zeros(5,5)
     @test exp.(z) ≡ (x -> exp(x)).(z) ≡ Ones(5,5)
