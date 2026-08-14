@@ -470,7 +470,7 @@ end
 -(a::UniformScaling, b::AbstractFill) = -b + a # @test I-Zeros(3,3) === Diagonal(Ones(3))
 
 # TODO: How to do this conversion generically?
--(a::AbstractOnes, b::AbstractOnes) = broadcasted_zeros(+, a, eltype(a), axes(a)) + broadcasted_zeros(-, b, eltype(a), axes(a))
+-(a::AbstractOnes, b::AbstractOnes) = broadcasted_zeros(+, eltype(a), axes(a), a) + broadcasted_zeros(-, eltype(a), axes(a), b)
 
 # no AbstractArray. Otherwise incompatible with StaticArrays.jl
 for TYPE in (:Array, :AbstractRange)

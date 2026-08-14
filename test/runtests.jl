@@ -999,13 +999,12 @@ end
 FillArrays.getindex_value(::TaggedZeros{T}) where {T} = zero(T)
 FillArrays.getindex_value(::TaggedOnes{T}) where {T} = one(T)
 const TaggedFill = Union{TaggedZeros,TaggedOnes}
-# both arities, the two-argument one on either side and disambiguated for both
+# a fill in either of the first two positions, disambiguated for both, over any number of arguments
 for (hook, Typ) in ((:broadcasted_zeros, :TaggedZeros), (:broadcasted_ones, :TaggedOnes))
     @eval begin
-        FillArrays.$hook(f, a::TaggedFill, elt, ax) = $Typ{elt}(ax...)
-        FillArrays.$hook(f, a::TaggedFill, b, elt, ax) = $Typ{elt}(ax...)
-        FillArrays.$hook(f, a, b::TaggedFill, elt, ax) = $Typ{elt}(ax...)
-        FillArrays.$hook(f, a::TaggedFill, b::TaggedFill, elt, ax) = $Typ{elt}(ax...)
+        FillArrays.$hook(f, elt, ax, a::TaggedFill, rest...) = $Typ{elt}(ax...)
+        FillArrays.$hook(f, elt, ax, a, b::TaggedFill, rest...) = $Typ{elt}(ax...)
+        FillArrays.$hook(f, elt, ax, a::TaggedFill, b::TaggedFill, rest...) = $Typ{elt}(ax...)
     end
 end
 
@@ -1473,9 +1472,13 @@ counted_identity(x) = (CALLS[] += 1; x)
         @test TaggedZeros{Int}(4) .+ TaggedZeros{Int}(4) ≡ TaggedZeros{Int}(4)
         @test TaggedZeros{Int}(4) .- TaggedZeros{Int}(4) ≡ TaggedZeros{Int}(4)
         @test TaggedOnes{Int}(4) .- TaggedOnes{Int}(4) ≡ TaggedZeros{Int}(4)
-        # a fused broadcast whose arguments are themselves fills stays hooked
-        let Z = TaggedZeros{Int}(4)
+        # a fused broadcast stays hooked however many arguments it ends up with, the nested ones
+        # reaching the hook as the `Broadcasted` they still are
+        let Z = TaggedZeros{Int}(4), O = TaggedOnes{Int}(4)
             @test (@. Z + 2Z) ≡ TaggedZeros{Int}(4)
+            @test (@. Z + Z + Z) ≡ TaggedZeros{Int}(4)
+            @test (@. O * O * O) ≡ TaggedOnes{Int}(4)
+            @test (@. O * O * O * O) ≡ TaggedOnes{Int}(4)
         end
     end
 

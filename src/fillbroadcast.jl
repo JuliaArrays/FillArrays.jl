@@ -207,26 +207,14 @@ isfill(f::Number) = true
 isfill(f::Ref) = true
 isfill(::Any) = false
 
-# the `broadcasted_fill`/`broadcasted_zeros`/`broadcasted_ones` hooks take one or two arrays, so a
-# broadcast over more arguments has none to call and names the type outright
-_hooked_fill(f, args::Tuple{Any}, v, ax) = broadcasted_fill(f, args[1], v, ax)
-_hooked_fill(f, args::Tuple{Any,Any}, v, ax) = broadcasted_fill(f, args[1], args[2], v, ax)
-_hooked_fill(f, args::Tuple, v, ax) = Fill(v, ax)
-_hooked_zeros(f, args::Tuple{Any}, elt, ax) = broadcasted_zeros(f, args[1], elt, ax)
-_hooked_zeros(f, args::Tuple{Any,Any}, elt, ax) = broadcasted_zeros(f, args[1], args[2], elt, ax)
-_hooked_zeros(f, args::Tuple, elt, ax) = Zeros{elt}(ax)
-_hooked_ones(f, args::Tuple{Any}, elt, ax) = broadcasted_ones(f, args[1], elt, ax)
-_hooked_ones(f, args::Tuple{Any,Any}, elt, ax) = broadcasted_ones(f, args[1], args[2], elt, ax)
-_hooked_ones(f, args::Tuple, elt, ax) = Ones{elt}(ax)
-
 function _copy_fill(bc)
     v = broadcast_getindex_value(bc)
     if _iszeros(bc, v)
-        return _hooked_zeros(bc.f, bc.args, typeof(v), axes(bc))
+        return broadcasted_zeros(bc.f, typeof(v), axes(bc), bc.args...)
     elseif _isones(bc, v)
-        return _hooked_ones(bc.f, bc.args, typeof(v), axes(bc))
+        return broadcasted_ones(bc.f, typeof(v), axes(bc), bc.args...)
     end
-    return _hooked_fill(bc.f, bc.args, v, axes(bc))
+    return broadcasted_fill(bc.f, v, axes(bc), bc.args...)
 end
 
 # recursively copy the purely fill components
@@ -315,37 +303,35 @@ Base.Broadcast.broadcast_preserving_zero_d(f, A::AbstractFill, B::AbstractFill, 
 # rest. They go through the `broadcasted_zeros`/`broadcasted_ones` hooks rather than naming
 # `Zeros`/`Ones` outright, so that a package customizing those gets its own type back here too
 for f in (:real, :imag)
-    @eval ($f)(A::AbstractZeros) = broadcasted_zeros($f, A, real(eltype(A)), axes(A))
+    @eval ($f)(A::AbstractZeros) = broadcasted_zeros($f, real(eltype(A)), axes(A), A)
 end
 conj(A::AbstractZeros) = A
-real(A::AbstractOnes) = broadcasted_ones(real, A, real(eltype(A)), axes(A))
-imag(A::AbstractOnes) = broadcasted_zeros(imag, A, real(eltype(A)), axes(A))
+real(A::AbstractOnes) = broadcasted_ones(real, real(eltype(A)), axes(A), A)
+imag(A::AbstractOnes) = broadcasted_zeros(imag, real(eltype(A)), axes(A), A)
 conj(A::AbstractOnes) = A
 
 ### Binary broadcasting
 
-# Default outputs, can overload to customize
-broadcasted_fill(f, a, val, ax) = Fill(val, ax)
-broadcasted_fill(f, a, b, val, ax) = Fill(val, ax)
-broadcasted_zeros(f, a, elt, ax) = Zeros{elt}(ax)
-broadcasted_zeros(f, a, b, elt, ax) = Zeros{elt}(ax)
-broadcasted_ones(f, a, elt, ax) = Ones{elt}(ax)
-broadcasted_ones(f, a, b, elt, ax) = Ones{elt}(ax)
+# Default outputs, can overload to customize. The broadcast arguments come last so that a rule may
+# pass however many it has, from the one of `exp.(a)` to the whole of a fused `Broadcasted`.
+broadcasted_fill(f, val, ax, args...) = Fill(val, ax)
+broadcasted_zeros(f, elt, ax, args...) = Zeros{elt}(ax)
+broadcasted_ones(f, elt, ax, args...) = Ones{elt}(ax)
 
 function _broadcasted_zeros(f, a, b)
   elt = Base.Broadcast.combine_eltypes(f, (a, b))
   ax = broadcast_shape(axes(a), axes(b))
-  return broadcasted_zeros(f, a, b, elt, ax)
+  return broadcasted_zeros(f, elt, ax, a, b)
 end
 function _broadcasted_ones(f, a, b)
   elt = Base.Broadcast.combine_eltypes(f, (a, b))
   ax = broadcast_shape(axes(a), axes(b))
-  return broadcasted_ones(f, a, b, elt, ax)
+  return broadcasted_ones(f, elt, ax, a, b)
 end
 function _broadcasted_nan(f, a, b)
   val = convert(Base.Broadcast.combine_eltypes(f, (a, b)), NaN)
   ax = broadcast_shape(axes(a), axes(b))
-  return broadcasted_fill(f, a, b, val, ax)
+  return broadcasted_fill(f, val, ax, a, b)
 end
 
 # In following, need to restrict to <: Number as otherwise we cannot infer zero from type
@@ -454,7 +440,7 @@ for op in (:+, :-)
         function fill_rule(::typeof($op), a::AbstractZerosVector, b::AbstractZerosVector)
             ax = broadcast_shape(axes(a), axes(b))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
-            broadcasted_zeros($op, a, b, TT, ax)
+            broadcasted_zeros($op, TT, ax, a, b)
         end
         broadcasted(::AbstractFillStyle{1}, ::typeof($op), a::AbstractVector, b::AbstractZerosVector) =
             fill_rule($op, a, b)
@@ -505,10 +491,10 @@ for op in (:+, :-)
 end
 
 # support AbstractFill .^ k
-broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractFill{T,N}, ::Val{k}) where {T,N,k} = broadcasted_fill(op, r, getindex_value(r)^k, axes(r))
-broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractOnes{T,N}, ::Val{k}) where {T,N,k} = broadcasted_ones(op, r, T, axes(r))
-broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractZeros{T,N}, ::Val{0}) where {T,N} = broadcasted_ones(op, r, T, axes(r))
-broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractZeros{T,N}, ::Val{k}) where {T,N,k} = broadcasted_zeros(op, r, T, axes(r))
+broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractFill{T,N}, ::Val{k}) where {T,N,k} = broadcasted_fill(op, getindex_value(r)^k, axes(r), r)
+broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractOnes{T,N}, ::Val{k}) where {T,N,k} = broadcasted_ones(op, T, axes(r), r)
+broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractZeros{T,N}, ::Val{0}) where {T,N} = broadcasted_ones(op, T, axes(r), r)
+broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractZeros{T,N}, ::Val{k}) where {T,N,k} = broadcasted_zeros(op, T, axes(r), r)
 has_fill_rule(::typeof(Base.literal_pow), ::typeof(^), ::AbstractFill, ::Val) = true
 
 # supports structured broadcast
