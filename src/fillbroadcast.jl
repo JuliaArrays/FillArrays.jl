@@ -275,17 +275,30 @@ function _dispatch_on_fills(::Broadcast.BroadcastStyle, ::Val{N}, op, args...) w
     Broadcast.Broadcasted{DefaultArrayStyle{N}}(op, args)
 end
 
-# some cases that preserve 0d. `Base.broadcast_preserving_zero_d` cannot be used, as its
-# zero-dimensional branch calls `similar` on the `Broadcasted`, which we do not define.
+# `Base.broadcast_preserving_zero_d` re-wraps a zero-dimensional result, assuming broadcasting
+# unwrapped it to the element. Our rules hand back a container instead, which that re-wrap would
+# nest inside a second one, so preserve the shape here rather than restoring it afterwards.
 function broadcast_preserving_0d(f, As...)
     bc = Base.broadcasted(f, As...)
     # a rule may have applied and returned an array already, in which case the shape is preserved
     bc isa Broadcasted || return bc
-    r = copy(bc)
+    # `materialize` instantiates, which is what checks that the shapes agree
+    r = Broadcast.materialize(bc)
     # our own rules keep the container in the zero-dimensional case, but a foreign style handling
     # the broadcast may unwrap it to the element the way Base does
     length(axes(bc)) == 0 && !(r isa AbstractArray) ? Fill(r) : r
 end
+# Base reaches `broadcast_preserving_zero_d` from `real`/`imag`/`conj`, unary `-`, binary `+`/`-`
+# and `*`/`/`/`\` against a number, but it is not private to Base: `Dates` routes
+# `Period * AbstractArray` through it too, so extend the function rather than each of its callers.
+# `LinearAlgebra` does the same for adjoint and transpose vectors. The third method breaks the tie
+# between the first two.
+Base.Broadcast.broadcast_preserving_zero_d(f, A::AbstractFill, Bs...) =
+    broadcast_preserving_0d(f, A, Bs...)
+Base.Broadcast.broadcast_preserving_zero_d(f, A, B::AbstractFill, Cs...) =
+    broadcast_preserving_0d(f, A, B, Cs...)
+Base.Broadcast.broadcast_preserving_zero_d(f, A::AbstractFill, B::AbstractFill, Cs...) =
+    broadcast_preserving_0d(f, A, B, Cs...)
 # the results go through `broadcasted_zeros`/`broadcasted_ones` rather than naming `Zeros`/`Ones`
 # outright, so that a package customizing those hooks gets its own type back here too
 for f in (:real, :imag)

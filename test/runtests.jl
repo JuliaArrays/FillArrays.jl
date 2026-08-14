@@ -1104,9 +1104,7 @@ counted_identity(x) = (CALLS[] += 1; x)
                 Ones{Int}(3), Ones{ComplexF64}(3), Zeros{Int}(3), Zeros{ComplexF64}(3),
                 Ones{Float64}(2,3), Fill(4, 2, 3))
         if f === imag && A isa Fill{<:Real}
-            # `imag` of a real fill is zero by the eltype, which the value that the generic path
-            # goes on cannot report for a `Fill`. A rule for `imag` would only move the
-            # disagreement to `(x -> imag(x)).(A)`, so the containers are left differing.
+            # zero by the eltype, which the value that the broadcast goes on cannot report
             @test f(A) isa Zeros
             @test f.(A) isa Fill
             @test f(A) == f.(A)
@@ -1712,6 +1710,51 @@ end
     A = Zeros{Int,0,Tuple{}}(())
     @test A[] ≡ A[1] ≡ 0
     @test A ≡ Zeros{Int,0}(()) ≡ Zeros{Int}(()) ≡ Zeros{Int}()
+end
+
+# a scalar that is not a `Number`, reaching `broadcast_preserving_zero_d` the way `Dates` does
+# through `Period * AbstractArray`
+struct ScalarNotANumber end
+Base.Broadcast.broadcastable(x::ScalarNotANumber) = Ref(x)
+Base.:*(::ScalarNotANumber, x::Number) = x
+Base.:*(x::Number, ::ScalarNotANumber) = x
+Base.:*(u::ScalarNotANumber, A::AbstractArray) = Base.Broadcast.broadcast_preserving_zero_d(*, u, A)
+Base.:*(A::AbstractArray, u::ScalarNotANumber) = Base.Broadcast.broadcast_preserving_zero_d(*, A, u)
+
+@testset "broadcast_preserving_zero_d" begin
+    u = ScalarNotANumber()
+    @test u * Fill(2) ≡ Fill(2)
+    @test u * Fill(2, 3) ≡ Fill(2, 3)
+    @test u * Zeros{Int}() ≡ Fill(0)
+    @test u * Ones{Int}() ≡ Fill(1)
+    # a plain array is Base's business and must be left alone
+    @test u * fill(2) isa Array{Int,0}
+    @test u * fill(2) == fill(2)
+
+    # every Base entry point routing through it keeps the container rather than nesting it
+    @testset "$desc" for (desc, r, expected) in (
+                ("F * 2", Fill(4) * 2, Fill(8)),
+                ("2 * F", 2 * Fill(4), Fill(8)),
+                ("F / 2", Fill(4) / 2, Fill(2.0)),
+                ("2 \\ F", 2 \ Fill(4), Fill(2.0)),
+                ("Z * 2", Zeros{Int}() * 2, Zeros{Int}()),
+                ("2 * Z", 2 * Zeros{Int}(), Zeros{Int}()),
+                ("Z / 2", Zeros{Int}() / 2, Zeros{Float64}()),
+                ("2 \\ Z", 2 \ Zeros{Int}(), Zeros{Float64}()),
+                ("O * 2", Ones{Int}() * 2, Fill(2)),
+                ("-F", -Fill(4), Fill(-4)),
+                ("-Z", -Zeros{Int}(), Zeros{Int}()),
+                ("F + F", Fill(4) + Fill(4), Fill(8)),
+                ("F - F", Fill(4) - Fill(4), Fill(0)),
+                ("Z + Z", Zeros{Int}() + Zeros{Int}(), Zeros{Int}()),
+                ("O - O", Ones{Int}() - Ones{Int}(), Zeros{Int}()),
+                ("real(F)", real(Fill(4 + 5im)), Fill(4)),
+                ("imag(F)", imag(Fill(4 + 5im)), Fill(5)),
+                ("conj(F)", conj(Fill(4 + 5im)), Fill(4 - 5im)))
+        @test r ≡ expected
+        # the failure this guards against is a container nested inside a container
+        @test !(eltype(r) <: AbstractArray)
+    end
 end
 
 @testset "unique" begin
