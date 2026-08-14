@@ -7,8 +7,7 @@ import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     any, all, axes, isone, iszero, iterate, unique, allunique, permutedims, inv,
     copy, vec, setindex!, count, ==, reshape, map, zero,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
-    parent, similar, issorted, add_sum, mul_prod, accumulate, OneTo, permutedims,
-    real, imag, conj
+    parent, similar, issorted, add_sum, mul_prod, accumulate, OneTo, permutedims, imag
 
 import LinearAlgebra: rank, svdvals, svdvals!, tril, triu, tril!, triu!, diag, transpose, adjoint, fill!,
     dot, norm2, norm1, normInf, normMinusInf, normp, lmul!, rmul!, diagzero, AdjointAbsVec, TransposeAbsVec,
