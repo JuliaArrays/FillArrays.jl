@@ -1097,13 +1097,22 @@ counted_identity(x) = (CALLS[] += 1; x)
     @test imag(Ones{ComplexF64}(10)) isa Zeros{Float64}
     @test imag(Ones{ComplexF64}(10,10)) isa Zeros{Float64}
 
-    # broadcasting these agrees with applying them: `imag` of a real fill is zero by the eltype,
-    # which the value the generic path goes on cannot report for a `Fill`
+    # broadcasting these agrees with applying them wherever the generic path can tell from the
+    # value: `real`/`conj` hand back the fill, and a static value tells `Zeros` and `Ones` apart
     @testset "$f($A)" for f in (real, imag, conj), A in (
                 Fill(4), Fill(4, 3), Fill(4.0, 3), Fill(4 + 5im, 3),
                 Ones{Int}(3), Ones{ComplexF64}(3), Zeros{Int}(3), Zeros{ComplexF64}(3),
                 Ones{Float64}(2,3), Fill(4, 2, 3))
-        @test f(A) ≡ f.(A)
+        if f === imag && A isa Fill{<:Real}
+            # `imag` of a real fill is zero by the eltype, which the value that the generic path
+            # goes on cannot report for a `Fill`. A rule for `imag` would only move the
+            # disagreement to `(x -> imag(x)).(A)`, so the containers are left differing.
+            @test f(A) isa Zeros
+            @test f.(A) isa Fill
+            @test f(A) == f.(A)
+        else
+            @test f(A) ≡ f.(A)
+        end
         # against Base in the same form: broadcasting unwraps a zero-dimensional result there,
         # while we keep the container
         @test f(A) == f(collect(A))
