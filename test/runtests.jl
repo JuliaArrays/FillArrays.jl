@@ -1461,6 +1461,22 @@ counted_identity(x) = (CALLS[] += 1; x)
         @test TaggedZeros{Int}(4) .* (1:4) ≡ (1:4) .* TaggedZeros{Int}(4) ≡ TaggedZeros{Int}(4)
         @test TaggedZeros{Int}(4) .* TaggedOnes{Int}(4) ≡ TaggedZeros{Int}(4)
         @test TaggedOnes{Int}(4) ./ TaggedOnes{Int}(4) ≡ TaggedOnes{Float64}(4)
+
+        # operations with no rule of their own reach the hooks through the generic path
+        @test exp.(TaggedZeros{Int}(4)) ≡ TaggedOnes{Float64}(4)
+        @test cos.(TaggedZeros{Int}(4)) ≡ TaggedOnes{Float64}(4)
+        @test sin.(TaggedZeros{Int}(4)) ≡ TaggedZeros{Float64}(4)
+        @test abs.(TaggedZeros{Int}(4)) ≡ (-).(TaggedZeros{Int}(4)) ≡ TaggedZeros{Int}(4)
+        @test real.(TaggedZeros{ComplexF64}(4)) ≡ TaggedZeros{Float64}(4)
+        @test conj.(TaggedOnes{Int}(4)) ≡ real.(TaggedOnes{Int}(4)) ≡ TaggedOnes{Int}(4)
+        @test max.(TaggedZeros{Int}(4), TaggedZeros{Int}(4)) ≡ TaggedZeros{Int}(4)
+        @test TaggedZeros{Int}(4) .+ TaggedZeros{Int}(4) ≡ TaggedZeros{Int}(4)
+        @test TaggedZeros{Int}(4) .- TaggedZeros{Int}(4) ≡ TaggedZeros{Int}(4)
+        @test TaggedOnes{Int}(4) .- TaggedOnes{Int}(4) ≡ TaggedZeros{Int}(4)
+        # a fused broadcast whose arguments are themselves fills stays hooked
+        let Z = TaggedZeros{Int}(4)
+            @test (@. Z + 2Z) ≡ TaggedZeros{Int}(4)
+        end
     end
 
     @testset "custom styles" begin

@@ -207,14 +207,26 @@ isfill(f::Number) = true
 isfill(f::Ref) = true
 isfill(::Any) = false
 
+# the `broadcasted_fill`/`broadcasted_zeros`/`broadcasted_ones` hooks take one or two arrays, so a
+# broadcast over more arguments has none to call and names the type outright
+_hooked_fill(f, args::Tuple{Any}, v, ax) = broadcasted_fill(f, args[1], v, ax)
+_hooked_fill(f, args::Tuple{Any,Any}, v, ax) = broadcasted_fill(f, args[1], args[2], v, ax)
+_hooked_fill(f, args::Tuple, v, ax) = Fill(v, ax)
+_hooked_zeros(f, args::Tuple{Any}, elt, ax) = broadcasted_zeros(f, args[1], elt, ax)
+_hooked_zeros(f, args::Tuple{Any,Any}, elt, ax) = broadcasted_zeros(f, args[1], args[2], elt, ax)
+_hooked_zeros(f, args::Tuple, elt, ax) = Zeros{elt}(ax)
+_hooked_ones(f, args::Tuple{Any}, elt, ax) = broadcasted_ones(f, args[1], elt, ax)
+_hooked_ones(f, args::Tuple{Any,Any}, elt, ax) = broadcasted_ones(f, args[1], args[2], elt, ax)
+_hooked_ones(f, args::Tuple, elt, ax) = Ones{elt}(ax)
+
 function _copy_fill(bc)
     v = broadcast_getindex_value(bc)
     if _iszeros(bc, v)
-        return Zeros(typeof(v), axes(bc))
+        return _hooked_zeros(bc.f, bc.args, typeof(v), axes(bc))
     elseif _isones(bc, v)
-        return Ones(typeof(v), axes(bc))
+        return _hooked_ones(bc.f, bc.args, typeof(v), axes(bc))
     end
-    return Fill(v, axes(bc))
+    return _hooked_fill(bc.f, bc.args, v, axes(bc))
 end
 
 # recursively copy the purely fill components
@@ -442,7 +454,7 @@ for op in (:+, :-)
         function fill_rule(::typeof($op), a::AbstractZerosVector, b::AbstractZerosVector)
             ax = broadcast_shape(axes(a), axes(b))
             TT = typeof($op(zero(eltype(a)), zero(eltype(b))))
-            Zeros(TT, ax)
+            broadcasted_zeros($op, a, b, TT, ax)
         end
         broadcasted(::AbstractFillStyle{1}, ::typeof($op), a::AbstractVector, b::AbstractZerosVector) =
             fill_rule($op, a, b)
