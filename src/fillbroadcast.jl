@@ -197,16 +197,20 @@ isfill(f::Number) = true
 isfill(f::Ref) = true
 isfill(::Any) = false
 
+# Pick the fill from the value the operation produced. A zero or a unit value only earns `Zeros` or
+# `Ones` when every argument was itself static, since otherwise the value says nothing about what a
+# different argument of the same type would give.
+function _fill_result(f, v, ax, args...)
+    if all(has_static_value, args)
+        _iszero(v) && return broadcasted_zeros(f, typeof(v), ax, args...)
+        _isone(v) && return broadcasted_ones(f, typeof(v), ax, args...)
+    end
+    return broadcasted_fill(f, v, ax, args...)
+end
+
 # the fill value is computed once and handed to the checks, so that the broadcasted function is
 # evaluated exactly once
-function _copy_fill(bc)
-    v = broadcast_getindex_value(bc)
-    if all(has_static_value, bc.args)
-        _iszero(v) && return broadcasted_zeros(bc.f, typeof(v), axes(bc), bc.args...)
-        _isone(v) && return broadcasted_ones(bc.f, typeof(v), axes(bc), bc.args...)
-    end
-    return broadcasted_fill(bc.f, v, axes(bc), bc.args...)
-end
+_copy_fill(bc) = _fill_result(bc.f, broadcast_getindex_value(bc), axes(bc), bc.args...)
 
 # recursively copy the purely fill components
 function _preprocess_fill(bc::Broadcast.Broadcasted{<:AbstractFillStyle})
@@ -471,10 +475,12 @@ for op in (:+, :-)
 end
 
 # support AbstractFill .^ k
-broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractFill{T,N}, ::Val{k}) where {T,N,k} = broadcasted_fill(op, getindex_value(r)^k, axes(r), r)
-broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractOnes{T,N}, ::Val{k}) where {T,N,k} = broadcasted_ones(op, T, axes(r), r)
-broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractZeros{T,N}, ::Val{0}) where {T,N} = broadcasted_ones(op, T, axes(r), r)
-broadcasted(op::typeof(Base.literal_pow), ::typeof(^), r::AbstractZeros{T,N}, ::Val{k}) where {T,N,k} = broadcasted_zeros(op, T, axes(r), r)
+# `x .^ k` with a literal `k` lowers to `literal_pow`, which this intercepts before any style is
+# consulted. Evaluate the operation on the fill value rather than predicting it from `k`: a `Zeros`
+# raised to a negative power is a division by zero, which no more yields zero here than `x ./ Zeros`
+# does, and `literal_pow` is defined where `^` would throw.
+broadcasted(op::typeof(Base.literal_pow), x::typeof(^), r::AbstractFill, y::Val) =
+    _fill_result(op, op(x, getindex_value(r), y), axes(r), r)
 fill_rule(op::typeof(Base.literal_pow), x::typeof(^), r::AbstractFill, y::Val) = broadcasted(op, x, r, y)
 
 # supports structured broadcast
