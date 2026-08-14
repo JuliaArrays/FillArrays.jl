@@ -275,10 +275,10 @@ function _dispatch_on_fills(::Broadcast.BroadcastStyle, ::Val{N}, op, args...) w
     Broadcast.Broadcasted{DefaultArrayStyle{N}}(op, args)
 end
 
-# `Base.broadcast_preserving_zero_d` re-wraps a zero-dimensional result, assuming broadcasting
+# `Broadcast.broadcast_preserving_zero_d` re-wraps a zero-dimensional result, assuming broadcasting
 # unwrapped it to the element. Our rules hand back a container instead, which that re-wrap would
 # nest inside a second one, so preserve the shape here rather than restoring it afterwards.
-function broadcast_preserving_0d(f, As...)
+function broadcast_preserving_zero_d(f, As...)
     bc = Base.broadcasted(f, As...)
     # a rule may have applied and returned an array already, in which case the shape is preserved
     bc isa Broadcasted || return bc
@@ -293,12 +293,12 @@ end
 # `Period * AbstractArray` through it too, so extend the function rather than each of its callers.
 # `LinearAlgebra` does the same for adjoint and transpose vectors. The third method breaks the tie
 # between the first two.
-Base.Broadcast.broadcast_preserving_zero_d(f, A::AbstractFill, Bs...) =
-    broadcast_preserving_0d(f, A, Bs...)
-Base.Broadcast.broadcast_preserving_zero_d(f, A, B::AbstractFill, Cs...) =
-    broadcast_preserving_0d(f, A, B, Cs...)
-Base.Broadcast.broadcast_preserving_zero_d(f, A::AbstractFill, B::AbstractFill, Cs...) =
-    broadcast_preserving_0d(f, A, B, Cs...)
+Broadcast.broadcast_preserving_zero_d(f, A::AbstractFill, Bs...) =
+    broadcast_preserving_zero_d(f, A, Bs...)
+Broadcast.broadcast_preserving_zero_d(f, A, B::AbstractFill, Cs...) =
+    broadcast_preserving_zero_d(f, A, B, Cs...)
+Broadcast.broadcast_preserving_zero_d(f, A::AbstractFill, B::AbstractFill, Cs...) =
+    broadcast_preserving_zero_d(f, A, B, Cs...)
 # only `Zeros` and `Ones` need these: Base handles a real eltype, and the broadcast handles the
 # rest. They go through the `broadcasted_zeros`/`broadcasted_ones` hooks rather than naming
 # `Zeros`/`Ones` outright, so that a package customizing those gets its own type back here too
