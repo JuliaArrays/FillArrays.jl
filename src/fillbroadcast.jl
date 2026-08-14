@@ -461,6 +461,10 @@ for op in (:*, :+, :-)
     @eval begin
         broadcasted(::FillStyle{1}, ::typeof($op), a::AbstractFill, b::AbstractRange) = _rewrite_range($op, a, b)
         broadcasted(::FillStyle{1}, ::typeof($op), a::AbstractRange, b::AbstractFill) = _rewrite_range($op, a, b)
+    end
+end
+for op in (:+, :-)
+    @eval begin
         broadcasted(::FillStyle{1}, ::typeof($op), a::AbstractZerosVector, b::AbstractRange) = _rewrite_range($op, a, b)
         broadcasted(::FillStyle{1}, ::typeof($op), a::AbstractRange, b::AbstractZerosVector) = _rewrite_range($op, a, b)
     end
