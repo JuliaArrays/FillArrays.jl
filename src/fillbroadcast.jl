@@ -354,10 +354,20 @@ _range_convert(::Type{AbstractVector{T}}, a::AbstractRange{T}) where T = a
 # without this the `AbstractUnitRange` method below wins over the `AbstractRange{T}` one above,
 # and the endpoints it converts may not be representable, as for an infinite range
 _range_convert(::Type{AbstractVector{T}}, a::AbstractUnitRange{T}) where T = a
-_range_convert(::Type{AbstractVector{T}}, a::AbstractUnitRange) where T = convert(T,first(a)):convert(T,last(a))
-_range_convert(::Type{AbstractVector{T}}, a::OneTo) where T = OneTo(convert(T, a.stop))
-_range_convert(::Type{AbstractVector{T}}, a::AbstractRange) where T = convert(T,first(a)):step(a):convert(T,last(a))
+_range_convert(::Type{AbstractVector{T}}, a::AbstractRange) where T = _rebuild_range(T, a)
 _range_convert(::Type{AbstractVector{T}}, a::ZerosVector) where T = ZerosVector{T}(length(a))
+
+# Rebuilding the range asks something of `T` that mere arithmetic does not provide: `OneTo` an
+# integer to count up to, and the colon constructors a `T` that can be counted from one endpoint to
+# the other. Each of these asks less than the one before it, so a `T` offering neither falls all the
+# way through to the `steprangelen` that `cumsum` builds. Dispatching on `T` here rather than on the
+# `_range_convert` methods above leaves their order intact, so a range whose element type already
+# matches still reaches the two that hand it straight back.
+_rebuild_range(::Type{T}, a::OneTo) where {T<:Integer} = OneTo(convert(T, a.stop))
+_rebuild_range(::Type{T}, a::AbstractUnitRange) where {T<:Real} = convert(T,first(a)):convert(T,last(a))
+_rebuild_range(::Type{T}, a::AbstractRange) where {T<:Real} = convert(T,first(a)):step(a):convert(T,last(a))
+_rebuild_range(::Type{T}, a::AbstractRange) where T =
+    steprangelen(convert(T, first(a)), convert(T, step(a)), length(a))
 
 
 # TODO: replacing with the following will support more general broadcasting.

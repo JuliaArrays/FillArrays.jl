@@ -1258,6 +1258,19 @@ counted_identity(x) = (CALLS[] += 1; x)
         @test_throws DimensionMismatch Ones{Int}(6) .* (1:5)
         @test_throws DimensionMismatch (1:5) .* Ones{Int}(6)
         @test_throws DimensionMismatch Ones{Int}(5) .* Ones{Int}(6)
+
+        # the range that comes back is the most structured one the element type supports: a
+        # `OneTo` needs an integer to count up to, and the endpoints need an element type that
+        # can be counted from one to the other
+        @test Ones{Int}(3) .* Base.OneTo(3) ≡ Base.OneTo(3) .* Ones{Int}(3) ≡ Base.OneTo(3)
+        @test Ones(3) .* Base.OneTo(3) ≡ Base.OneTo(3) .* Ones(3) ≡ 1.0:1.0:3.0
+        @test Ones{Rational{Int}}(3) .* (1:3) ≡ (1:3) .* Ones{Rational{Int}}(3) ≡ 1//1:3//1
+        # an element type supporting neither still has arithmetic, hence a step
+        @test Ones{ComplexF64}(3) .* (1:3) ≡ (1:3) .* Ones{ComplexF64}(3) ≡
+            StepRangeLen(ComplexF64(1), ComplexF64(1), 3)
+        @test Ones{ComplexF64}(3) .* Base.OneTo(3) ≡ StepRangeLen(ComplexF64(1), ComplexF64(1), 3)
+        @test Ones{ComplexF64}(3) .* range(1.0, 2.0, length=3) ≡
+            StepRangeLen(ComplexF64(1), ComplexF64(0.5), 3)
     end
 
     @testset "Zeros -" begin
