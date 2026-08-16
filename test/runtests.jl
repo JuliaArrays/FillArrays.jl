@@ -2215,6 +2215,8 @@ end
 
     @test mean(Fill(3,4,5), dims=2) == mean(fill(3,4,5), dims=2)
     @test std(Fill(3,4,5), corrected=true, mean=3) == std(fill(3,4,5), corrected=true, mean=3)
+    @test var(Fill(3,4,5), dims=2) ≡ Zeros(4,1)
+    @test var(Fill(3,4,5), dims=2) == var(fill(3,4,5), dims=2)
 
     @test cov(Fill(3,4)) === cov(fill(3,4))
     @test cov(Fill(3,4,5)) == cov(fill(3,4,5))
