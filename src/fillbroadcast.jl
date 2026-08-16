@@ -232,12 +232,15 @@ end
 
 # Packages with a style of their own (e.g. LazyArrays) opt out of it for fills by forwarding to
 # `DefaultArrayStyle`. The fill rules are no longer attached to that style, so re-dispatch such
-# calls on the arguments alone and keep returning a fill.
-broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill) where {N} = _dispatch_on_fills(Val(N), op, r)
-broadcasted(::DefaultArrayStyle{N}, op, a::AbstractFill, b) where {N} = _dispatch_on_fills(Val(N), op, a, b)
-broadcasted(::DefaultArrayStyle{N}, op, a, b::AbstractFill) where {N} = _dispatch_on_fills(Val(N), op, a, b)
-broadcasted(::DefaultArrayStyle{N}, op, a::AbstractFill, b::AbstractFill) where {N} = _dispatch_on_fills(Val(N), op, a, b)
-# `x .^ k` lowers to a three-argument `literal_pow` broadcast, matching none of the shapes above.
+# calls on the arguments alone and keep returning a fill. Dispatch cannot ask whether any argument
+# is a fill, only whether the one in a given position is, and covering the first `k` positions costs
+# a method per non-empty subset of them. Two positions is where that stops paying: the third method
+# only breaks the tie between the first two, and a fill reaching a broadcast never sits behind two
+# non-fills in practice.
+broadcasted(::DefaultArrayStyle{N}, op, a::AbstractFill, bs...) where {N} = _dispatch_on_fills(Val(N), op, a, bs...)
+broadcasted(::DefaultArrayStyle{N}, op, a, b::AbstractFill, cs...) where {N} = _dispatch_on_fills(Val(N), op, a, b, cs...)
+broadcasted(::DefaultArrayStyle{N}, op, a::AbstractFill, b::AbstractFill, cs...) where {N} = _dispatch_on_fills(Val(N), op, a, b, cs...)
+# `x .^ k` lowers to a three-argument `literal_pow` broadcast whose fill sits behind a `Ref`.
 # Unwrapping the `Ref`s lets the styleless rules apply, so the style comes from the fill alone;
 # the `Ref`s are zero-dimensional and wouldn't have contributed to it anyway.
 broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), x::Base.RefValue{typeof(^)},

@@ -1530,6 +1530,13 @@ counted_identity(x) = (CALLS[] += 1; x)
             @test broadcast(DAS, +, Ones(5), Fill(2.0,5)) ≡ Fill(3.0, 5)
             @test broadcast(DAS, Base.literal_pow, Ref(^), Ones(5), Ref(Val(2))) ≡ Ones(5)
             @test broadcast(DAS, Base.literal_pow, Ref(^), Fill(2,5), Ref(Val(3))) ≡ Fill(8,5)
+            # a fill in either of the first two positions is simplified whatever the arity
+            @test broadcast(DAS, +, Ones(5), Fill(2.0,5), Fill(3.0,5)) ≡ Fill(6.0, 5)
+            @test broadcast(DAS, +, Zeros(5), Zeros(5), Zeros(5)) ≡ Zeros(5)
+            @test broadcast(DAS, muladd, Fill(2,5), Fill(3,5), Fill(4,5)) ≡ Fill(10, 5)
+            @test broadcast(DAS, ifelse, Ones{Bool}(5), Fill(1,5), Fill(2,5)) ≡ Fill(1, 5)
+            # dispatch can only reach so far, so a fill behind two non-fills is Base's to render
+            @test broadcast(DAS, ifelse, [true,false,true,true,false], 1:5, Fill(9,5)) == [1,9,3,4,9]
         end
 
         @testset "infinite arrays" begin
