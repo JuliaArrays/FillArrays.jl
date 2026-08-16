@@ -1763,6 +1763,11 @@ Base.:*(A::AbstractArray, u::ScalarNotANumber) = Base.Broadcast.broadcast_preser
     @test u * fill(2) isa Array{Int,0}
     @test u * fill(2) == fill(2)
 
+    # no Base entry point passes two fills, as `+`/`-` on a pair of them have methods of their own,
+    # but a downstream caller may, and the tie between the one-fill methods must be broken
+    @test Base.Broadcast.broadcast_preserving_zero_d(+, Fill(2), Fill(3)) ≡ Fill(5)
+    @test Base.Broadcast.broadcast_preserving_zero_d(+, Zeros(2), Zeros(2)) ≡ Zeros(2)
+
     # every Base entry point routing through it keeps the container rather than nesting it
     @testset "$desc" for (desc, r, expected) in (
                 ("F * 2", Fill(4) * 2, Fill(8)),
