@@ -1053,14 +1053,14 @@ counted_identity(x) = (CALLS[] += 1; x)
         x_dense, y_dense = randn(rng, sx), randn(rng, sy)
 
         for x in [x, x_one, x_zero, x_dense], y in [y, y_one, y_zero, y_dense]
-            @test x .+ y ≈ collect(x) .+ collect(y)
+            @test x .+ y == collect(x) .+ collect(y)
         end
         @test x_zero .+ y_zero isa Zeros
         @test x_zero .+ y_one isa Ones
         @test x_one .+ y_zero isa Ones
 
         for x in [x, x_one, x_zero, x_dense], y in [y, y_one, y_zero, y_dense]
-            @test x .* y ≈ collect(x) .* collect(y)
+            @test x .* y == collect(x) .* collect(y)
         end
         for x in [x, x_one, x_zero, x_dense]
             @test x .* y_zero isa Zeros
