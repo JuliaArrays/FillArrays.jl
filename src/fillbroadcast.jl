@@ -310,11 +310,6 @@ function _broadcasted_zeros(f, a, b)
   ax = broadcast_shape(axes(a), axes(b))
   return broadcasted_zeros(f, elt, ax, a, b)
 end
-function _broadcasted_ones(f, a, b)
-  elt = Base.Broadcast.combine_eltypes(f, (a, b))
-  ax = broadcast_shape(axes(a), axes(b))
-  return broadcasted_ones(f, elt, ax, a, b)
-end
 function _broadcasted_nan(f, a, b)
   val = convert(Base.Broadcast.combine_eltypes(f, (a, b)), NaN)
   ax = broadcast_shape(axes(a), axes(b))
@@ -345,15 +340,11 @@ for (op, zeros_rule) in ((:*, :_broadcasted_zeros), (:/, :_broadcasted_nan), (:\
         # two fills, so the rule is only needed to disambiguate the one-sided entries above
         fill_rule(::typeof($op), a::AbstractZeros, b::AbstractZeros) = $zeros_rule($op, a, b)
         broadcasted(::typeof($op), a::AbstractZeros, b::AbstractZeros) = fill_rule($op, a, b)
-        broadcasted(::typeof($op), a::AbstractOnes, b::AbstractOnes) = _broadcasted_ones($op, a, b)
     end
 end
 
 # special case due to missing converts for ranges
 _range_convert(::Type{AbstractVector{T}}, a::AbstractRange{T}) where T = a
-# without this the `AbstractUnitRange` method below wins over the `AbstractRange{T}` one above,
-# and the endpoints it converts may not be representable, as for an infinite range
-_range_convert(::Type{AbstractVector{T}}, a::AbstractUnitRange{T}) where T = a
 _range_convert(::Type{AbstractVector{T}}, a::AbstractRange) where T = _rebuild_range(T, a)
 _range_convert(::Type{AbstractVector{T}}, a::ZerosVector) where T = ZerosVector{T}(length(a))
 
@@ -362,7 +353,7 @@ _range_convert(::Type{AbstractVector{T}}, a::ZerosVector) where T = ZerosVector{
 # the other. Each of these asks less than the one before it, so a `T` offering neither falls all the
 # way through to the `steprangelen` that `cumsum` builds. Dispatching on `T` here rather than on the
 # `_range_convert` methods above leaves their order intact, so a range whose element type already
-# matches still reaches the two that hand it straight back.
+# matches still reaches the one that hands it straight back.
 _rebuild_range(::Type{T}, a::OneTo) where {T<:Integer} = OneTo(convert(T, a.stop))
 _rebuild_range(::Type{T}, a::AbstractUnitRange) where {T<:Real} = convert(T,first(a)):convert(T,last(a))
 _rebuild_range(::Type{T}, a::AbstractRange) where {T<:Real} = convert(T,first(a)):step(a):convert(T,last(a))
