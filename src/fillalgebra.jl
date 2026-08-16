@@ -78,7 +78,6 @@ mult_zeros(a::AbstractArray{<:Number}, b::AbstractArray{<:Number}) = mult_zeros(
 mult_zeros(a, b) = mult_fill(a, b, mult_axes(a, b))
 mult_ones(a, b) = mult_ones(a, b, mult_axes(a, b))
 
-# matmul
 *(a::AbstractFillMatrix, b::AbstractFillMatrix) = mult_fill(a,b)
 *(a::AbstractFillMatrix, b::AbstractFillVector) = mult_fill(a,b)
 
