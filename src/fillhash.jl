@@ -39,7 +39,6 @@ function _hash_indices(ax::AbstractUnitRange)
     b = a + hash_nentries - 1
     a:(isinf(last(ax)) ? b : min(last(ax), b))
 end
-_hash_indices(ax) = Iterators.take(ax, hash_nentries)
 
 function _hash_infarray(A::AbstractArray, h::UInt)
     h += hash_infarray_seed
