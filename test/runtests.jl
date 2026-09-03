@@ -609,6 +609,59 @@ end
     @test Ones(5,4) == Fill(1,5,4)
 end
 
+@testset "hash" begin
+    r = InfiniteArrays.OneToInf()
+
+    @testset "finite arrays hash as in Base" begin
+        for (a, b) in ((Fill(1,3), [1,1,1]),
+                       (Zeros(2,3), zeros(2,3)),
+                       (Ones{Int}(4), ones(Int,4)),
+                       (Diagonal(Fill(2,3)), Diagonal([2,2,2])),
+                       (OneElement(2, (3,), (Base.OneTo(5),)), [0,0,2,0,0]),
+                       (RectDiagonal(Fill(2,2), (Base.OneTo(2), Base.OneTo(3))), [2 0 0; 0 2 0]))
+            @test hash(a) == hash(b)
+            @test hash(a, UInt(7)) == hash(b, UInt(7))
+        end
+    end
+
+    @testset "infinite arrays" begin
+        @test hash(Ones((r,))) == hash(Ones{Int}((r,))) == hash(Fill(1.0, (r,)))
+        @test hash(Zeros((r,))) == hash(Fill(0.0, (r,)))
+        @test hash(Zeros((r,))) ≠ hash(Ones((r,)))
+        @test hash(Ones((r,)), UInt(7)) == hash(Ones{Int}((r,)), UInt(7))
+        @test hash(Fill(2, (r,r))) isa UInt
+        @test hash(Fill(2, (r, Base.OneTo(3)))) ≠ hash(Fill(2, (Base.OneTo(3), r)))
+        @test hash(OneElement(2, (3,), (r,))) isa UInt
+        @test hash(OneElement(2, (3,), (r,))) ≠ hash(Zeros{Int}((r,)))
+
+        # an empty axis alongside an infinite one: `length` would throw on `0 * ℵ₀`
+        @test hash(Zeros((Base.OneTo(0), r))) isa UInt
+
+        @testset "wrappers" begin
+            @test hash(Diagonal(Ones((r,)))) == hash(Diagonal(Ones{Int}((r,))))
+            @test hash(Ones((r,))') == hash(transpose(Ones((r,))))
+            @test hash(Symmetric(Ones((r,r)))) isa UInt
+            @test hash(UpperTriangular(Ones((r,r)))) isa UInt
+            @test hash(SymTridiagonal(Fill(2.0, (r,)), Fill(1.0, (r,)))) isa UInt
+            @test hash(Tridiagonal(Fill(1.0, (r,)), Fill(2.0, (r,)), Fill(3.0, (r,)))) isa UInt
+            @test hash(view(Ones((r,)), r)) isa UInt
+        end
+    end
+
+    @testset "isequal" begin
+        @test isequal(Ones((r,)), Ones{Int}((r,)))
+        @test isequal(Zeros((r,)), Fill(0.0, (r,)))
+        @test !isequal(Ones((r,)), Zeros((r,)))
+        @test !isequal(Ones((r,)), Ones((Base.OneTo(3),)))
+        @test length(Set([Ones((r,)), Ones{Int}((r,)), Fill(1.0, (r,))])) == 1
+
+        # `isequal` separates `NaN` from `==`, as for any other array
+        @test isequal(Fill(NaN, 3), Fill(NaN, 3))
+        @test Fill(NaN, 3) ≠ Fill(NaN, 3)
+        @test isequal(Fill(NaN, (r,)), Fill(NaN, (r,)))
+    end
+end
+
 @testset "Rank" begin
     @test rank(Zeros(5,4)) == 0
     @test rank(Ones(5,4)) == 1

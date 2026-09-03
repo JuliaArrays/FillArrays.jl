@@ -853,5 +853,6 @@ function repeat(A::AbstractFill; inner=ntuple(x->1, ndims(A)), outer=ntuple(x->1
 end
 
 include("oneelement.jl")
+include("fillhash.jl")
 
 end # module
