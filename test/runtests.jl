@@ -884,7 +884,7 @@ end
 @testset "maximum/minimum/svd/sort" begin
     @test maximum(Fill(1, 1_000_000_000)) == minimum(Fill(1, 1_000_000_000)) == 1
     @test svdvals(fill(2,5,6)) ≈ svdvals(Fill(2,5,6))
-    @test svdvals(Eye(5)) === Fill(1.0,5)
+    @test svdvals(Eye(5)) === Ones(5)
     @test sort(Ones(5)) == sort!(Ones(5))
 
     @test_throws MethodError issorted(Fill(im, 2))
@@ -996,6 +996,76 @@ end
     end
 end
 
+# a style of its own that isn't tied to a dimension, as in the `Broadcast` documentation:
+# an `AbstractArrayStyle{Any}`, which fill styles defer to
+struct CustomStyleArray{T,N} <: AbstractArray{T,N}
+    a::Array{T,N}
+end
+Base.size(A::CustomStyleArray) = size(A.a)
+Base.getindex(A::CustomStyleArray, i::Int...) = A.a[i...]
+Base.setindex!(A::CustomStyleArray, v, i::Int...) = (A.a[i...] = v)
+Base.BroadcastStyle(::Type{<:CustomStyleArray}) = Broadcast.ArrayStyle{CustomStyleArray}()
+Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{CustomStyleArray}}, ::Type{T}) where {T} =
+    CustomStyleArray(similar(Array{T}, axes(bc)))
+
+# a range with a style of its own, which keeps `scalar .* range` lazy the way a lazy-array
+# package's does. The fill-against-a-range rules rewrite the arguments without simplifying any
+# further, so this is the shape where that rewrite has to survive.
+struct LazyRangeStyle <: Broadcast.AbstractArrayStyle{1} end
+LazyRangeStyle(::Val{1}) = LazyRangeStyle()
+struct LazyRange <: AbstractUnitRange{Int} end
+Base.first(::LazyRange) = 1
+Base.last(::LazyRange) = 5
+Base.getindex(::LazyRange, i::Int) = i
+Base.BroadcastStyle(::Type{LazyRange}) = LazyRangeStyle()
+
+# a style that resolves fills to `DefaultArrayStyle` — the natural thing for a package to write
+# now that the fill styles are visible, and a route FillArrays must not send straight back
+struct DeferStyle{N} <: Broadcast.AbstractArrayStyle{N} end
+DeferStyle{M}(::Val{N}) where {M,N} = DeferStyle{N}()
+struct DeferVec <: AbstractVector{Int} end
+Base.size(::DeferVec) = (3,)
+Base.getindex(::DeferVec, i::Int) = i
+Base.BroadcastStyle(::Type{DeferVec}) = DeferStyle{1}()
+Base.BroadcastStyle(::DeferStyle{M}, ::FillArrays.AbstractFillStyle{N}) where {M,N} =
+    Broadcast.DefaultArrayStyle{max(M,N)}()
+
+# a package's own fill types, customizing the results FillArrays produces for them
+struct TaggedZeros{T,N,Ax} <: FillArrays.AbstractZeros{T,N,Ax}
+    axes::Ax
+end
+struct TaggedOnes{T,N,Ax} <: FillArrays.AbstractOnes{T,N,Ax}
+    axes::Ax
+end
+_taggedaxis(n::Integer) = Base.OneTo(n)
+_taggedaxis(r::AbstractUnitRange) = r
+for Typ in (:TaggedZeros, :TaggedOnes)
+    @eval begin
+        function $Typ{T}(ax::Vararg{Any,N}) where {T,N}
+            r = map(_taggedaxis, ax)
+            $Typ{T,N,typeof(r)}(r)
+        end
+        Base.axes(A::$Typ) = A.axes
+        Base.size(A::$Typ) = map(length, A.axes)
+    end
+end
+FillArrays.getindex_value(::TaggedZeros{T}) where {T} = zero(T)
+FillArrays.getindex_value(::TaggedOnes{T}) where {T} = one(T)
+const TaggedFill = Union{TaggedZeros,TaggedOnes}
+# a fill in either of the first two positions, disambiguated for both, over any number of arguments
+for (hook, Typ) in ((:broadcasted_zeros, :TaggedZeros), (:broadcasted_ones, :TaggedOnes))
+    @eval begin
+        FillArrays.$hook(f, elt, ax, a::TaggedFill, rest...) = $Typ{elt}(ax...)
+        FillArrays.$hook(f, elt, ax, a, b::TaggedFill, rest...) = $Typ{elt}(ax...)
+        FillArrays.$hook(f, elt, ax, a::TaggedFill, b::TaggedFill, rest...) = $Typ{elt}(ax...)
+    end
+end
+
+# counts how often a broadcast evaluates the function, at top level so that the name can't collide
+# with the helpers that the testsets below define
+const CALLS = Ref(0)
+counted_identity(x) = (CALLS[] += 1; x)
+
 @testset "Broadcast" begin
     x = Fill(5,5)
     @test (.+)(x) ≡ x
@@ -1017,10 +1087,19 @@ end
     @test y .+ y ≡ Fill(2.0,5,5)
     @test y .* y ≡ y ./ y ≡ y .\ y ≡ y
     @test y .^ 1 ≡ y .^ 0 ≡ Ones(5,5)
+    @test (x -> 0).(y) ≡ Zeros(Int,5,5)
+    @test (x -> 1).(y) ≡ Ones(Int,5,5)
+
+    z = Zeros(5,5)
+    @test exp.(z) ≡ (x -> exp(x)).(z) ≡ Ones(5,5)
+    @test cos.(z) ≡ (x -> cos(x)).(z) ≡ Ones(5,5)
+    @test log.(z) ≡ (x -> log(x)).(z) ≡ Fill(-Inf,5,5)
+    @test (x -> 0).(z) ≡ Zeros(Int,5,5)
+    @test (x -> 1).(z) ≡ Ones(Int,5,5)
 
     rng = MersenneTwister(123456)
     sizes = [(5, 4), (5, 1), (1, 4), (1, 1), (5,)]
-    for sx in sizes, sy in sizes
+    @testset for sx in sizes, sy in sizes
         x, y = Fill(randn(rng), sx), Fill(randn(rng), sy)
         x_one, y_one = Ones(sx), Ones(sy)
         x_zero, y_zero = Zeros(sx), Zeros(sy)
@@ -1070,6 +1149,25 @@ end
     @test imag(Ones{ComplexF64}(10)) isa Zeros{Float64}
     @test imag(Ones{ComplexF64}(10,10)) isa Zeros{Float64}
 
+    # broadcasting these agrees with applying them wherever the generic path can tell from the
+    # value: `real`/`conj` hand back the fill, and a static value tells `Zeros` and `Ones` apart
+    @testset "$f($A)" for f in (real, imag, conj), A in (
+                Fill(4), Fill(4, 3), Fill(4.0, 3), Fill(4 + 5im, 3),
+                Ones{Int}(3), Ones{ComplexF64}(3), Zeros{Int}(3), Zeros{ComplexF64}(3),
+                Ones{Float64}(2,3), Fill(4, 2, 3))
+        if f === imag && A isa Fill{<:Real}
+            # zero by the eltype, which the value that the broadcast goes on cannot report
+            @test f(A) isa Zeros
+            @test f.(A) isa Fill
+            @test f(A) == f.(A)
+        else
+            @test f(A) ≡ f.(A)
+        end
+        # against Base in the same form: broadcasting unwraps a zero-dimensional result there,
+        # while we keep the container
+        @test f(A) == f(collect(A))
+    end
+
     @testset "range broadcast" begin
         rnge = range(-5.0, step=1.0, length=10)
         @test broadcast(*, Fill(5.0, 10), rnge) == broadcast(*, 5.0, rnge)
@@ -1082,6 +1180,27 @@ end
         @test_throws DimensionMismatch broadcast(*, Fill(5.0, 11), rnge)
         @test broadcast(*, rnge, Fill(5.0, 10)) == broadcast(*, rnge, 5.0)
         @test_throws DimensionMismatch broadcast(*, rnge, Fill(5.0, 11))
+
+        # shifting a range by a constant leaves a range, as scaling it does
+        @testset for op in (+, -)
+            @test op.(Fill(5.0, 10), rnge) ≡ op.(5.0, rnge)
+            @test op.(rnge, Fill(5.0, 10)) ≡ op.(rnge, 5.0)
+            @test op.(Ones{Int}(10), rnge) ≡ op.(1, rnge)
+            @test op.(rnge, Ones{Int}(10)) ≡ op.(rnge, 1)
+            @test op.(1:5, Ones{Int}(5)) ≡ op.(1:5, 1)
+            @test op.(Ones{Int}(5), 1:5) ≡ op.(1, 1:5)
+            @test op.(Base.OneTo(5), Fill(2, 5)) ≡ op.(Base.OneTo(5), 2)
+            @test op.(Ones{Int}(1), 1:5) ≡ op.(1, 1:5)
+            @test_throws DimensionMismatch op.(Ones(11), rnge)
+            @test_throws DimensionMismatch op.(rnge, Ones(11))
+            @test_throws ArgumentError op.(Ones(10), 5:5)
+            @test_throws ArgumentError op.(5:5, Ones(10))
+            @test op.(1:5, Zeros{Int}(5)) ≡ op.(1:5, 0) ≡ 1:5
+            @test op.(1:5, Zeros(5)) ≡ op.(1:5, 0.0)
+            @test op.(1:5, Zeros(5)) == op.(1:5, Fill(0.0, 5)) == 1:5
+        end
+        @test Zeros{Int}(5) .+ (1:5) ≡ 1:5
+        @test Zeros(5) .+ (1:5) ≡ 0.0 .+ (1:5)
 
         # following should pass using alternative implementation in code
         deg = 5:5
@@ -1122,7 +1241,9 @@ end
         @test @inferred(broadcast(adjoint,Zeros(5))) ≡ Zeros(5)
         @test adjoint.(Zeros{ComplexF64}(5)) ≡ Zeros{ComplexF64}(5)
         @test transpose.(Zeros(5)) ≡ Zeros(5)
-        @test identity.(Zeros(2)) ≡ ComplexF64.(Zeros(2)) ≡ complex.(Zeros(2)) ≡ Zeros(2)
+        @test identity.(Zeros(2)) ≡ Zeros(2)
+        # the eltype of the result follows from the broadcasted function, as in Base
+        @test ComplexF64.(Zeros(2)) ≡ complex.(Zeros(2)) ≡ Zeros{ComplexF64}(2)
 
         @test_throws DimensionMismatch broadcast(*, Ones(3), 1:6)
         @test_throws DimensionMismatch broadcast(*, 1:6, Ones(3))
@@ -1158,7 +1279,7 @@ end
             @test_throws DimensionMismatch Zeros{Int}(2) .+ (1:5)
             @test_throws DimensionMismatch (1:5) .+ Zeros{Int}(2)
 
-            for v in (rand(Bool, 5), [1:5;], SVector{5}(1:5), SVector{5,ComplexF16}(1:5)), T in (Bool, Int, Float64)
+            @testset "$(typeof(v)) $T" for v in (rand(Bool, 5), [1:5;], SVector{5}(1:5), SVector{5,ComplexF16}(1:5)), T in (Bool, Int, Float64)
                 TT = eltype(v + zeros(T, 5))
                 S = v isa SVector ? SVector{5,TT} : Vector{TT}
 
@@ -1190,6 +1311,19 @@ end
         @test_throws DimensionMismatch Ones{Int}(6) .* (1:5)
         @test_throws DimensionMismatch (1:5) .* Ones{Int}(6)
         @test_throws DimensionMismatch Ones{Int}(5) .* Ones{Int}(6)
+
+        # the range that comes back is the most structured one the element type supports: a
+        # `OneTo` needs an integer to count up to, and the endpoints need an element type that
+        # can be counted from one to the other
+        @test Ones{Int}(3) .* Base.OneTo(3) ≡ Base.OneTo(3) .* Ones{Int}(3) ≡ Base.OneTo(3)
+        @test Ones(3) .* Base.OneTo(3) ≡ Base.OneTo(3) .* Ones(3) ≡ 1.0:1.0:3.0
+        @test Ones{Rational{Int}}(3) .* (1:3) ≡ (1:3) .* Ones{Rational{Int}}(3) ≡ 1//1:3//1
+        # an element type supporting neither still has arithmetic, hence a step
+        @test Ones{ComplexF64}(3) .* (1:3) ≡ (1:3) .* Ones{ComplexF64}(3) ≡
+            StepRangeLen(ComplexF64(1), ComplexF64(1), 3)
+        @test Ones{ComplexF64}(3) .* Base.OneTo(3) ≡ StepRangeLen(ComplexF64(1), ComplexF64(1), 3)
+        @test Ones{ComplexF64}(3) .* range(1.0, 2.0, length=3) ≡
+            StepRangeLen(ComplexF64(1), ComplexF64(0.5), 3)
     end
 
     @testset "Zeros -" begin
@@ -1211,7 +1345,7 @@ end
 
     @testset "issue #208" begin
         TS = (Bool, Int, Float32, Float64)
-        for S in TS, T in TS
+        @testset for S in TS, T in TS
             u = rand(S, 2)
             v = Zeros(T, 2)
             if zero(S) + zero(T) isa S
@@ -1244,6 +1378,318 @@ end
             end
         end
     end
+
+    @testset "Zeros to Fill" begin
+        @test @inferred((f -> ((x -> (1,)).(f)))((Zeros(4)))) == Fill((1,), 4)
+        @test @inferred((f -> ((x -> Val(1)).(f)))((Zeros(4)))) == Fill(Val(1), 4)
+    end
+
+    @testset "multi-element broadcast" begin
+        x = Fill(2, 2)
+        y = @. 2 * x * 2
+        @test y === Fill(8, 2)
+    end
+
+    @testset "nested broadcast" begin
+        bc = Broadcast.broadcasted(*, Zeros(4), Ones(4), Broadcast.broadcasted(*, Zeros(4), Ones(4), Zeros(4)))
+        @test copy(bc) === Zeros(4)
+
+        # the nested broadcast isn't a fill, so the fallback materializes it
+        @test Fill(2,3) .+ ([1,2,3] .* 2) == [4,6,8]
+        @test Ones(3) .* ([1,2,3] .* 2) == [2,4,6]
+
+        # collapsing the fill component of the fallback may expose a rule that returns an array
+        # outright, leaving nothing for the fallback to materialize
+        v, o, r = [1.0,2,3], Ones(3), 1:3
+        @test (@. v * (o - o)) ≡ Zeros(3)
+        @test (@. r * (o - o)) ≡ Zeros(3)
+        @test (@. v * ((o - o) + (o - o))) ≡ Zeros(3)
+        @test (@. v + (o - o)) ≡ v
+        @test (@. (o - o) + v) ≡ v
+        @test (@. v - (o - o)) == v
+        m, om = rand(2,3), Ones(2,3)
+        @test (@. m * (om - om)) ≡ Zeros(2,3)
+    end
+
+    @testset "0d" begin
+        # broadcasting keeps the container in the zero-dimensional case, as it does in every other
+        # size, rather than unwrapping to the element the way Base does
+        F = Fill(2)
+        @test real.(F) ≡ F
+        @test (@. 2 * F * 2) ≡ Fill(8)
+        @test F .+ 1 ≡ Fill(3)
+        @test F .+ Fill(3) ≡ Fill(5)
+        @test Zeros() .+ Zeros() ≡ Zeros()
+        @test Ones() .+ Zeros() ≡ Ones()
+        @test conj.(Fill(2 + 3im)) ≡ Fill(2 - 3im)
+        # the array operators in Base return a container in the 0d case rather than the element,
+        # which their `broadcast_preserving_zero_d` implementation does not manage for our types
+        @testset for (name, op) in (("X * 2", X -> X * 2), ("2 * X", X -> 2 * X),
+                                    ("X / 2", X -> X / 2), ("2 \\ X", X -> 2 \ X),
+                                    ("X + A", X -> X + fill(3)), ("A + X", X -> fill(3) + X),
+                                    ("X - A", X -> X - fill(3)), ("A - X", X -> fill(3) - X))
+            @testset for (F, A) in ((Fill(2), fill(2)), (Zeros(), zeros()), (Ones(), ones()))
+                @test op(F) isa AbstractArray{<:Any,0}
+                @test op(F) == op(A)
+            end
+        end
+        # zero-dimensional fills stay fills, as they do in every other size
+        @test Fill(2) / 2 ≡ 2 \ Fill(2) ≡ Fill(1.0)
+        @test Zeros() / 2 ≡ 2 \ Zeros() ≡ Zeros()
+        @test Zeros{Int}() / 2 ≡ 2 \ Zeros{Int}() ≡ Zeros()
+        @test Ones() / 2 ≡ 2 \ Ones() ≡ Fill(0.5)
+        # no method reaches it this way today, but `broadcast_preserving_zero_d` must not wrap a
+        # result that a broadcast rule has already returned as an array
+        @test FillArrays.broadcast_preserving_zero_d(/, Zeros(), 2) ≡ Zeros()
+        @test FillArrays.broadcast_preserving_zero_d(conj, Fill(2 + 3im)) ≡ Fill(2 - 3im)
+    end
+
+    @testset "preserve 0d" begin
+        @testset for f in (real, imag, conj), (F, A) in (
+                    (Fill(4), fill(4)),
+                    (Fill(4 + 5im), fill(4 + 5im)),
+                    (Fill(SMatrix{2,2,ComplexF64,4}(fill(4 + 5im, 4))), fill(SMatrix{2,2,ComplexF64,4}(fill(4 + 5im, 4)))),
+                    (Zeros{ComplexF64}(), zeros(ComplexF64)),
+                    (Zeros(), zeros()),
+                    (Ones(), ones()),
+                    (Ones{ComplexF64}(), ones(ComplexF64)),
+                    )
+            x = f(F)
+            y = f(A)
+            @test x == y
+            @test eltype(x) == eltype(y)
+            @test x isa FillArrays.AbstractFill
+            if F isa Ones
+                if f === imag
+                    @test x isa Zeros
+                else
+                    @test x isa Ones
+                end
+            end
+            if F[] isa Real
+                if f === imag
+                    @test x isa Zeros
+                end
+            end
+        end
+    end
+
+    @testset "issue #40" begin
+        f(x) = x
+        g(x, y) = x
+        F = Fill(1, 2)
+        @test g.(F, "a") === f.(F)
+    end
+
+    @testset "early binding" begin
+        A = ones(2) .+ (x -> rand()).(Fill(2,2))
+        @test all(==(A[1]), A)
+        A = ones(1,5) .+ (ones(1) .+ (_ -> rand()).(Fill("vec", 2)))
+        @test all(==(A[1]), A)
+    end
+
+    @testset "wrappers" begin
+        f = Fill(3, 4)
+        @test f * f' === Fill(9,4,4)
+        @test f * transpose(f) === Fill(9,4,4)
+        # `adjoint`/`transpose` apply to the elements too, which the fill value must reflect.
+        # Real values cannot tell the two apart, hence the complex and matrix elements here.
+        v = Fill(1 + 2im, 3)
+        @test v' .+ Fill(0, 1, 3) ≡ Fill(1 - 2im, 1, 3)
+        @test v' .+ fill(0, 1, 3) == Fill(1 - 2im, 1, 3)
+        @test transpose(v) .+ Fill(0, 1, 3) ≡ Fill(1 + 2im, 1, 3)
+        @test conj(v') .+ Fill(0, 1, 3) ≡ Fill(1 + 2im, 1, 3)
+        # a wrapper around a wrapper is still a fill, so the fill value must recurse as far as
+        # `isfill` does
+        @test adjoint(transpose(v)) .+ Fill(0, 3, 1) ≡ Fill(1 - 2im, 3, 1)
+        @test transpose(v') .+ Fill(0, 3, 1) ≡ Fill(1 - 2im, 3, 1)
+        m = [1 2; 3 4]
+        @testset for (w, val) in ((transpose(Fill(m, 3)), transpose(m)), (Fill(m, 3)', adjoint(m)))
+            @test (w .+ Fill(zero(m), 1, 3))[1,1] == val
+            @test (w .+ fill(zero(m), 1, 3))[1,1] == val
+        end
+    end
+
+    @testset "customized broadcast results" begin
+        # `real`/`imag` route through the hooks, so a package overloading them keeps its own types
+        @test real(TaggedZeros{ComplexF64}(4)) ≡ imag(TaggedZeros{ComplexF64}(4)) ≡ TaggedZeros{Float64}(4)
+        @test real(TaggedOnes{ComplexF64}(4)) ≡ TaggedOnes{Float64}(4)
+        @test imag(TaggedOnes{ComplexF64}(4)) ≡ TaggedZeros{Float64}(4)
+        @test imag(TaggedOnes{Int}(4)) ≡ TaggedZeros{Int}(4)
+        # `conj` and a real `real` return the argument, which preserves the type by construction
+        @test conj(TaggedZeros{Int}(4)) ≡ real(TaggedZeros{Int}(4)) ≡ TaggedZeros{Int}(4)
+        @test conj(TaggedOnes{Int}(4)) ≡ real(TaggedOnes{Int}(4)) ≡ TaggedOnes{Int}(4)
+        # the hooks apply to broadcasting itself, as ever, in both arities
+        @test TaggedZeros{Int}(4) .^ 2 ≡ TaggedZeros{Int}(4)
+        @test TaggedZeros{Int}(4) .^ 0 ≡ TaggedOnes{Int}(4)
+        @test TaggedOnes{Int}(4) .^ 2 ≡ TaggedOnes{Int}(4)
+        @test TaggedZeros{Int}(4) .* (1:4) ≡ (1:4) .* TaggedZeros{Int}(4) ≡ TaggedZeros{Int}(4)
+        @test TaggedZeros{Int}(4) .* TaggedOnes{Int}(4) ≡ TaggedZeros{Int}(4)
+        @test TaggedOnes{Int}(4) ./ TaggedOnes{Int}(4) ≡ TaggedOnes{Float64}(4)
+
+        # operations with no rule of their own reach the hooks through the generic path
+        @test exp.(TaggedZeros{Int}(4)) ≡ TaggedOnes{Float64}(4)
+        @test cos.(TaggedZeros{Int}(4)) ≡ TaggedOnes{Float64}(4)
+        @test sin.(TaggedZeros{Int}(4)) ≡ TaggedZeros{Float64}(4)
+        @test abs.(TaggedZeros{Int}(4)) ≡ (-).(TaggedZeros{Int}(4)) ≡ TaggedZeros{Int}(4)
+        @test real.(TaggedZeros{ComplexF64}(4)) ≡ TaggedZeros{Float64}(4)
+        @test conj.(TaggedOnes{Int}(4)) ≡ real.(TaggedOnes{Int}(4)) ≡ TaggedOnes{Int}(4)
+        @test max.(TaggedZeros{Int}(4), TaggedZeros{Int}(4)) ≡ TaggedZeros{Int}(4)
+        @test TaggedZeros{Int}(4) .+ TaggedZeros{Int}(4) ≡ TaggedZeros{Int}(4)
+        @test TaggedZeros{Int}(4) .- TaggedZeros{Int}(4) ≡ TaggedZeros{Int}(4)
+        @test TaggedOnes{Int}(4) .- TaggedOnes{Int}(4) ≡ TaggedZeros{Int}(4)
+        # a fused broadcast stays hooked however many arguments it ends up with, the nested ones
+        # reaching the hook as the `Broadcasted` they still are
+        let Z = TaggedZeros{Int}(4), O = TaggedOnes{Int}(4)
+            @test (@. Z + 2Z) ≡ TaggedZeros{Int}(4)
+            @test (@. Z + Z + Z) ≡ TaggedZeros{Int}(4)
+            @test (@. O * O * O) ≡ TaggedOnes{Int}(4)
+            @test (@. O * O * O * O) ≡ TaggedOnes{Int}(4)
+        end
+    end
+
+    @testset "custom styles" begin
+        @testset "a lazy rewrite survives the forward" begin
+            # a fill-specific rule may rewrite the arguments and still return a `Broadcasted`, as
+            # the fill-against-a-range rules do against a range that stays lazy. That result
+            # already carries the caller's style, so it must come back rather than a wrapper
+            # rebuilt around the original arguments.
+            DAS, r = Broadcast.DefaultArrayStyle{1}(), LazyRange()
+            bc = Broadcast.broadcasted(DAS, *, Fill(2,5), r)
+            @test bc isa Broadcast.Broadcasted{LazyRangeStyle}
+            @test bc.args ≡ (2, r)
+            bc = Broadcast.broadcasted(DAS, *, r, Fill(2,5))
+            @test bc isa Broadcast.Broadcasted{LazyRangeStyle}
+            @test bc.args ≡ (r, 2)
+            # a real range simplifies eagerly instead, and so never reaches that branch
+            @test Broadcast.broadcasted(DAS, *, Fill(2,5), 1:5) == 2:2:10
+            @test !(Broadcast.broadcasted(DAS, *, Fill(2,5), 1:5) isa Broadcast.Broadcasted)
+        end
+
+        @testset "a style resolving fills to DefaultArrayStyle" begin
+            # re-entering style-based dispatch would route straight back here and blow the stack
+            @test Fill(2,3) .* DeferVec() == [2,4,6]
+            @test Zeros(3) .* DeferVec() ≡ Zeros(3)
+            @test Fill(2,3) .+ DeferVec() == [3,4,5]
+        end
+
+        @testset "forwarding to DefaultArrayStyle" begin
+            # packages forward fills to `DefaultArrayStyle`, which must keep simplifying them
+            DAS = Broadcast.DefaultArrayStyle{1}()
+            @test broadcast(DAS, *, Zeros(5), 1:5) ≡ broadcast(DAS, *, 1:5, Zeros(5)) ≡ Zeros(5)
+            @test broadcast(DAS, *, Ones{Int}(5), 1:5) ≡ broadcast(DAS, *, 1:5, Ones{Int}(5)) ≡ 1:5
+            @test broadcast(DAS, -, Ones(5)) ≡ Fill(-1.0, 5)
+            @test broadcast(DAS, +, Ones(5), 2) ≡ broadcast(DAS, +, 2, Ones(5)) ≡ Fill(3.0, 5)
+            @test broadcast(DAS, +, Ones(5), Fill(2.0,5)) ≡ Fill(3.0, 5)
+            @test broadcast(DAS, Base.literal_pow, Ref(^), Ones(5), Ref(Val(2))) ≡ Ones(5)
+            @test broadcast(DAS, Base.literal_pow, Ref(^), Fill(2,5), Ref(Val(3))) ≡ Fill(8,5)
+            # a fill in either of the first two positions is simplified whatever the arity
+            @test broadcast(DAS, +, Ones(5), Fill(2.0,5), Fill(3.0,5)) ≡ Fill(6.0, 5)
+            @test broadcast(DAS, +, Zeros(5), Zeros(5), Zeros(5)) ≡ Zeros(5)
+            @test broadcast(DAS, muladd, Fill(2,5), Fill(3,5), Fill(4,5)) ≡ Fill(10, 5)
+            @test broadcast(DAS, ifelse, Ones{Bool}(5), Fill(1,5), Fill(2,5)) ≡ Fill(1, 5)
+            # dispatch can only reach so far, so a fill behind two non-fills is Base's to render
+            @test broadcast(DAS, ifelse, [true,false,true,true,false], 1:5, Fill(9,5)) == [1,9,3,4,9]
+        end
+
+        @testset "infinite arrays" begin
+            # `InfiniteArrays` uses a lazy style, and forwards fills to `DefaultArrayStyle`
+            r = InfiniteArrays.OneToInf()
+            O, Z, F = Ones{Int}((r,)), Zeros{Int}((r,)), Fill(2, (r,))
+            DAS = Broadcast.DefaultArrayStyle{1}()
+
+            @testset "fills are preserved" begin
+                @test broadcast(-, O) ≡ Fill(-1, (r,))
+                @test O .+ 1 ≡ 1 .+ O ≡ F
+                @test 2 .* O ≡ O .* 2 ≡ F
+                @test O .* F ≡ F .* O ≡ F
+                @test O .* O ≡ O
+                @test O ./ O ≡ Ones((r,))
+                @test Z .* O ≡ O .* Z ≡ Z
+                @test Z .* Z ≡ Z
+                @test Z .+ Z ≡ Z .- Z ≡ Z
+                @test exp.(Z) ≡ Ones((r,))
+                @test Fill(2, (r,r)) .+ Fill(3, (r,r)) ≡ Fill(5, (r,r))
+                # forwarded explicitly, as a package would: the two-`Zeros` shapes take a
+                # dedicated rule rather than being evaluated on the fill values
+                @test broadcast(DAS, *, Z, Z) ≡ broadcast(DAS, +, Z, Z) ≡ broadcast(DAS, -, Z, Z) ≡ Z
+                @test broadcast(DAS, /, Z, Z) ≡ broadcast(DAS, \, Z, Z) ≡ Fill(NaN, (r,))
+            end
+
+            @testset "ranges" begin
+                @test Z .* r ≡ r .* Z ≡ Z
+                @test O .* r ≡ r .* O ≡ r
+                @test Z .+ r ≡ r .+ Z ≡ r
+                # `Zeros .- r` isn't a fill, so it stays lazy
+                bc = Z .- r
+                @test bc isa Broadcast.Broadcasted
+                @test bc[3] == -3
+            end
+
+            @testset "literal_pow" begin
+                @test O .^ 2 ≡ O
+                @test F .^ 2 ≡ Fill(4, (r,))
+                @test Z .^ 2 ≡ Z
+                @test Z .^ 0 ≡ O
+                @test Ones{Int}((r,r)) .^ 2 ≡ Ones{Int}((r,r))
+
+                # `.^` is caught by the styleless rule before any style is consulted, so the
+                # forwarded three-argument form needs exercising on its own
+                @test broadcast(DAS, Base.literal_pow, Ref(^), F, Ref(Val(2))) ≡ Fill(4, (r,))
+                @test broadcast(DAS, Base.literal_pow, Ref(^), O, Ref(Val(2))) ≡ O
+                @test broadcast(DAS, Base.literal_pow, Ref(^), Z, Ref(Val(2))) ≡ Z
+            end
+
+            @testset "not forwarded" begin
+                # nothing forwards this, so it is left to the lazy style
+                bc = O .+ r
+                @test bc isa Broadcast.Broadcasted
+                @test bc[3] == 4
+            end
+
+            @testset "zeros absorb non-fills" begin
+                # `Zeros` absorbs an argument that can be neither sized nor materialized
+                lazy = O .+ r
+                @test broadcast(DAS, *, Z, lazy) ≡ broadcast(DAS, *, lazy, Z) ≡ Z
+                @test broadcast(DAS, /, Z, lazy) ≡ broadcast(DAS, \, lazy, Z) ≡ Zeros((r,))
+                # adding `Zeros` leaves it untouched
+                v = InfiniteArrays.InfVector()
+                @test broadcast(DAS, +, Z, v) ≡ broadcast(DAS, +, v, Z) ≡ broadcast(DAS, -, v, Z) ≡ v
+            end
+        end
+
+        @testset "dimension-agnostic style" begin
+            A = CustomStyleArray([1,2,3])
+            @test A .* Ones(3) isa CustomStyleArray
+            @test A .* Ones(3) == A
+            @test Fill(2,3) .* A isa CustomStyleArray
+            @test Fill(2,3) .* A == A .* Fill(2,3) == [2,4,6]
+        end
+
+        @testset "adding Zeros does not pre-empt a winning style" begin
+            # the rules that return the other argument itself must leave a style that builds a
+            # container of its own alone, rather than handing back the argument
+            A = CustomStyleArray([1,2,3])
+            @testset for op in (+, -)
+                @test op.(A, Zeros{Int}(3)) isa CustomStyleArray
+                @test op.(A, Zeros{Int}(3)) !== A
+                @test op.(A, Zeros{Int}(3)) == op.([1,2,3], zeros(Int,3))
+                @test op.(Zeros{Int}(3), A) isa CustomStyleArray
+                @test op.(Zeros{Int}(3), A) == op.(zeros(Int,3), [1,2,3])
+            end
+            # a plain array has no style of its own, so it is still returned untouched
+            v = [1.0,2,3]
+            @test v .+ Zeros(3) ≡ v .- Zeros(3) ≡ v
+        end
+    end
+
+    @testset "the fill value is computed once" begin
+        @testset for A in (Ones(3), Zeros(3), Fill(2,3), Ones{Int}(2,3))
+            CALLS[] = 0
+            counted_identity.(A)
+            @test CALLS[] == 1
+        end
+    end
 end
 
 @testset "map" begin
@@ -1252,7 +1698,7 @@ end
     @test map(isone,x1) === Fill(true,5)
 
     x0 = Zeros(5)
-    @test map(exp,x0) === exp.(x0)
+    @test map(exp,x0) == exp.(x0)
 
     x2 = Fill(2,5,3)
     @test map(exp,x2) === Fill(exp(2),5,3)
@@ -1356,6 +1802,56 @@ end
     A = Zeros{Int,0,Tuple{}}(())
     @test A[] ≡ A[1] ≡ 0
     @test A ≡ Zeros{Int,0}(()) ≡ Zeros{Int}(()) ≡ Zeros{Int}()
+end
+
+# a scalar that is not a `Number`, reaching `broadcast_preserving_zero_d` the way `Dates` does
+# through `Period * AbstractArray`
+struct ScalarNotANumber end
+Base.Broadcast.broadcastable(x::ScalarNotANumber) = Ref(x)
+Base.:*(::ScalarNotANumber, x::Number) = x
+Base.:*(x::Number, ::ScalarNotANumber) = x
+Base.:*(u::ScalarNotANumber, A::AbstractArray) = Base.Broadcast.broadcast_preserving_zero_d(*, u, A)
+Base.:*(A::AbstractArray, u::ScalarNotANumber) = Base.Broadcast.broadcast_preserving_zero_d(*, A, u)
+
+@testset "broadcast_preserving_zero_d" begin
+    u = ScalarNotANumber()
+    @test u * Fill(2) ≡ Fill(2)
+    @test u * Fill(2, 3) ≡ Fill(2, 3)
+    @test u * Zeros{Int}() ≡ Fill(0)
+    @test u * Ones{Int}() ≡ Fill(1)
+    # a plain array is Base's business and must be left alone
+    @test u * fill(2) isa Array{Int,0}
+    @test u * fill(2) == fill(2)
+
+    # no Base entry point passes two fills, as `+`/`-` on a pair of them have methods of their own,
+    # but a downstream caller may, and the tie between the one-fill methods must be broken
+    @test Base.Broadcast.broadcast_preserving_zero_d(+, Fill(2), Fill(3)) ≡ Fill(5)
+    @test Base.Broadcast.broadcast_preserving_zero_d(+, Zeros(2), Zeros(2)) ≡ Zeros(2)
+
+    # every Base entry point routing through it keeps the container rather than nesting it
+    @testset "$desc" for (desc, r, expected) in (
+                ("F * 2", Fill(4) * 2, Fill(8)),
+                ("2 * F", 2 * Fill(4), Fill(8)),
+                ("F / 2", Fill(4) / 2, Fill(2.0)),
+                ("2 \\ F", 2 \ Fill(4), Fill(2.0)),
+                ("Z * 2", Zeros{Int}() * 2, Zeros{Int}()),
+                ("2 * Z", 2 * Zeros{Int}(), Zeros{Int}()),
+                ("Z / 2", Zeros{Int}() / 2, Zeros{Float64}()),
+                ("2 \\ Z", 2 \ Zeros{Int}(), Zeros{Float64}()),
+                ("O * 2", Ones{Int}() * 2, Fill(2)),
+                ("-F", -Fill(4), Fill(-4)),
+                ("-Z", -Zeros{Int}(), Zeros{Int}()),
+                ("F + F", Fill(4) + Fill(4), Fill(8)),
+                ("F - F", Fill(4) - Fill(4), Fill(0)),
+                ("Z + Z", Zeros{Int}() + Zeros{Int}(), Zeros{Int}()),
+                ("O - O", Ones{Int}() - Ones{Int}(), Zeros{Int}()),
+                ("real(F)", real(Fill(4 + 5im)), Fill(4)),
+                ("imag(F)", imag(Fill(4 + 5im)), Fill(5)),
+                ("conj(F)", conj(Fill(4 + 5im)), Fill(4 - 5im)))
+        @test r ≡ expected
+        # the failure this guards against is a container nested inside a container
+        @test !(eltype(r) <: AbstractArray)
+    end
 end
 
 @testset "unique" begin
@@ -2286,14 +2782,43 @@ end
     @test D - Zeros(5,5) isa Diagonal
     @test D .+ Zeros(5,5) isa Diagonal
     @test D .- Zeros(5,5) isa Diagonal
-    @test D .* Zeros(5,5) isa Diagonal
-    @test Zeros(5,5) .* D isa Diagonal
+    @test D .* Zeros(5,5) isa FillArrays.ZerosMatrix
+    @test ((x,y) -> x * y).(D, Zeros(5,5)) isa Diagonal
+    @test Zeros(5,5) .* D isa FillArrays.ZerosMatrix
+    @test ((x,y) -> x * y).(Zeros(5,5), D) isa Diagonal
     @test Zeros(5,5) - D isa Diagonal
     @test Zeros(5,5) + D isa Diagonal
     @test Zeros(5,5) .- D isa Diagonal
     @test Zeros(5,5) .+ D isa Diagonal
     f = (x,y) -> x+1
     @test f.(D, Zeros(5,5)) isa Matrix
+
+    # The `Zeros` absorption rules are attached to the operation rather than to a style, so they
+    # apply whatever the other argument's style is. Structure is deliberately lost under `*`, and
+    # deliberately kept under every operation that has no such rule. `Eye` is a `Diagonal` whose
+    # diagonal is a fill, so it keeps the structure without keeping its own type.
+    @testset for (S, Structured) in (
+                (Bidiagonal(collect(1.0:3), collect(1.0:2), :U), Bidiagonal),
+                (Bidiagonal(collect(1.0:3), collect(1.0:2), :L), Bidiagonal),
+                (Tridiagonal(collect(1.0:2), collect(1.0:3), collect(1.0:2)), Tridiagonal),
+                # `SymTridiagonal` only began preserving its structure under broadcasting in Julia
+                # v1.12. Before that even `S .+ S` materializes, so there is no structure to keep.
+                (SymTridiagonal(collect(1.0:3), collect(1.0:2)),
+                    VERSION >= v"1.12" ? SymTridiagonal : Matrix),
+                (Diagonal(1:3), Diagonal),
+                (Eye(3), Diagonal),
+                (UpperTriangular(ones(3,3)), UpperTriangular))
+        Z = Zeros(3,3)
+        @test S .* Z ≡ Z .* S ≡ Z
+        @test S .+ Z isa Structured
+        @test S .- Z isa Structured
+        @test Z .+ S isa Structured
+        @test Z .- S isa Structured
+        # a function that merely happens to multiply is not the `*` rule, so it keeps the structure
+        @test ((x,y) -> x * y).(S, Z) isa Structured
+        # dividing by zero has no structure to keep
+        @test S ./ Z isa Matrix
+    end
 end
 
 @testset "OneElement" begin
