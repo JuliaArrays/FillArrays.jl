@@ -347,3 +347,71 @@ broadcasted(::DefaultArrayStyle{N}, op::typeof(Base.literal_pow), ::Base.RefValu
 if isdefined(LinearAlgebra, :fzero)
     LinearAlgebra.fzero(x::AbstractZeros) = zero(eltype(x))
 end
+
+# Broadcasting on Diagonal/RectDiagonal with AbstractFill diagonal
+# These ensure that operations like `(.-)(Eye(n))` and `-1 .* Eye(n)` preserve the Fill type.
+# Only intercept when the operation preserves zeros (fzeropreserving), to avoid changing the
+# behavior of non-structure-preserving operations like `exp.(D)`.
+
+# For binary ops with a scalar, LinearAlgebra's runtime fzeropreserving check uses the actual
+# scalar value, causing a union return type. Instead, use @generated with a representative value
+# (one(Tx)) to perform the check at compile time. This is conservative: it returns true only when
+# zero-preservation holds for any nonzero scalar (e.g. *, /), and false for value-dependent ops
+# (e.g. +, where 1+0≠0). The unary case is type-stable without @generated since fzeropreserving
+# only depends on the operation type and element type there.
+@generated function _static_fzeropreserving_left(::Type{F}, ::Type{Tx}, ::Type{T}) where {F, Tx<:Number, T}
+    val = try
+        iszero(F.instance(one(Tx), zero(T)))
+    catch
+        false
+    end
+    return :($(Val(val)))
+end
+@generated function _static_fzeropreserving_right(::Type{F}, ::Type{T}, ::Type{Tx}) where {F, T, Tx<:Number}
+    val = try
+        iszero(F.instance(zero(T), one(Tx)))
+    catch
+        false
+    end
+    return :($(Val(val)))
+end
+
+function broadcasted(sty::LinearAlgebra.StructuredMatrixStyle{<:Diagonal}, op, D::Diagonal{<:Any, <:AbstractFill})
+    bc = Base.Broadcast.Broadcasted(op, (D,))
+    LinearAlgebra.fzeropreserving(bc) && return Diagonal(broadcasted(op, D.diag))
+    return Base.Broadcast.Broadcasted{typeof(sty)}(op, (D,))
+end
+function broadcasted(sty::LinearAlgebra.StructuredMatrixStyle{<:Diagonal}, op, x::Number, D::Diagonal{<:Any, <:AbstractFill})
+    return _broadcasted_diag_left(sty, op, x, D, _static_fzeropreserving_left(typeof(op), typeof(x), eltype(D)))
+end
+_broadcasted_diag_left(sty, op, x, D::Diagonal{<:Any, <:AbstractFill}, ::Val{true}) =
+    Diagonal(broadcasted(op, x, D.diag))
+_broadcasted_diag_left(sty, op, x, D::Diagonal{<:Any, <:AbstractFill}, ::Val{false}) =
+    Base.Broadcast.Broadcasted{typeof(sty)}(op, (x, D))
+function broadcasted(sty::LinearAlgebra.StructuredMatrixStyle{<:Diagonal}, op, D::Diagonal{<:Any, <:AbstractFill}, x::Number)
+    return _broadcasted_diag_right(sty, op, D, x, _static_fzeropreserving_right(typeof(op), eltype(D), typeof(x)))
+end
+_broadcasted_diag_right(sty, op, D::Diagonal{<:Any, <:AbstractFill}, x, ::Val{true}) =
+    Diagonal(broadcasted(op, D.diag, x))
+_broadcasted_diag_right(sty, op, D::Diagonal{<:Any, <:AbstractFill}, x, ::Val{false}) =
+    Base.Broadcast.Broadcasted{typeof(sty)}(op, (D, x))
+
+function broadcasted(sty::LinearAlgebra.StructuredMatrixStyle{<:RectDiagonal}, op, D::RectDiagonal{<:Any, <:AbstractFill})
+    bc = Base.Broadcast.Broadcasted(op, (D,))
+    LinearAlgebra.fzeropreserving(bc) && return RectDiagonal(broadcasted(op, D.diag), axes(D))
+    return Base.Broadcast.Broadcasted{typeof(sty)}(op, (D,))
+end
+function broadcasted(sty::LinearAlgebra.StructuredMatrixStyle{<:RectDiagonal}, op, x::Number, D::RectDiagonal{<:Any, <:AbstractFill})
+    return _broadcasted_rectdiag_left(sty, op, x, D, _static_fzeropreserving_left(typeof(op), typeof(x), eltype(D)))
+end
+_broadcasted_rectdiag_left(sty, op, x, D::RectDiagonal{<:Any, <:AbstractFill}, ::Val{true}) =
+    RectDiagonal(broadcasted(op, x, D.diag), axes(D))
+_broadcasted_rectdiag_left(sty, op, x, D::RectDiagonal{<:Any, <:AbstractFill}, ::Val{false}) =
+    Base.Broadcast.Broadcasted{typeof(sty)}(op, (x, D))
+function broadcasted(sty::LinearAlgebra.StructuredMatrixStyle{<:RectDiagonal}, op, D::RectDiagonal{<:Any, <:AbstractFill}, x::Number)
+    return _broadcasted_rectdiag_right(sty, op, D, x, _static_fzeropreserving_right(typeof(op), eltype(D), typeof(x)))
+end
+_broadcasted_rectdiag_right(sty, op, D::RectDiagonal{<:Any, <:AbstractFill}, x, ::Val{true}) =
+    RectDiagonal(broadcasted(op, D.diag, x), axes(D))
+_broadcasted_rectdiag_right(sty, op, D::RectDiagonal{<:Any, <:AbstractFill}, x, ::Val{false}) =
+    Base.Broadcast.Broadcasted{typeof(sty)}(op, (D, x))
