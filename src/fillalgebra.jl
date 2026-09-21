@@ -469,7 +469,7 @@ end
 -(a::UniformScaling, b::AbstractFill) = -b + a # @test I-Zeros(3,3) === Diagonal(Ones(3))
 
 # TODO: How to do this conversion generically?
--(a::AbstractOnes, b::AbstractOnes) = broadcasted_zeros(+, a, eltype(a), axes(a)) + broadcasted_zeros(-, b, eltype(a), axes(a))
+-(a::AbstractOnes, b::AbstractOnes) = broadcasted_zeros(+, eltype(a), axes(a), a) + broadcasted_zeros(-, eltype(a), axes(a), b)
 
 # no AbstractArray. Otherwise incompatible with StaticArrays.jl
 for TYPE in (:Array, :AbstractRange)
@@ -483,13 +483,15 @@ end
 +(a::AbstractFill, b::AbstractFill) = Fill(getindex_value(a) + getindex_value(b), promote_shape(a,b))
 -(a::AbstractFill, b::AbstractFill) = a + (-b)
 
+# `broadcast_preserving_zero_d`, not `.+`, as `+(::AbstractArray, ::AbstractArray)` in Base returns a
+# container in the zero-dimensional case rather than unwrapping to the element
 @inline function fill_add(a::AbstractArray, b::AbstractFill)
     promote_shape(a, b)
-    a .+ (getindex_value(b),)
+    Base.broadcast_preserving_zero_d(+, a, (getindex_value(b),))
 end
 @inline function fill_add(a::AbstractArray{<:Number}, b::AbstractFill)
     promote_shape(a, b)
-    a .+ getindex_value(b)
+    Base.broadcast_preserving_zero_d(+, a, getindex_value(b))
 end
 
 # following needed since as of Julia v1.8 convert(AbstractArray{T}, ::AbstractRange) might return a Vector
