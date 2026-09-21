@@ -1074,6 +1074,29 @@ counted_identity(x) = (CALLS[] += 1; x)
     @test Zeros{Int}(5) .^ 1 ≡ Zeros{Int}(5)
     @test Zeros{Int}(5) .+ Zeros(5) isa Zeros{Float64}
 
+    @testset "negative literal powers" begin
+        # a negative exponent puts the base in the denominator, where a zero no more absorbs than
+        # it does in `x ./ Zeros`, and the result agrees with the dense array either way
+        @test Zeros{Float64}(5) .^ -1 ≡ Zeros{Int}(5) .^ -1 ≡ Fill(Inf, 5)
+        @test Zeros{Float64}(5) .^ -2 ≡ Fill(Inf, 5)
+        @test Zeros{Float64}(5) .^ -1 ≡ inv.(Zeros{Float64}(5)) ≡ Fill(0.0, 5) .^ -1
+        # `isequal`, as the complex case is NaN, which compares unequal to itself
+        @test isequal(Zeros{ComplexF64}(5) .^ -1, Array(Zeros{ComplexF64}(5)) .^ -1)
+        # `literal_pow` is defined where `^` is not, so an integer fill no longer throws
+        @test Fill(2,5) .^ -1 ≡ Fill(0.5, 5)
+        @test Fill(2,5) .^ -2 ≡ Fill(0.25, 5)
+        # `inv` of an integer promotes, so the element type comes from the result, not the input
+        @test Ones{Int}(5) .^ -1 ≡ Ones{Float64}(5)
+        @test Ones{Bool}(5) .^ -1 ≡ Ones{Float64}(5)
+        @testset for k in (-2, -1, 0, 1, 2)
+            for A in (Zeros{Float64}(5), Zeros{Int}(5), Ones{Int}(5), Fill(2,5), Fill(2.0,5))
+                B = Base.broadcasted(Base.literal_pow, ^, A, Val(k))
+                @test isequal(Broadcast.materialize(B),
+                    Broadcast.materialize(Base.broadcasted(Base.literal_pow, ^, Array(A), Val(k))))
+            end
+        end
+    end
+
     # Test for conj, real and imag with complex element types
     @test conj(Zeros{ComplexF64}(10)) isa Zeros{ComplexF64}
     @test conj(Zeros{ComplexF64}(10,10)) isa Zeros{ComplexF64}
@@ -1470,6 +1493,10 @@ counted_identity(x) = (CALLS[] += 1; x)
         @test TaggedZeros{Int}(4) .^ 2 ≡ TaggedZeros{Int}(4)
         @test TaggedZeros{Int}(4) .^ 0 ≡ TaggedOnes{Int}(4)
         @test TaggedOnes{Int}(4) .^ 2 ≡ TaggedOnes{Int}(4)
+        # a negative power of a zero is neither zero nor one, so only `broadcasted_fill` is left to
+        # reach, and these types overload the other two hooks alone
+        @test TaggedZeros{Int}(4) .^ -1 ≡ Fill(Inf, 4)
+        @test TaggedOnes{Int}(4) .^ -1 ≡ TaggedOnes{Float64}(4)
         @test TaggedZeros{Int}(4) .* (1:4) ≡ (1:4) .* TaggedZeros{Int}(4) ≡ TaggedZeros{Int}(4)
         @test TaggedZeros{Int}(4) .* TaggedOnes{Int}(4) ≡ TaggedZeros{Int}(4)
         @test TaggedOnes{Int}(4) ./ TaggedOnes{Int}(4) ≡ TaggedOnes{Float64}(4)
