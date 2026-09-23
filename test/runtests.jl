@@ -1122,12 +1122,15 @@ end
         @test @inferred(broadcast(adjoint,Zeros(5))) ≡ Zeros(5)
         @test adjoint.(Zeros{ComplexF64}(5)) ≡ Zeros{ComplexF64}(5)
         @test transpose.(Zeros(5)) ≡ Zeros(5)
-        @test identity.(Zeros(2)) ≡ Zeros(2)
-        @test ComplexF64.(Zeros(2)) ≡ complex.(Zeros(2)) ≡ Zeros{ComplexF64}(2)
-        @test sin.(Zeros{Int}(2)) ≡ Zeros{Float64}(2)
-        @test (x -> [x]).(Zeros(2)) == Fill([0.0], 2)
-        @test (x -> [x]).(Zeros(2)) isa Fill{Vector{Float64}}
-        @test (x -> (x,x)).(Zeros(2)) ≡ Fill((0.0,0.0), 2)
+        @test @inferred(broadcast(identity, Zeros(2))) ≡ Zeros(2)
+        @test @inferred(broadcast(ComplexF64, Zeros(2))) ≡ @inferred(broadcast(complex, Zeros(2))) ≡ Zeros{ComplexF64}(2)
+        # eltype is that of the result
+        @test @inferred(broadcast(sin, Zeros{Int}(2))) ≡ Zeros{Float64}(2)
+        @test @inferred(broadcast(cos, Zeros{Int}(2))) ≡ Fill(1.0, 2)
+        # non-numbers don't support zero(T) so return a Fill
+        @test @inferred(broadcast(x -> [x], Zeros(2))) == Fill([0.0], 2)
+        @test broadcast(x -> [x], Zeros(2)) isa Fill{Vector{Float64}}
+        @test @inferred(broadcast(x -> (x,x), Zeros(2))) ≡ Fill((0.0,0.0), 2)
 
         @test_throws DimensionMismatch broadcast(*, Ones(3), 1:6)
         @test_throws DimensionMismatch broadcast(*, 1:6, Ones(3))
