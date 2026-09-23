@@ -150,10 +150,12 @@ function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,
 end
 
 function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractZeros{T,N}) where {T,N}
-    if LinearAlgebra.fzeropreserving(Base.Broadcast.Broadcasted(op, (r,)))
-        Zeros{typeof(zero(getindex_value(r)))}(axes(r))
+    z = op(getindex_value(r))
+    # only numbers are guaranteed to support zero(typeof(z)), eg, not Vector
+    if z isa Number && LinearAlgebra.fzeropreserving(Base.Broadcast.Broadcasted(op, (r,)))
+        Zeros{typeof(z)}(axes(r))
     else
-        Fill(op(getindex_value(r)), axes(r))
+        Fill(z, axes(r))
     end
 end
 
