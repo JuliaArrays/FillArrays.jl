@@ -149,10 +149,13 @@ function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,
     return Fill(op(getindex_value(r)), axes(r))
 end
 
+# Zeros{T} requires zero(T), which is defined for e.g. Number and SVector but not Vector.
+# hasmethod is constant-folded so this is type-stable
+_zerodefined(::Type{T}) where T = hasmethod(zero, Tuple{Type{T}})
+
 function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractZeros{T,N}) where {T,N}
     z = op(getindex_value(r))
-    # only numbers are guaranteed to support zero(typeof(z)), eg, not Vector
-    if z isa Number && LinearAlgebra.fzeropreserving(Base.Broadcast.Broadcasted(op, (r,)))
+    if _zerodefined(typeof(z)) && LinearAlgebra.fzeropreserving(Base.Broadcast.Broadcasted(op, (r,)))
         Zeros{typeof(z)}(axes(r))
     else
         Fill(z, axes(r))
