@@ -1122,7 +1122,24 @@ end
         @test @inferred(broadcast(adjoint,Zeros(5))) ≡ Zeros(5)
         @test adjoint.(Zeros{ComplexF64}(5)) ≡ Zeros{ComplexF64}(5)
         @test transpose.(Zeros(5)) ≡ Zeros(5)
-        @test identity.(Zeros(2)) ≡ ComplexF64.(Zeros(2)) ≡ complex.(Zeros(2)) ≡ Zeros(2)
+        @test @inferred(broadcast(identity, Zeros(2))) ≡ Zeros(2)
+        @test @inferred(broadcast(ComplexF64, Zeros(2))) ≡ @inferred(broadcast(complex, Zeros(2))) ≡ Zeros{ComplexF64}(2)
+        # eltype is that of the result
+        @test @inferred(broadcast(sin, Zeros{Int}(2))) ≡ Zeros{Float64}(2)
+        @test @inferred(broadcast(cos, Zeros{Int}(2))) ≡ Fill(1.0, 2)
+        # types with zero(T) defined return a Zeros
+        @test @inferred(broadcast(x -> SVector(x,x), Zeros(2))) ≡ Zeros{SVector{2,Float64}}(2)
+        @test @inferred(broadcast(x -> SMatrix{2,2}(x,x,x,x), Zeros(2))) ≡ Zeros{SMatrix{2,2,Float64,4}}(2)
+        # not inferred as iszero of a mutable array isn't constant-folded
+        @test broadcast(x -> MVector(x,x), Zeros(2)) ≡ Zeros{MVector{2,Float64}}(2)
+        @test @inferred(broadcast(x -> Quaternion(x,x,x,x), Zeros(2))) ≡ Zeros{QuaternionF64}(2)
+        @test broadcast(x -> SVector(x,x), Zeros(2))[1] ≡ SVector(0.0,0.0)
+        # types without zero(T) defined return a Fill
+        @test @inferred(broadcast(x -> [x], Zeros(2))) == Fill([0.0], 2)
+        @test broadcast(x -> [x], Zeros(2)) isa Fill{Vector{Float64}}
+        @test @inferred(broadcast(x -> (x,x), Zeros(2))) ≡ Fill((0.0,0.0), 2)
+        # not zero-preserving
+        @test @inferred(broadcast(x -> SVector(x,1), Zeros(2))) ≡ Fill(SVector(0.0,1.0), 2)
 
         @test_throws DimensionMismatch broadcast(*, Ones(3), 1:6)
         @test_throws DimensionMismatch broadcast(*, 1:6, Ones(3))
