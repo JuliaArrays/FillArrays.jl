@@ -725,23 +725,6 @@ include("trues.jl")
 Base.replace_in_print_matrix(::AbstractZeros, ::Integer, ::Integer, s::AbstractString) =
     Base.replace_with_centered_mark(s)
 
-# following support blocked fill array printing via
-# BlockArrays.jl
-axes_print_matrix_row(lay, io, X, A, i, cols, sep, idxlast::Integer=last(axes(X, 2))) =
-    Base.invoke(Base.print_matrix_row, Tuple{IO,AbstractVecOrMat,Vector,Integer,AbstractVector,AbstractString,Integer},
-                    io, X, A, i, cols, sep, idxlast)
-
-Base.print_matrix_row(io::IO,
-        X::Union{AbstractFillVector,
-                 AbstractFillMatrix,
-                 Diagonal{<:Any,<:AbstractFillVector},
-                 RectDiagonal,
-                 UpperOrLowerTriangular{<:Any,<:AbstractFillMatrix}
-                 }, A::Vector,
-        i::Integer, cols::AbstractVector, sep::AbstractString, idxlast::Integer=last(axes(X, 2))) =
-        axes_print_matrix_row(axes(X), io, X, A, i, cols, sep)
-
-
 # Display concise description of a Fill.
 
 function Base.show(io::IO, ::MIME"text/plain", x::Union{Eye, AbstractFill})
