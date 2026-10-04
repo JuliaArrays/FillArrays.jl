@@ -459,6 +459,13 @@ end
         # Diagonals not backed by a fill are unaffected
         @test Diagonal([1, 2, 3])[1:2, 1:2] isa Matrix{Int}
 
+        # indices whose axes are not Base.OneTo use the generic getindex
+        for M in (Eye(5), Eye(4, 6), OffDiagonal([1, 2, 3], 1))
+            S = M[SOneTo(3), SOneTo(2)]
+            @test S isa MMatrix{3, 2, eltype(M)}
+            @test S == Matrix(M)[1:3, 1:2]
+        end
+
         @test @inferred(Eye(5)[2:4, :]) isa OffDiagonal
         @test @inferred(OffDiagonal(1:4, 1)[:, 2:3]) isa OffDiagonal
     end
