@@ -18,14 +18,19 @@ for OP in (:transpose, :adjoint)
     end
 end
 
-permutedims(a::AbstractFillVector) = fillsimilar(a, (1, length(a)))
 permutedims(a::AbstractFillMatrix) = fillsimilar(a, reverse(axes(a)))
 
-function permutedims(B::AbstractFill, perm)
-    dimsB = size(B)
-    ndimsB = length(dimsB)
+@static if VERSION >= v"1.9"
+    Base.@constprop :aggressive permutedims(B::AbstractFill, perm) = _permutedims(B, perm)
+else
+    permutedims(B::AbstractFill, perm) = _permutedims(B, perm)
+end
+
+@inline function _permutedims(B::AbstractFill, perm)
+    dimsB = axes(B)
+    ndimsB = ndims(B)
     (ndimsB == length(perm) && isperm(perm)) || throw(ArgumentError("no valid permutation of dimensions"))
-    dimsP = ntuple(i->dimsB[perm[i]], ndimsB)::typeof(dimsB)
+    dimsP = ntuple(i->dimsB[perm[i]], ndimsB)
     fillsimilar(B, dimsP)
 end
 
