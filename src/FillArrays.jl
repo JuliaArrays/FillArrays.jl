@@ -715,6 +715,7 @@ end
 # include
 #########
 
+include("offdiagonal.jl")
 include("fillalgebra.jl")
 include("fillbroadcast.jl")
 include("trues.jl")
@@ -736,6 +737,7 @@ Base.print_matrix_row(io::IO,
                  AbstractFillMatrix,
                  Diagonal{<:Any,<:AbstractFillVector},
                  RectDiagonal,
+                 OffDiagonal,
                  UpperOrLowerTriangular{<:Any,<:AbstractFillMatrix}
                  }, A::Vector,
         i::Integer, cols::AbstractVector, sep::AbstractString, idxlast::Integer=last(axes(X, 2))) =

@@ -60,6 +60,7 @@ _hasinfaxes(A::AbstractArray) = any(ax -> isinf(length(ax)), axes(A))
 
 const HashableFill = Union{AbstractFill,
                            RectDiagonal,
+                           OffDiagonal,
                            OneElement,
                            Diagonal{<:Any,<:AbstractFillVector},
                            Bidiagonal{<:Any,<:AbstractFillVector},

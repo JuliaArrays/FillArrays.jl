@@ -1,6 +1,6 @@
 using FillArrays, LinearAlgebra, PDMats, SparseArrays, StaticArrays, ReverseDiff, Random, Test, Statistics, Quaternions
 
-import FillArrays: AbstractFill, RectDiagonal, SquareEye
+import FillArrays: AbstractFill, RectDiagonal, OffDiagonal, SquareEye
 
 using Documenter
 DocMeta.setdocmeta!(FillArrays, :DocTestSetup, :(using FillArrays))
@@ -384,6 +384,91 @@ end
 
     D = RectDiagonal([1.,2.], (Base.OneTo(3),Base.OneTo(2)))
     @test stringmime("text/plain", D) == "3×2 RectDiagonal{Float64, Vector{Float64}, Tuple{Base.OneTo{$Int}, Base.OneTo{$Int}}}:\n 1.0   ⋅ \n  ⋅   2.0\n  ⋅    ⋅ "
+end
+
+@testset "OffDiagonal" begin
+    @testset "constructors" begin
+        A = OffDiagonal([1, 2, 3], 1)
+        @test A isa OffDiagonal{Int, Vector{Int}}
+        @test size(A) == (4, 4)
+        @test axes(A) == (Base.OneTo(4), Base.OneTo(4))
+        @test A == diagm(1 => [1, 2, 3])
+        @test OffDiagonal([1, 2, 3], -1) == diagm(-1 => [1, 2, 3])
+        @test OffDiagonal(1:3, 2, 3, 5) == OffDiagonal(1:3, 2, (3, 5)) ==
+            OffDiagonal(1:3, 2, (Base.OneTo(3), Base.OneTo(5))) == [0 0 1 0 0; 0 0 0 2 0; 0 0 0 0 3]
+        @test OffDiagonal(1:2, -1, 3, 2) == [0 0; 1 0; 0 2]
+        @test OffDiagonal{Float64}(1:3, 1) isa OffDiagonal{Float64}
+        @test OffDiagonal{Float64}(1:3, 1) == A
+        # the band lies outside the matrix
+        @test OffDiagonal(Int[], 4, 2, 3) == zeros(Int, 2, 3)
+        @test OffDiagonal(Int[], -3, 2, 3) == zeros(Int, 2, 3)
+        @test_throws DimensionMismatch OffDiagonal([1, 2], 1, 4, 4)
+        @test_throws DimensionMismatch OffDiagonal([1], 4, 2, 3)
+    end
+
+    @testset "indexing" begin
+        A = OffDiagonal([1, 2, 3], -2, 5, 4)
+        @test A == [0 0 0 0; 0 0 0 0; 1 0 0 0; 0 2 0 0; 0 0 3 0]
+        @test A[4, 2] == 2
+        @test A[2, 4] == 0
+        @test_throws BoundsError A[6, 1]
+        @test diag(A, -2) == [1, 2, 3]
+        @test diag(A, -2) !== A.band
+        @test diag(A) == zeros(Int, 4)
+        @test diag(A, 3) == [0]
+        @test diag(Eye(5)[2:5, 1:4], 1) ≡ Ones(3)
+
+        A[4, 2] = 5
+        @test A.band == [1, 5, 3]
+        A[1, 1] = 0
+        @test_throws ArgumentError A[1, 1] = 1
+        @test_throws BoundsError A[6, 1] = 0
+
+        @test stringmime("text/plain", OffDiagonal([1, 2], 1)) ==
+            "3×3 $OffDiagonal{$Int, Vector{$Int}, Tuple{Base.OneTo{$Int}, Base.OneTo{$Int}}}:\n ⋅  1  ⋅\n ⋅  ⋅  2\n ⋅  ⋅  ⋅"
+        @test hash(OffDiagonal([1, 2], 1)) == hash([0 1 0; 0 0 2; 0 0 0])
+    end
+
+    @testset "slicing returns OffDiagonal" begin
+        for M in (Eye(5), Eye{Int}(4), Diagonal(Fill(2, 6)), Diagonal(Zeros(3)), Eye(4, 6), Eye(6, 4),
+                  RectDiagonal([1, 2, 3]), RectDiagonal([1, 2, 3], (1:3, 1:5)), RectDiagonal([1, 2, 3], (1:5, 1:3)),
+                  RectDiagonal(Fill(2, 3), 3, 4), OffDiagonal([1, 2, 3], 1), OffDiagonal([1, 2, 3], -2),
+                  OffDiagonal(Fill(2, 3), 2, 3, 5), OffDiagonal(Int[], 4, 3, 4))
+            Md = Matrix(M)
+            for a in axes(M, 1), b in a-1:size(M, 1), c in axes(M, 2), d in c-1:size(M, 2)
+                S = M[a:b, c:d]
+                @test S isa OffDiagonal{eltype(M)}
+                @test S == Md[a:b, c:d]
+            end
+            @test M[:, :] isa OffDiagonal
+            @test M[:, :] == Md
+            @test M[Base.OneTo(2), :] == Md[1:2, :]
+            @test M[:, 2:3] == Md[:, 2:3]
+            @test_throws BoundsError M[0:1, 1:1]
+            @test_throws BoundsError M[1:1, 1:size(M, 2)+1]
+        end
+
+        # lazy bands stay lazy
+        @test Eye(5)[2:4, 1:3] ≡ OffDiagonal(Ones(2), 1, 3, 3)
+        @test Diagonal(Fill(2, 6))[2:4, 3:6] ≡ OffDiagonal(Fill(2, 2), -1, 3, 4)
+        @test Eye(4, 6)[:, 3:6] ≡ OffDiagonal(Ones(2), -2, 4, 4)
+        @test Eye(5)[1:2, 4:5] ≡ OffDiagonal(Ones(0), -3, 2, 2)
+        @test OffDiagonal(Fill(2, 4), 1)[2:4, 3:5] ≡ OffDiagonal(Fill(2, 3), 0, 3, 3)
+        @test OffDiagonal(1:4, -1)[2:5, 1:3] == OffDiagonal(1:3, 0, 4, 3)
+
+        # Diagonals not backed by a fill are unaffected
+        @test Diagonal([1, 2, 3])[1:2, 1:2] isa Matrix{Int}
+
+        # indices whose axes are not Base.OneTo use the generic getindex
+        for M in (Eye(5), Eye(4, 6), OffDiagonal([1, 2, 3], 1))
+            S = M[SOneTo(3), SOneTo(2)]
+            @test S isa MMatrix{3, 2, eltype(M)}
+            @test S == Matrix(M)[1:3, 1:2]
+        end
+
+        @test @inferred(Eye(5)[2:4, :]) isa OffDiagonal
+        @test @inferred(OffDiagonal(1:4, 1)[:, 2:3]) isa OffDiagonal
+    end
 end
 
 # Check that all pair-wise combinations of + / - elements of As and Bs yield the correct
