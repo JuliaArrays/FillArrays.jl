@@ -89,6 +89,13 @@ function diag(A::OffDiagonal{T}, k::Integer=0) where T
     fill!(similar(A.band, length(diagind(A, k))), zero(T))
 end
 
+# rot180 maps entry (i, j) of an m × n matrix to (m+1-i, n+1-j), so the k-th diagonal
+# becomes the (n-m-k)-th diagonal with its entries reversed
+function Base.rot180(A::OffDiagonal)
+    m, n = size(A)
+    OffDiagonal(reverse(A.band), n - m - A.k, A.axes)
+end
+
 Base.replace_in_print_matrix(A::OffDiagonal, i::Integer, j::Integer, s::AbstractString) =
     j - i == A.k ? s : Base.replace_with_centered_mark(s)
 
