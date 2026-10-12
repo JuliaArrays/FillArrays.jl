@@ -464,6 +464,11 @@ end
             S = M[SOneTo(3), SOneTo(2)]
             @test S isa MMatrix{3, 2, eltype(M)}
             @test S == Matrix(M)[1:3, 1:2]
+            for (kr, jr) in ((SOneTo(3), 1:2), (1:3, SOneTo(2)), (SOneTo(3), :), (:, SOneTo(2)))
+                S = M[kr, jr]
+                @test !(S isa OffDiagonal)
+                @test S == Matrix(M)[kr, jr]
+            end
         end
 
         @test @inferred(Eye(5)[2:4, :]) isa OffDiagonal

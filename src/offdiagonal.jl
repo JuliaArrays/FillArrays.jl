@@ -112,10 +112,8 @@ end
 _onebased_index(A, d, ::Colon) = oneto(size(A, d))
 _onebased_index(_, _, r) = r
 
-# indices with offset or infinite axes use the generic fallback
-Base.@propagate_inbounds _singleband_getindex(_, A, kr, jr) = invoke(getindex, Tuple{AbstractArray, Vararg{Any}}, A, kr, jr)
 
-@inline function _singleband_getindex(shape::Tuple{Base.OneTo,Base.OneTo}, A, kr, jr)
+@inline function _singleband_getindex(shape, A, kr, jr)
     @boundscheck checkbounds(A, kr, jr)
     # entry (i, j) of the result is A[kr[i], jr[j]], which lies on the band when jr[j] - kr[i] == _bandindex(A)
     k = _bandindex(A) + first(kr) - first(jr)
