@@ -4,7 +4,8 @@ using SparseArrays
 using SparseArrays: SparseVectorUnion
 import Base: convert, kron
 using FillArrays
-using FillArrays: RectDiagonalFill, RectOrDiagonalFill, ZerosVector, ZerosMatrix, getindex_value, AbstractFillVector, _fill_dot
+using FillArrays: RectDiagonal, RectDiagonalFill, OffDiagonal, ZerosVector, ZerosMatrix, AbstractFillVector, _fill_dot,
+                  _band, _bandindex, _bandlength
 # Specifying the full namespace is necessary because of https://github.com/JuliaLang/julia/issues/48533
 # See https://github.com/JuliaStats/LogExpFunctions.jl/pull/63
 using FillArrays.LinearAlgebra
@@ -47,14 +48,36 @@ convert(::Type{AbstractSparseArray{Tv,Ti}}, Z::Eye{T}) where {T,Tv,Ti} =
 convert(::Type{AbstractSparseArray{Tv,Ti,2}}, Z::Eye{T}) where {T,Tv,Ti} =
     convert(SparseMatrixCSC{Tv,Ti}, Z)
 
-function SparseMatrixCSC{Tv}(R::RectOrDiagonalFill) where {Tv}
-    SparseMatrixCSC{Tv,eltype(axes(R,1))}(R)
+const SparseSingleBandMatrix = Union{Diagonal{<:Any,<:AbstractFillVector}, RectDiagonal, OffDiagonal}
+
+function SparseMatrixCSC{Tv}(A::SparseSingleBandMatrix) where {Tv}
+    SparseMatrixCSC{Tv,eltype(axes(A,1))}(A)
 end
-function SparseMatrixCSC{Tv,Ti}(R::RectOrDiagonalFill) where {Tv,Ti}
-    Base.require_one_based_indexing(R)
-    v = parent(R)
-    J = getindex_value(v)*I
-    SparseMatrixCSC{Tv,Ti}(J, size(R))
+# only the band is traversed, and zeros in the band are not stored, as for Diagonal
+function SparseMatrixCSC{Tv,Ti}(A::SparseSingleBandMatrix) where {Tv,Ti}
+    Base.require_one_based_indexing(A)
+    m, n = size(A)
+    k = _bandindex(A)
+    band = _band(A)
+    len = _bandlength(m, n, k)
+    # entry t of the band lies in row r₀ + t and column c₀ + t
+    r₀, c₀ = max(0, -k), max(0, k)
+    colptr = Vector{Ti}(undef, n + 1)
+    rowval = sizehint!(Ti[], len)
+    nzval = sizehint!(Tv[], len)
+    colptr[1] = 1
+    for j in 1:n
+        t = j - c₀
+        if 1 ≤ t ≤ len
+            v = band[t]
+            if SparseArrays._isnotzero(v)
+                push!(rowval, r₀ + t)
+                push!(nzval, v)
+            end
+        end
+        colptr[j+1] = length(nzval) + 1
+    end
+    SparseMatrixCSC{Tv,Ti}(m, n, colptr, rowval, nzval)
 end
 
 # TODO: remove in v2.0
