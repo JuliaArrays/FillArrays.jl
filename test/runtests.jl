@@ -443,6 +443,58 @@ end
         @test rot180(Eye(5)[2:5, 1:4]) ≡ OffDiagonal(Ones(3), -1, 4, 4)
     end
 
+    @testset "broadcasting" begin
+        @test Base.BroadcastStyle(typeof(OffDiagonal([1, 2, 3], 1))) == LinearAlgebra.StructuredMatrixStyle{OffDiagonal}()
+
+        A = Eye(5)[2:end, :]
+        @test sin.(A) isa OffDiagonal
+        @test sin.(A) == sin.(Matrix(A))
+        # lazy bands stay lazy
+        @test sin.(A) ≡ OffDiagonal(Fill(sin(1.0), 4), 1, 4, 5)
+        @test 2 .* A ≡ OffDiagonal(Fill(2.0, 4), 1, 4, 5)
+
+        for A in (OffDiagonal([1.0, 2, 3], 1), OffDiagonal([1.0, 2, 3], -2, 5, 4), OffDiagonal(Fill(2.0, 3), 2, 3, 5),
+                  OffDiagonal(1.0:3, -1), OffDiagonal(Float64[], 4, 2, 3), Eye(5)[2:end, :], Eye(4, 6)[:, 2:5])
+            M = Matrix(A)
+            # zero-preserving operations keep the band
+            for (B, BM) in ((sin.(A), sin.(M)), (abs.(A), abs.(M)), (2 .* A, 2 .* M), (A ./ 2, M ./ 2), (.-A, .-M),
+                            (A .^ 2, M .^ 2), (A .+ A, M .+ M), (A .* A, M .* M), (round.(Int, A), round.(Int, M)),
+                            (sin.(A) .+ 2 .* A, sin.(M) .+ 2 .* M), (A .* sin.(A), M .* sin.(M)))
+                @test B isa OffDiagonal
+                @test B.k == A.k
+                @test B == BM
+                @test eltype(B) == eltype(BM)
+            end
+            # other operations are dense
+            for (B, BM) in ((cos.(A), cos.(M)), (A .+ 1, M .+ 1), (A .* M, M .* M), (A .+ M, M .+ M), (A .* (1:size(A,1)), M .* (1:size(A,1))))
+                @test B isa Matrix
+                @test B == BM
+            end
+            # different bands are dense
+            O = OffDiagonal(ones(FillArrays._bandlength(size(A)..., A.k + 1)), A.k + 1, axes(A))
+            @test A .+ O isa Matrix
+            @test A .+ O == M .+ Matrix(O)
+
+            # in-place
+            B = OffDiagonal(zeros(length(A.band)), A.k, axes(A))
+            B .= sin.(A)
+            @test B == sin.(M)
+            B .= A .* B
+            @test B == M .* sin.(M)
+            @test similar(Broadcast.instantiate(Broadcast.broadcasted(sin, A)), Float64) isa OffDiagonal{Float64}
+            if !isempty(A.band)
+                @test_throws ArgumentError B .= A .+ 1
+            end
+        end
+
+        # broadcasting a 1×1 OffDiagonal expands it, so is dense
+        @test OffDiagonal([1.0], 0) .* OffDiagonal([1.0, 2, 3], 0) == Diagonal([1.0, 2, 3])
+        @test OffDiagonal([1.0], 0) .* OffDiagonal([1.0, 2, 3], 0) isa Matrix
+        # mixing with other structured matrices is dense
+        A = OffDiagonal([1.0, 2, 3], 0)
+        @test A .+ Diagonal([1.0, 2, 3]) == Diagonal([2.0, 4, 6])
+    end
+
     @testset "slicing returns OffDiagonal" begin
         for M in (Eye(5), Eye{Int}(4), Diagonal(Fill(2, 6)), Diagonal(Zeros(3)), Eye(4, 6), Eye(6, 4),
                   RectDiagonal([1, 2, 3]), RectDiagonal([1, 2, 3], (1:3, 1:5)), RectDiagonal([1, 2, 3], (1:5, 1:3)),
