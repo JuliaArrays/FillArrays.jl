@@ -355,6 +355,7 @@ end
     @test size(expected) == expected_size
     @test (axes(expected, 1), axes(expected, 2)) == expected_axes
     @test (size(expected, 1), size(expected, 2)) == expected_size
+    @test parent(expected) ≡ data
 
     @test expected == expected_matrix
     @test Matrix(expected) == expected_matrix
