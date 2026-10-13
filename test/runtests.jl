@@ -429,6 +429,20 @@ end
         @test hash(OffDiagonal([1, 2], 1)) == hash([0 1 0; 0 0 2; 0 0 0])
     end
 
+    @testset "rot180" begin
+        for A in (OffDiagonal([1, 2, 3], 1), OffDiagonal([1, 2, 3], -2), OffDiagonal([1, 2, 3], -2, 5, 4),
+                  OffDiagonal(1:3, 2, 3, 5), OffDiagonal(1:2, -1, 3, 2), OffDiagonal([1, 2], 0, 2, 4),
+                  OffDiagonal(Int[], 4, 2, 3), OffDiagonal(Int[], -3, 2, 3))
+            R = rot180(A)
+            @test R isa OffDiagonal{Int}
+            @test R == rot180(Matrix(A))
+            @test rot180(R) == A
+        end
+        # lazy bands stay lazy
+        @test rot180(OffDiagonal(Fill(2, 3), 2, 3, 5)) ≡ OffDiagonal(Fill(2, 3), 0, 3, 5)
+        @test rot180(Eye(5)[2:5, 1:4]) ≡ OffDiagonal(Ones(3), -1, 4, 4)
+    end
+
     @testset "slicing returns OffDiagonal" begin
         for M in (Eye(5), Eye{Int}(4), Diagonal(Fill(2, 6)), Diagonal(Zeros(3)), Eye(4, 6), Eye(6, 4),
                   RectDiagonal([1, 2, 3]), RectDiagonal([1, 2, 3], (1:3, 1:5)), RectDiagonal([1, 2, 3], (1:5, 1:3)),
