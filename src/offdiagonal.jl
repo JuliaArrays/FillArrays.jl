@@ -133,3 +133,50 @@ Base.@propagate_inbounds _singleband_getindex(_, A, kr, jr) = invoke(getindex, T
     @inbounds band = _band(A)[st:st+len-1]
     OffDiagonal(band, k, shape)
 end
+
+##
+# Broadcasting a zero-preserving function over OffDiagonals with the same band returns an OffDiagonal
+##
+
+BroadcastStyle(::Type{<:OffDiagonal}) = LinearAlgebra.StructuredMatrixStyle{OffDiagonal}()
+@inline LinearAlgebra.fzero(::OffDiagonal{T}) where T = zero(T)
+
+# the band index shared by all the OffDiagonal arguments of a broadcast, or nothing if they lie on different
+# bands or are broadcast to a different size, in which case the result is not supported on a single band
+function _offdiagonal_bcindex(bc::Broadcasted)
+    k = nothing
+    for x in Broadcast.cat_nested(bc)
+        if x isa OffDiagonal
+            axes(x) == axes(bc) || return nothing
+            k === nothing || k == x.k || return nothing
+            k = x.k
+        end
+    end
+    k
+end
+
+# replace the OffDiagonal arguments by their bands, so that e.g. a Fill band stays a Fill
+_bcband(A::OffDiagonal) = A.band
+_bcband(bc::Broadcasted) = broadcasted(bc.f, map(_bcband, bc.args)...)
+_bcband(x) = x
+
+_isoffdiagonalbc(bc) = _offdiagonal_bcindex(bc) !== nothing && LinearAlgebra.fzeropreserving(bc)
+
+function Base.copy(bc::Broadcasted{LinearAlgebra.StructuredMatrixStyle{OffDiagonal}})
+    _isoffdiagonalbc(bc) || return copy(convert(Broadcasted{DefaultArrayStyle{2}}, bc))
+    OffDiagonal(Broadcast.materialize(_bcband(bc)), _offdiagonal_bcindex(bc), axes(bc))
+end
+
+function Base.copyto!(dest::OffDiagonal, bc::Broadcasted{LinearAlgebra.StructuredMatrixStyle{OffDiagonal}})
+    if axes(dest) == axes(bc) && _isoffdiagonalbc(bc) && _offdiagonal_bcindex(bc) == dest.k
+        Broadcast.materialize!(dest.band, _bcband(bc))
+        return dest
+    end
+    copyto!(dest, convert(Broadcasted{Nothing}, bc))
+end
+
+function LinearAlgebra.structured_broadcast_alloc(bc, ::Type{<:OffDiagonal}, ::Type{ElType}, _) where ElType
+    k = _offdiagonal_bcindex(bc)
+    k === nothing && return similar(convert(Broadcasted{DefaultArrayStyle{2}}, bc), ElType)
+    OffDiagonal(Vector{ElType}(undef, _bandlength(map(length, axes(bc))..., k)), k, axes(bc))
+end
