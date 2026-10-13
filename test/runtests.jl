@@ -355,6 +355,7 @@ end
     @test size(expected) == expected_size
     @test (axes(expected, 1), axes(expected, 2)) == expected_axes
     @test (size(expected, 1), size(expected, 2)) == expected_size
+    @test parent(expected) ≡ data
 
     @test expected == expected_matrix
     @test Matrix(expected) == expected_matrix
@@ -750,6 +751,25 @@ end
         for sz in ((3,6), (6,3), (3,3))
             E = RectDiagonal(f, sz)
             testsparsediag(E)
+        end
+    end
+
+    @testset "RectDiagonal and OffDiagonal" begin
+        for A in (RectDiagonal([1, 2, 3], 3, 5), RectDiagonal([1, 2, 3], 5, 3), RectDiagonal([1, 2, 3], 3, 1),
+                  RectDiagonal([1, 0, 3]), RectDiagonal(Int[], 0, 3),
+                  OffDiagonal([1, 2, 3], 1), OffDiagonal([1, 2, 3], -2), OffDiagonal([1, 2, 3], -2, 5, 4),
+                  OffDiagonal(1:3, 2, 3, 5), OffDiagonal(1:2, -1, 3, 2), OffDiagonal([1, 0, 3], 1),
+                  OffDiagonal(Int[], 4, 2, 3), OffDiagonal(Int[], -3, 2, 3), OffDiagonal(Fill(2, 3), 2, 3, 5),
+                  OffDiagonal(Zeros{Int}(3), -1), Eye(5)[2:end, :], Eye(4, 6)[:, 2:5])
+            testsparsediag(A)
+            S = sparse(A)
+            @test S isa SparseMatrixCSC{eltype(A),Int}
+            @test S == A
+            # same structure as converting the dense matrix, so zeros on the band are not stored
+            D = sparse(Matrix(A))
+            @test SparseArrays.getcolptr(S) == SparseArrays.getcolptr(D)
+            @test rowvals(S) == rowvals(D)
+            @test nonzeros(S) == nonzeros(D)
         end
     end
 end
