@@ -5,7 +5,7 @@ using LinearAlgebra
 import Base: size, getindex, setindex!, IndexStyle, checkbounds, convert,
     +, -, *, /, \, diff, sum, cumsum, maximum, minimum, sort, sort!,
     any, all, axes, isone, iszero, iterate, unique, allunique, permutedims, inv,
-    copy, vec, setindex!, count, ==, reshape, map, zero,
+    copy, setindex!, count, ==, reshape, map, zero,
     show, view, in, mapreduce, one, reverse, promote_op, promote_rule, repeat,
     parent, similar, issorted, add_sum, mul_prod, accumulate, OneTo, permutedims
 
@@ -512,7 +512,7 @@ function diag(E::Eye, k::Integer=0)
 end
 
 # These should actually be in StdLib, LinearAlgebra.jl, for all Diagonal
-for f in (:permutedims, :triu, :triu!, :tril, :tril!, :copy)
+for f in (:triu, :triu!, :tril, :tril!, :copy)
     @eval ($f)(IM::Diagonal{<:Any,<:AbstractFill}) = IM
 end
 
