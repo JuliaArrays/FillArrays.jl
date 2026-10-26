@@ -150,6 +150,9 @@ function _offdiagonal_bcindex(bc::Broadcasted)
             axes(x) == axes(bc) || return nothing
             k === nothing || k == x.k || return nothing
             k = x.k
+        elseif x isa AbstractArray && ndims(x) > 0
+            # other arrays do not reduce to the band, even when the result is zero-preserving
+            return nothing
         end
     end
     k

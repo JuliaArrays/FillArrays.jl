@@ -467,7 +467,8 @@ end
                 @test eltype(B) == eltype(BM)
             end
             # other operations are dense
-            for (B, BM) in ((cos.(A), cos.(M)), (A .+ 1, M .+ 1), (A .* M, M .* M), (A .+ M, M .+ M), (A .* (1:size(A,1)), M .* (1:size(A,1))))
+            for (B, BM) in ((cos.(A), cos.(M)), (A .+ 1, M .+ 1), (A .* M, M .* M), (A .+ M, M .+ M), (A .* (1:size(A,1)), M .* (1:size(A,1))),
+                            ((1:size(A,1)) .* A, (1:size(A,1)) .* M), (A .* permutedims(1:size(A,2)), M .* permutedims(1:size(A,2))))
                 @test B isa Matrix
                 @test B == BM
             end
