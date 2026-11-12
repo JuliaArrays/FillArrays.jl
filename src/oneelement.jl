@@ -64,6 +64,12 @@ Base.@propagate_inbounds function Base.getindex(A::OneElement{T,N}, inds::Vararg
     OneElement(getindex_value(A), containsval ? Int.(nzind) : Int.(firstindex.(shape,1)).-1, axes.(shape,1))
 end
 
+# views with unit-range/colon/integer indices are themselves OneElements
+Base.@propagate_inbounds Base.view(A::OneElement{<:Any,N}, inds::Vararg{VectorIndsWithColon,N}) where {N} = A[inds...]
+# not getindex since we need array-like indexing
+Base.@propagate_inbounds Base.view(A::OneElement{<:Any,N}, inds::Vararg{Integer,N}) where {N} =
+    OneElement(A[to_indices(A, inds)...], (), ())
+
 """
     nzind(A::OneElement{T,N}) -> CartesianIndex{N}
 
