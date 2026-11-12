@@ -2622,6 +2622,37 @@ end
         end
     end
 
+    @testset "view" begin
+        @testset "1D" begin
+            A = OneElement(2, 10)
+            @test @inferred(view(A, 1:3)) === A[1:3] === OneElement(2, 3)
+            @test @inferred(view(A, 3:5)) === A[3:5]
+            @test @inferred(view(A, :)) === A
+            @test @inferred(view(A, Base.IdentityUnitRange(2:3))) === A[Base.IdentityUnitRange(2:3)]
+            @test @inferred(view(A, 2)) === OneElement(1, (), ())
+            @test @inferred(view(A, 3)) === OneElement(0, (), ())
+            @test view(A, Int32(2)) === view(A, 2)
+            @test view(A, 2)[] === A[2]
+            @test_throws BoundsError view(A, 0:3)
+            @test_throws BoundsError view(A, 11)
+            @test view(A, [1,2,2]) == A[[1,2,2]]
+
+            D = OneElement(2, (2,), (InfiniteArrays.OneToInf(),))
+            @test @inferred(view(D, 1:3)) === OneElement(2, 2, 3)
+        end
+        @testset "2D" begin
+            B = OneElement(2, (2,3), (4,5))
+            @test @inferred(view(B, 1:3, 2:4)) === B[1:3, 2:4]
+            @test @inferred(view(B, 2, :)) === B[2, :]
+            @test @inferred(view(B, :, 3)) === B[:, 3]
+            @test @inferred(view(B, :, :)) === B
+            @test @inferred(view(B, 2, 3)) === OneElement(2, (), ())
+            @test @inferred(view(B, 1, 3)) === OneElement(0, (), ())
+            @test_throws BoundsError view(B, 5, 1:2)
+            @test view(B, 1:8) == vec(B)[1:8]
+        end
+    end
+
     @testset "adjoint/transpose" begin
         A = OneElement(3im, (2,4), (4,6))
         @test A' === OneElement(-3im, (4,2), (6,4))
