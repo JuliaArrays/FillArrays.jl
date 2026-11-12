@@ -5,7 +5,7 @@ using SparseArrays: SparseVectorUnion
 import Base: convert, kron
 using FillArrays
 using FillArrays: RectDiagonal, RectDiagonalFill, OffDiagonal, ZerosVector, ZerosMatrix, AbstractFillVector, _fill_dot,
-                  _band, _bandindex, _bandlength
+                  _band, _bandindex, _bandlength, OneElementVector, _onelement_dot, _onelement_dot_rev
 # Specifying the full namespace is necessary because of https://github.com/JuliaLang/julia/issues/48533
 # See https://github.com/JuliaStats/LogExpFunctions.jl/pull/63
 using FillArrays.LinearAlgebra
@@ -85,5 +85,7 @@ end
 
 # Ambiguity. see #178
 dot(x::AbstractFillVector, y::SparseVectorUnion) = _fill_dot(x, y)
+dot(x::OneElementVector, y::SparseVectorUnion) = _onelement_dot(x, y)
+dot(x::SparseVectorUnion, y::OneElementVector) = _onelement_dot_rev(x, y)
 
 end # module
