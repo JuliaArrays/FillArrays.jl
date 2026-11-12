@@ -143,6 +143,18 @@ function mapreduce(f, op, A::AbstractFill, B::AbstractFill, Cs::AbstractArray...
 end
 
 
+### Adjoints/transposes of vectors
+
+# Adjoints and transposes of fill vectors are kept as wrappers so that, e.g., x'y is a scalar,
+# but in broadcasting they behave like 1×n fill matrices. Converting them in `broadcastable`
+# means all of the fill broadcasting rules below apply, e.g. 2 .* Ones(5)' isa Fill. This
+# also avoids iterating over all entries, which never terminates for infinite fills.
+_adjtrans_fill(a::AdjOrTransAbsVec) = Fill(getindex_value(a), axes(a))
+_adjtrans_fill(a::AdjOrTransAbsVec{T,<:AbstractOnesVector}) where T<:Number = Ones{T}(axes(a))
+_adjtrans_fill(a::AdjOrTransAbsVec{T,<:AbstractZerosVector}) where T<:Number = Zeros{T}(axes(a))
+Broadcast.broadcastable(a::AdjOrTransAbsVec{<:Any,<:AbstractFillVector}) = _adjtrans_fill(a)
+
+
 ### Unary broadcasting
 
 function broadcasted(::DefaultArrayStyle{N}, op, r::AbstractFill{T,N}) where {T,N}
