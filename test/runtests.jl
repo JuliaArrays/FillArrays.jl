@@ -3156,6 +3156,86 @@ end
             end
         end
     end
+
+    # indices within the array, as well as out-of-bounds ones (which represent arrays of zeros)
+    allinds(sz) = [vec(Tuple.(CartesianIndices(sz))); [map(zero, sz), sz .+ 1]]
+
+    @testset "slice without the non-zero entry" begin
+        A = OneElement(2, (2,3), (4,5))
+        @test A[3:4, :] == zeros(2,5)
+        @test CartesianIndex(A[3:4, :].ind) ∉ CartesianIndices(A[3:4, :])
+
+        D = OneElement(2, (2,), (InfiniteArrays.OneToInf(),))
+        D3 = D[InfiniteArrays.InfUnitRange{Int}(3)]
+        @test D3 isa OneElement{Int,1}
+        @test axes(D3) == (InfiniteArrays.OneToInf(),)
+        @test iszero(D3)
+        @test D3[1] == 0
+        D2 = D[InfiniteArrays.InfUnitRange{Int}(2)]
+        @test axes(D2) == (InfiniteArrays.OneToInf(),)
+        @test D2[1] == 2
+    end
+
+    @testset "==" begin
+        @testset for sz in [(0,), (1,), (3,), (0,2), (1,1), (2,3)]
+            for i in allinds(sz), j in allinds(sz), (a, b) in ((2, 2), (2, 3), (0, 2), (2.0, 2), (NaN, NaN))
+                A = OneElement(a, i, sz)
+                B = OneElement(b, j, sz)
+                @test (A == B) == (Array(A) == Array(B))
+            end
+        end
+        @test OneElement(2, 2, 3) != OneElement(2, 2, 4)
+        @test OneElement(2, (1,1), (1,3)) != OneElement(2, (1,1), (3,1))
+        @test OneElement(2, (2,), (Base.IdentityUnitRange(2:4),)) != OneElement(2, 2, 3)
+
+        D = OneElement(2, (2,), (InfiniteArrays.OneToInf(),))
+        @test D == D
+        @test D == OneElement(2.0, (2,), (InfiniteArrays.OneToInf(),))
+        @test D != OneElement(2, (3,), (InfiniteArrays.OneToInf(),))
+        @test D != OneElement(3, (2,), (InfiniteArrays.OneToInf(),))
+        @test OneElement(0, (2,), (InfiniteArrays.OneToInf(),)) == OneElement(0, (3,), (InfiniteArrays.OneToInf(),))
+    end
+
+    @testset "dot" begin
+        @testset for n in 0:3, i in 0:n+1
+            A = OneElement(2im, i, n)
+            for B in (collect((1:n) .+ im), Fill(3+im, n), [OneElement(4.0, j, n) for j in 0:n+1]...)
+                @test dot(A, B) == dot(Array(A), Array(B))
+                @test dot(A, B) isa typeof(dot(Array(A), Array(B)))
+                @test dot(B, A) == dot(Array(B), Array(A))
+                @test dot(B, A) isa typeof(dot(Array(B), Array(A)))
+            end
+        end
+        @test_throws DimensionMismatch dot(OneElement(2, 3), 1:4)
+        @test_throws DimensionMismatch dot(1:4, OneElement(2, 3))
+        @test_throws DimensionMismatch dot(OneElement(2, 3), Fill(1, 4))
+        @test_throws DimensionMismatch dot(Fill(1, 4), OneElement(2, 3))
+
+        s = sparsevec([1, 2, 3])
+        @test dot(OneElement(2, 2, 3), s) == dot(s, OneElement(2, 2, 3)) == 4
+
+        D = OneElement(2, (2,), (InfiniteArrays.OneToInf(),))
+        @test dot(D, D) == 4
+        @test dot(D, OneElement(2, (3,), (InfiniteArrays.OneToInf(),))) == 0
+    end
+
+    @testset "norm" begin
+        @testset for sz in [(0,), (1,), (3,), (1,1), (2,3)], v in (2, -3.0, 1+2im)
+            for i in allinds(sz)
+                A = OneElement(v, i, sz)
+                @test norm(A) ≈ norm(Array(A))
+                @testset for p in (0.5, 1, 2, 3, Inf, -Inf, -1)
+                    @test norm(A, p) ≈ norm(Array(A), p)
+                    @test norm(A, p) isa typeof(norm(Array(A), p))
+                end
+            end
+        end
+
+        D = OneElement(-2, (2,), (InfiniteArrays.OneToInf(),))
+        @test norm(D) == norm(D, 1) == norm(D, Inf) == 2
+        @test norm(D, 3) ≈ 2
+        @test norm(D, -Inf) == norm(D, -1) == 0
+    end
 end
 
 @testset "repeat" begin
