@@ -59,7 +59,9 @@ Base.@propagate_inbounds function Base.getindex(A::OneElement{T,N}, inds::Vararg
     shape = _index_shape(I, I)
     nzind = _index_shape(A.ind, I) .- first.(shape) .+ firstindex.(shape)
     containsval = all(in.(A.ind, I))
-    OneElement(getindex_value(A), containsval ? Int.(nzind) : Int.(lastindex.(shape,1)).+1, axes.(shape,1))
+    # if the non-zero entry is not retained, place the index before the first index of each axis,
+    # which is always out of bounds (unlike after the last index, which fails for infinite axes)
+    OneElement(getindex_value(A), containsval ? Int.(nzind) : Int.(firstindex.(shape,1)).-1, axes.(shape,1))
 end
 
 """
@@ -133,6 +135,47 @@ end
 zero(A::OneElement) = OneElement(zero(A.val), A.ind, A.axes)
 
 iszero(A::OneElement) = iszero(getindex_value(A))
+
+# O(1) equality: only the (at most two) non-zero positions need to be compared
+function ==(A::OneElement, B::OneElement)
+    axes(A) == axes(B) || return false
+    isempty(A) && return true
+    a, b = getindex_value(A), getindex_value(B)
+    # out-of-bounds indices correspond to arrays of zeros, in which case a and b are zero
+    A.ind == B.ind && return a == b
+    # & propagates missing in the same way as == for arrays
+    (a == zero(eltype(B))) & (zero(eltype(A)) == b)
+end
+
+# dot
+
+function _onelement_dot(a::OneElementVector, b::AbstractVector)
+    axes(a) == axes(b) || throw(DimensionMismatch(LazyString("dot product arguments have lengths ", length(a), " and ", length(b))))
+    i = a.ind[1]
+    i in axes(a,1) ? dot(a.val, b[i]) : dot(zero(eltype(a)), zero(eltype(b)))
+end
+
+function _onelement_dot_rev(a::AbstractVector, b::OneElementVector)
+    axes(a) == axes(b) || throw(DimensionMismatch(LazyString("dot product arguments have lengths ", length(a), " and ", length(b))))
+    i = b.ind[1]
+    i in axes(b,1) ? dot(a[i], b.val) : dot(zero(eltype(a)), zero(eltype(b)))
+end
+
+dot(a::OneElementVector, b::AbstractVector) = _onelement_dot(a, b)
+dot(a::AbstractVector, b::OneElementVector) = _onelement_dot_rev(a, b)
+dot(a::OneElementVector, b::OneElementVector) = _onelement_dot(a, b)
+dot(a::OneElementVector, b::AbstractFillVector) = _onelement_dot(a, b)
+dot(a::AbstractFillVector, b::OneElementVector) = _onelement_dot_rev(a, b)
+
+# norm: only one entry can be non-zero
+
+for op in (:norm1, :norm2, :normInf)
+    @eval $op(A::OneElement) = norm(getindex_value(A))
+end
+# the minimum is over all entries, which includes a zero unless there is only one entry
+normMinusInf(A::OneElement) = length(A) == 1 ? norm(getindex_value(A)) : zero(norm(getindex_value(A)))
+# for p < 0, a zero entry makes the p-norm vanish
+normp(A::OneElement, p) = p < 0 && length(A) > 1 ? zero(norm(getindex_value(A))) : norm(getindex_value(A))
 
 function isone(A::OneElementMatrix)
     lenA = length(A)
