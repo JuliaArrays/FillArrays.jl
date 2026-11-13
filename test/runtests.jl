@@ -537,6 +537,48 @@ end
         @test @inferred(Eye(5)[2:4, :]) isa OffDiagonal
         @test @inferred(OffDiagonal(1:4, 1)[:, 2:3]) isa OffDiagonal
     end
+
+    @testset "multiplication" begin
+        offdiagonals(m, n) = [OffDiagonal(rand(1:9, FillArrays._bandlength(m, n, k)), k, m, n) for k in -m:n]
+        # all bands of all small sizes, including bands outside the matrix and products that vanish
+        for m in 0:4, n in 0:4, p in 0:4, A in offdiagonals(m, n), B in offdiagonals(n, p)
+            C = A * B
+            @test C isa OffDiagonal{Int}
+            @test C.k == A.k + B.k
+            @test C == Matrix(A) * Matrix(B)
+        end
+        for n in 0:4, A in offdiagonals(n, n)
+            D = Diagonal(rand(1:9, n))
+            @test D * A isa OffDiagonal{Int}
+            @test A * D isa OffDiagonal{Int}
+            @test (D * A).k == (A * D).k == A.k
+            @test D * A == Matrix(D) * Matrix(A)
+            @test A * D == Matrix(A) * Matrix(D)
+        end
+        for A in offdiagonals(3, 4)
+            D = Diagonal(rand(1:9, 4))
+            @test A * D == Matrix(A) * Matrix(D)
+            @test_throws DimensionMismatch D * A
+            @test_throws DimensionMismatch A * A
+        end
+
+        # eltypes are promoted
+        @test OffDiagonal([1, 2], 1) * OffDiagonal([0.5, 1.5], -1) isa OffDiagonal{Float64}
+        @test Diagonal([1.0, 2, 3]) * OffDiagonal([1, 2], 1) isa OffDiagonal{Float64}
+        @test OffDiagonal([1, 2], 1) * Diagonal([1im, 2, 3]) isa OffDiagonal{Complex{Int}}
+        @test OffDiagonal([1, 2], 1) * OffDiagonal([0.5, 1.5], -1) == [0.5 0 0; 0 3 0; 0 0 0]
+
+        # lazy bands stay lazy
+        @test OffDiagonal(Fill(2, 3), 1) * OffDiagonal(Ones{Int}(3), 1) ≡ OffDiagonal(Fill(2, 2), 2, 4, 4)
+        @test Eye(5)[2:5, 1:4] * Eye(5)[2:5, 1:4] ≡ OffDiagonal(Ones(2), 2, 4, 4)
+        @test Diagonal(Fill(3, 4)) * OffDiagonal(Fill(2, 3), -1) ≡ OffDiagonal(Fill(6, 3), -1, 4, 4)
+        @test OffDiagonal(Fill(2, 3), 1) * Eye{Int}(4) ≡ OffDiagonal(Fill(2, 3), 1, 4, 4)
+
+        # axes are preserved
+        A = OffDiagonal([1, 2], 1, (SOneTo(3), SOneTo(3)))
+        @test axes(A * A) ≡ (SOneTo(3), SOneTo(3))
+        @test axes(Diagonal(1:3) * A) == axes(A)
+    end
 end
 
 # Check that all pair-wise combinations of + / - elements of As and Bs yield the correct

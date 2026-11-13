@@ -9,7 +9,7 @@ As for `diag`, `k > 0` refers to a superdiagonal and `k < 0` to a subdiagonal, a
 square with `length(band) + abs(k)` rows.
 
 Indexing a `Diagonal` of an `AbstractFill`, a `RectDiagonal` or an `OffDiagonal` by unit ranges
-returns an `OffDiagonal`.
+returns an `OffDiagonal`, as does multiplying an `OffDiagonal` by an `OffDiagonal` or a `Diagonal`.
 
 # Examples
 
@@ -183,3 +183,35 @@ function LinearAlgebra.structured_broadcast_alloc(bc, ::Type{<:OffDiagonal}, ::T
     k === nothing && return similar(convert(Broadcasted{DefaultArrayStyle{2}}, bc), ElType)
     OffDiagonal(Vector{ElType}(undef, _bandlength(map(length, axes(bc))..., k)), k, axes(bc))
 end
+
+##
+# The product of matrices supported on a single diagonal is supported on a single diagonal
+##
+
+function _offdiagonal_mul(A, B)
+    m, n = size(A)
+    size(B, 1) == n || throw(DimensionMismatch(LazyString("matrix A has dimensions ", Base.dims2string(size(A)), ", matrix B has dimensions ", Base.dims2string(size(B)))))
+    p = size(B, 2)
+    k, l = _bandindex(A), _bandindex(B)
+    d = k + l
+    len = _bandlength(m, p, d)
+    # entry t of the band of the result lies in row i = t + s, and equals A[i, i+k] * B[i+k, i+d],
+    # which vanishes unless 1 ≤ i+k ≤ n, that is, unless t ∈ lo:hi
+    s = max(0, -d)
+    lo, hi = max(1, 1 - k - s), min(len, n - k - s)
+    ax = (axes(A, 1), axes(B, 2))
+    hi < lo && return OffDiagonal(zeros(Base.promote_op(*, eltype(A), eltype(B)), len), d, ax)
+    # the bands are indexed by min(row, col), that is, by i + min(0, k) for A and by i + k + min(0, l) for B
+    r = lo:hi
+    band = broadcast(*, _band(A)[r .+ (s + min(0, k))], _band(B)[r .+ (s + k + min(0, l))])
+    # hi == len is checked first as the lengths may be infinite
+    OffDiagonal(_padband(band, lo - 1, hi == len ? 0 : len - hi), d, ax)
+end
+
+# pad the band with zeros, avoiding a copy if no padding is needed
+_padband(band, before, after) = iszero(before) && iszero(after) ? band :
+    vcat(zeros(eltype(band), before), band, zeros(eltype(band), after))
+
+*(A::OffDiagonal, B::OffDiagonal) = _offdiagonal_mul(A, B)
+*(A::Diagonal{<:Number}, B::OffDiagonal) = _offdiagonal_mul(A, B)
+*(A::OffDiagonal, B::Diagonal{<:Number}) = _offdiagonal_mul(A, B)
