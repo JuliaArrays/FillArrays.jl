@@ -537,6 +537,48 @@ end
         @test @inferred(Eye(5)[2:4, :]) isa OffDiagonal
         @test @inferred(OffDiagonal(1:4, 1)[:, 2:3]) isa OffDiagonal
     end
+
+    @testset "multiplication" begin
+        offdiagonals(m, n) = [OffDiagonal(rand(1:9, FillArrays._bandlength(m, n, k)), k, m, n) for k in -m:n]
+        # all bands of all small sizes, including bands outside the matrix and products that vanish
+        for m in 0:4, n in 0:4, p in 0:4, A in offdiagonals(m, n), B in offdiagonals(n, p)
+            C = A * B
+            @test C isa OffDiagonal{Int}
+            @test C.k == A.k + B.k
+            @test C == Matrix(A) * Matrix(B)
+        end
+        for n in 0:4, A in offdiagonals(n, n)
+            D = Diagonal(rand(1:9, n))
+            @test D * A isa OffDiagonal{Int}
+            @test A * D isa OffDiagonal{Int}
+            @test (D * A).k == (A * D).k == A.k
+            @test D * A == Matrix(D) * Matrix(A)
+            @test A * D == Matrix(A) * Matrix(D)
+        end
+        for A in offdiagonals(3, 4)
+            D = Diagonal(rand(1:9, 4))
+            @test A * D == Matrix(A) * Matrix(D)
+            @test_throws DimensionMismatch D * A
+            @test_throws DimensionMismatch A * A
+        end
+
+        # eltypes are promoted
+        @test OffDiagonal([1, 2], 1) * OffDiagonal([0.5, 1.5], -1) isa OffDiagonal{Float64}
+        @test Diagonal([1.0, 2, 3]) * OffDiagonal([1, 2], 1) isa OffDiagonal{Float64}
+        @test OffDiagonal([1, 2], 1) * Diagonal([1im, 2, 3]) isa OffDiagonal{Complex{Int}}
+        @test OffDiagonal([1, 2], 1) * OffDiagonal([0.5, 1.5], -1) == [0.5 0 0; 0 3 0; 0 0 0]
+
+        # lazy bands stay lazy
+        @test OffDiagonal(Fill(2, 3), 1) * OffDiagonal(Ones{Int}(3), 1) ≡ OffDiagonal(Fill(2, 2), 2, 4, 4)
+        @test Eye(5)[2:5, 1:4] * Eye(5)[2:5, 1:4] ≡ OffDiagonal(Ones(2), 2, 4, 4)
+        @test Diagonal(Fill(3, 4)) * OffDiagonal(Fill(2, 3), -1) ≡ OffDiagonal(Fill(6, 3), -1, 4, 4)
+        @test OffDiagonal(Fill(2, 3), 1) * Eye{Int}(4) ≡ OffDiagonal(Fill(2, 3), 1, 4, 4)
+
+        # axes are preserved
+        A = OffDiagonal([1, 2], 1, (SOneTo(3), SOneTo(3)))
+        @test axes(A * A) ≡ (SOneTo(3), SOneTo(3))
+        @test axes(Diagonal(1:3) * A) == axes(A)
+    end
 end
 
 # Check that all pair-wise combinations of + / - elements of As and Bs yield the correct
@@ -2665,6 +2707,37 @@ end
         end
     end
 
+    @testset "view" begin
+        @testset "1D" begin
+            A = OneElement(2, 10)
+            @test @inferred(view(A, 1:3)) === A[1:3] === OneElement(2, 3)
+            @test @inferred(view(A, 3:5)) === A[3:5]
+            @test @inferred(view(A, :)) === A
+            @test @inferred(view(A, Base.IdentityUnitRange(2:3))) === A[Base.IdentityUnitRange(2:3)]
+            @test @inferred(view(A, 2)) === OneElement(1, (), ())
+            @test @inferred(view(A, 3)) === OneElement(0, (), ())
+            @test view(A, Int32(2)) === view(A, 2)
+            @test view(A, 2)[] === A[2]
+            @test_throws BoundsError view(A, 0:3)
+            @test_throws BoundsError view(A, 11)
+            @test view(A, [1,2,2]) == A[[1,2,2]]
+
+            D = OneElement(2, (2,), (InfiniteArrays.OneToInf(),))
+            @test @inferred(view(D, 1:3)) === OneElement(2, 2, 3)
+        end
+        @testset "2D" begin
+            B = OneElement(2, (2,3), (4,5))
+            @test @inferred(view(B, 1:3, 2:4)) === B[1:3, 2:4]
+            @test @inferred(view(B, 2, :)) === B[2, :]
+            @test @inferred(view(B, :, 3)) === B[:, 3]
+            @test @inferred(view(B, :, :)) === B
+            @test @inferred(view(B, 2, 3)) === OneElement(2, (), ())
+            @test @inferred(view(B, 1, 3)) === OneElement(0, (), ())
+            @test_throws BoundsError view(B, 5, 1:2)
+            @test view(B, 1:8) == vec(B)[1:8]
+        end
+    end
+
     @testset "adjoint/transpose" begin
         A = OneElement(3im, (2,4), (4,6))
         @test A' === OneElement(-3im, (4,2), (6,4))
@@ -3167,6 +3240,86 @@ end
                 @test diag(O, k) isa OneElement{Int,1}
             end
         end
+    end
+
+    # indices within the array, as well as out-of-bounds ones (which represent arrays of zeros)
+    allinds(sz) = [vec(Tuple.(CartesianIndices(sz))); [map(zero, sz), sz .+ 1]]
+
+    @testset "slice without the non-zero entry" begin
+        A = OneElement(2, (2,3), (4,5))
+        @test A[3:4, :] == zeros(2,5)
+        @test CartesianIndex(A[3:4, :].ind) ∉ CartesianIndices(A[3:4, :])
+
+        D = OneElement(2, (2,), (InfiniteArrays.OneToInf(),))
+        D3 = D[InfiniteArrays.InfUnitRange{Int}(3)]
+        @test D3 isa OneElement{Int,1}
+        @test axes(D3) == (InfiniteArrays.OneToInf(),)
+        @test iszero(D3)
+        @test D3[1] == 0
+        D2 = D[InfiniteArrays.InfUnitRange{Int}(2)]
+        @test axes(D2) == (InfiniteArrays.OneToInf(),)
+        @test D2[1] == 2
+    end
+
+    @testset "==" begin
+        @testset for sz in [(0,), (1,), (3,), (0,2), (1,1), (2,3)]
+            for i in allinds(sz), j in allinds(sz), (a, b) in ((2, 2), (2, 3), (0, 2), (2.0, 2), (NaN, NaN))
+                A = OneElement(a, i, sz)
+                B = OneElement(b, j, sz)
+                @test (A == B) == (Array(A) == Array(B))
+            end
+        end
+        @test OneElement(2, 2, 3) != OneElement(2, 2, 4)
+        @test OneElement(2, (1,1), (1,3)) != OneElement(2, (1,1), (3,1))
+        @test OneElement(2, (2,), (Base.IdentityUnitRange(2:4),)) != OneElement(2, 2, 3)
+
+        D = OneElement(2, (2,), (InfiniteArrays.OneToInf(),))
+        @test D == D
+        @test D == OneElement(2.0, (2,), (InfiniteArrays.OneToInf(),))
+        @test D != OneElement(2, (3,), (InfiniteArrays.OneToInf(),))
+        @test D != OneElement(3, (2,), (InfiniteArrays.OneToInf(),))
+        @test OneElement(0, (2,), (InfiniteArrays.OneToInf(),)) == OneElement(0, (3,), (InfiniteArrays.OneToInf(),))
+    end
+
+    @testset "dot" begin
+        @testset for n in 0:3, i in 0:n+1
+            A = OneElement(2im, i, n)
+            for B in (collect((1:n) .+ im), Fill(3+im, n), [OneElement(4.0, j, n) for j in 0:n+1]...)
+                @test dot(A, B) == dot(Array(A), Array(B))
+                @test dot(A, B) isa typeof(dot(Array(A), Array(B)))
+                @test dot(B, A) == dot(Array(B), Array(A))
+                @test dot(B, A) isa typeof(dot(Array(B), Array(A)))
+            end
+        end
+        @test_throws DimensionMismatch dot(OneElement(2, 3), 1:4)
+        @test_throws DimensionMismatch dot(1:4, OneElement(2, 3))
+        @test_throws DimensionMismatch dot(OneElement(2, 3), Fill(1, 4))
+        @test_throws DimensionMismatch dot(Fill(1, 4), OneElement(2, 3))
+
+        s = sparsevec([1, 2, 3])
+        @test dot(OneElement(2, 2, 3), s) == dot(s, OneElement(2, 2, 3)) == 4
+
+        D = OneElement(2, (2,), (InfiniteArrays.OneToInf(),))
+        @test dot(D, D) == 4
+        @test dot(D, OneElement(2, (3,), (InfiniteArrays.OneToInf(),))) == 0
+    end
+
+    @testset "norm" begin
+        @testset for sz in [(0,), (1,), (3,), (1,1), (2,3)], v in (2, -3.0, 1+2im)
+            for i in allinds(sz)
+                A = OneElement(v, i, sz)
+                @test norm(A) ≈ norm(Array(A))
+                @testset for p in (0.5, 1, 2, 3, Inf, -Inf, -1)
+                    @test norm(A, p) ≈ norm(Array(A), p)
+                    @test norm(A, p) isa typeof(norm(Array(A), p))
+                end
+            end
+        end
+
+        D = OneElement(-2, (2,), (InfiniteArrays.OneToInf(),))
+        @test norm(D) == norm(D, 1) == norm(D, Inf) == 2
+        @test norm(D, 3) ≈ 2
+        @test norm(D, -Inf) == norm(D, -1) == 0
     end
 end
 
