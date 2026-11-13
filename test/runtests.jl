@@ -1475,6 +1475,49 @@ end
             end
         end
     end
+
+    @testset "adjoint/transpose of vectors" begin
+        @testset "matches dense" begin
+            for f in (Ones(3), Zeros(3), Fill(2.0,3), Fill(1+2im,3), Ones{ComplexF64}(3)), W in (adjoint, transpose)
+                a, d = W(f), W(collect(f))
+                for g in (identity, conj, exp, x -> 2x, x -> x .^ 2)
+                    @test g.(a) == g.(d)
+                    @test eltype(g.(a)) == eltype(g.(d))
+                end
+                for b in (2, im, [1,2,3], [1 2 3], 1:3, (1:3)', Ones(3)', Fill(2,1,3), Zeros(1,3))
+                    @test a .* b == d .* b
+                    @test b .+ a == b .+ d
+                    @test size(a .* b) == size(d .* b)
+                end
+            end
+            a, d = Fill([1 2; 3 4], 3)', Fill([1 2; 3 4], 3)'
+            @test identity.(a) == identity.(collect(d))
+        end
+        @testset "fill results" begin
+            @test 2 .* Ones(3)' ≡ Ones(3)' .* 2 ≡ Fill(2.0, 1, 3)
+            @test 2 .* transpose(Ones(3)) ≡ Fill(2.0, 1, 3)
+            @test Ones(3)' .+ Zeros(3)' ≡ Ones(1,3)
+            @test -Zeros(3)' .* 2 ≡ Zeros(1,3)
+            @test Fill(1+2im,3)' .* 1 ≡ Fill(1-2im, 1, 3)
+            @test transpose(Fill(1+2im,3)) .* 1 ≡ Fill(1+2im, 1, 3)
+            @test exp.(Zeros(3)') ≡ Fill(1.0, 1, 3)
+            @test Ones(3)' .^ 2 ≡ Ones(1, 3)
+        end
+        @testset "destination and products unaffected" begin
+            y = zeros(1,3)
+            y .= Fill(2.0,3)'
+            @test y == fill(2.0,1,3)
+            @test Ones(3)' * Ones(3) ≡ 3.0
+        end
+        @testset "infinite" begin
+            # previously never terminated
+            a = Ones(InfiniteArrays.OneToInf())'
+            b = 2 .* a
+            @test b isa Fill{<:Any,2}
+            @test axes(b) == axes(a)
+            @test b[1,10] == 2
+        end
+    end
 end
 
 @testset "map" begin
